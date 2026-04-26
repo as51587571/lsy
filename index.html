@@ -807,13 +807,62 @@
             from { transform: translateX(0); opacity: 1; }
             to { transform: translateX(100%); opacity: 0; }
         }
+        
+        /* 右键菜单样式 */
+        .context-menu {
+            position: fixed;
+            background: rgba(26, 26, 46, 0.98);
+            border: 1px solid rgba(74, 158, 255, 0.4);
+            border-radius: 6px;
+            padding: 4px 0;
+            min-width: 150px;
+            z-index: 10000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+        
+        .context-menu-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        
+        .context-menu-item:hover {
+            background: rgba(74, 158, 255, 0.2);
+        }
+        
+        .context-menu-item.danger {
+            color: #ff4a4a;
+        }
+        
+        .context-menu-item.danger:hover {
+            background: rgba(255, 74, 74, 0.2);
+        }
+        
+        .context-menu-divider {
+            height: 1px;
+            background: rgba(74, 158, 255, 0.2);
+            margin: 4px 0;
+        }
+        
+        .color-option {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>🎮 制作成本计算器</h1>
-            <p>阿林</p>
+            <p>魔族制作管理</p>
             <div style="position: absolute; top: 20px; right: 20px; display: flex; gap: 10px;">
                 <button class="btn btn-success" onclick="testSave()" style="font-size: 0.8em; padding: 5px 10px;">🧪 测试保存</button>
                 <button class="btn btn-warning" onclick="testLoad()" style="font-size: 0.8em; padding: 5px 10px;">🧪 测试加载</button>
@@ -950,6 +999,9 @@
             </div>
         </div>
     </div>
+    
+    <!-- 右键菜单容器 -->
+    <div id="contextMenu" class="context-menu" style="display:none;"></div>
 
     <script>
         // 每个职业独立的材料库：professionMaterials[职业名] = { grid: [], map: {} }
@@ -1027,6 +1079,7 @@
 
         let currentProfession = "铁匠";
         let selectedItem = null;
+        let selectedItemIndex = -1; // 保存当前选中物品的索引
         let selectedMaterial = null;
         
         // 维护职业显示顺序的数组
@@ -1483,11 +1536,12 @@
                         const item = items[itemIndex];
                         const realIndex = allItems.indexOf(item);
                         const cost = calculateItemCost(item);
+                        const itemColor = item.color || '#4a9eff'; // 默认为蓝色
                         const cell = row.insertCell();
                         cell.draggable = true;
                         cell.dataset.itemIndex = realIndex;
                         cell.className = 'item-cell';
-                        cell.innerHTML = `<div class="item-content"><span class="item-name editable-item-name" data-item-name="${item.name}" style="cursor: pointer; color: #4a9eff;">${item.name}</span><span class="item-cost">${cost.toLocaleString()}</span></div>`;
+                        cell.innerHTML = `<div class="item-content"><span class="item-name editable-item-name" data-item-index="${realIndex}" style="cursor: pointer; color: ${itemColor};">${item.name}</span><span class="item-cost">${cost.toLocaleString()}</span></div>`;
                         cell.addEventListener('dragstart', handleItemDragStart);
                         cell.addEventListener('dragend', handleItemDragEnd);
                         cell.addEventListener('dragover', handleItemDragOver);
@@ -1495,7 +1549,70 @@
                         cell.addEventListener('dragenter', handleItemDragEnter);
                         cell.addEventListener('dragleave', handleItemDragLeave);
                         cell.addEventListener("click", (e) => { selectItem(item, cell); });
+                        // 添加右键菜单
+                        cell.addEventListener('contextmenu', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            showItemContextMenu(e.clientX, e.clientY, realIndex, item);
+                        });
                         cell.style.cursor = "pointer";
+                        
+                        // 添加双击编辑名称功能
+                        const nameSpan = cell.querySelector('.editable-item-name');
+                        nameSpan.addEventListener('dblclick', function(e) {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            
+                            const currentItemIndex = parseInt(this.dataset.itemIndex);
+                            const currentName = this.textContent;
+                            
+                            // 创建输入框
+                            const input = document.createElement('input');
+                            input.type = 'text';
+                            input.value = currentName;
+                            input.style.cssText = 'background: rgba(0,0,0,0.5); border: 1px solid #4a9eff; color: #4a9eff; padding: 2px 5px; border-radius: 3px; font-size: 0.85em; width: 100%; outline: none;';
+                            
+                            // 替换span为input
+                            this.replaceWith(input);
+                            input.focus();
+                            input.select();
+                            
+                            // 失去焦点时保存
+                            input.addEventListener('blur', function() {
+                                const newName = this.value.trim();
+                                if (newName && newName !== currentName) {
+                                    recipes[currentProfession][currentItemIndex].name = newName;
+                                    autoSave();
+                                    showNotification(`物品名称已更新为 "${newName}"`, 'success');
+                                }
+                                loadProfessionItems();
+                                if (selectedItem) {
+                                    const updatedItem = recipes[currentProfession].find(i => i.name === (newName || currentName));
+                                    if (updatedItem) {
+                                        setTimeout(() => {
+                                            const cells = document.querySelectorAll('.item-cell');
+                                            cells.forEach(c => {
+                                                if (parseInt(c.dataset.itemIndex) === currentItemIndex) {
+                                                    selectItem(updatedItem, c);
+                                                }
+                                            });
+                                        }, 10);
+                                    }
+                                }
+                            });
+                            
+                            // 按键处理
+                            input.addEventListener('keydown', function(e) {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    this.blur();
+                                } else if (e.key === 'Escape') {
+                                    e.preventDefault();
+                                    this.value = currentName;
+                                    this.blur();
+                                }
+                            });
+                        });
                     } else {
                         row.insertCell().innerHTML = '';
                     }
@@ -1504,6 +1621,83 @@
         }
         
         let draggedItemCell = null;
+        
+        // 显示物品右键菜单
+        function showItemContextMenu(x, y, itemIndex, item) {
+            const menu = document.getElementById('contextMenu');
+            const colors = [
+                { name: '白色', value: '#ffffff' },
+                { name: '绿色', value: '#4aff7c' },
+                { name: '蓝色', value: '#4a9eff' },
+                { name: '黄色', value: '#ffa500' },
+                { name: '红色', value: '#ff4a4a' }
+            ];
+            
+            let html = '';
+            colors.forEach(color => {
+                const isActive = item.color === color.value;
+                html += `<div class="context-menu-item" onclick="setItemColor(${itemIndex}, '${color.value}')">
+                    <span class="color-option" style="background:${color.value};"></span>
+                    <span>${color.name}</span>
+                    ${isActive ? '<span style="color:#4aff7c;margin-left:auto;">✓</span>' : ''}
+                </div>`;
+            });
+            
+            html += `<div class="context-menu-divider"></div>`;
+            html += `<div class="context-menu-item danger" onclick="deleteItemByIndex(${itemIndex})">
+                <span>🗑️ 删除物品</span>
+            </div>`;
+            
+            menu.innerHTML = html;
+            menu.style.display = 'block';
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+            
+            // 确保菜单不超出屏幕
+            const rect = menu.getBoundingClientRect();
+            if (rect.right > window.innerWidth) {
+                menu.style.left = (x - rect.width) + 'px';
+            }
+            if (rect.bottom > window.innerHeight) {
+                menu.style.top = (y - rect.height) + 'px';
+            }
+        }
+        
+        // 设置物品颜色
+        function setItemColor(itemIndex, color) {
+            if (itemIndex >= 0 && itemIndex < recipes[currentProfession].length) {
+                recipes[currentProfession][itemIndex].color = color;
+                autoSave();
+                loadProfessionItems();
+                showNotification(`物品颜色已更新`, 'success');
+            }
+            hideContextMenu();
+        }
+        
+        // 通过索引删除物品
+        function deleteItemByIndex(itemIndex) {
+            if (itemIndex >= 0 && itemIndex < recipes[currentProfession].length) {
+                const itemName = recipes[currentProfession][itemIndex].name;
+                recipes[currentProfession].splice(itemIndex, 1);
+                autoSave();
+                renderCategoryTabs();
+                loadProfessionItems();
+                if (selectedItemIndex === itemIndex) {
+                    selectedItem = null;
+                    selectedItemIndex = -1;
+                    document.getElementById("itemName").textContent = "未选择物品";
+                    document.getElementById("itemLevel").textContent = "";
+                    document.getElementById("materialsList").innerHTML = '<p style="color: #aaa; font-size: 0.9em;">请选择一个物品查看材料需求</p>';
+                    document.getElementById("costResult").style.display = "none";
+                    highlightRequiredMaterials(null);
+                } else if (selectedItemIndex > itemIndex) {
+                    selectedItemIndex--;
+                }
+                showNotification(`物品 ${itemName} 已删除`, 'success');
+            }
+            hideContextMenu();
+        }
+        
         function handleItemDragStart(e) { draggedItemCell = this; this.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/html', this.innerHTML); }
         function handleItemDragEnd(e) { this.classList.remove('dragging'); document.querySelectorAll('.item-cell').forEach(cell => cell.classList.remove('drag-over')); }
         function handleItemDragOver(e) { if (e.preventDefault) e.preventDefault(); e.dataTransfer.dropEffect = 'move'; return false; }
@@ -1557,14 +1751,21 @@
                 card.dataset.flatIndex = index;
                 if (material) {
                     const mName = material.name;
+                    const mColor = material.color || '#ffffff'; // 默认为白色
                     card.className = 'material-card';
                     card.draggable = true;
                     card.dataset.materialName = mName;
-                    card.innerHTML = `<button class="card-delete-btn" title="删除材料">×</button><div class="material-content"><span class="material-name">${mName}</span><span class="material-price editable-price" data-name="${mName}">${material.price.toLocaleString()}</span></div>`;
+                    card.innerHTML = `<button class="card-delete-btn" title="删除材料">×</button><div class="material-content"><span class="material-name" style="color:${mColor};">${mName}</span><span class="material-price editable-price" data-name="${mName}">${material.price.toLocaleString()}</span></div>`;
                     card.querySelector('.card-delete-btn').addEventListener('click', (e) => { e.stopPropagation(); quickDeleteMaterial(mName); });
                     card.addEventListener('click', (e) => { if (e.target.classList.contains('card-delete-btn')) return; if (e.detail >= 2 && e.target.classList.contains('editable-price')) return; addToQueue(mName, 1); selectMaterialByName(mName, material); });
                     card.querySelector('.material-name').addEventListener('click', (e) => { e.stopPropagation(); addToQueue(mName, 1); selectMaterialByName(mName, material); });
                     card.querySelector('.editable-price').addEventListener('dblclick', (e) => { e.stopPropagation(); makePriceEditable(e.currentTarget, mName); });
+                    // 添加右键菜单
+                    card.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        showMaterialContextMenu(e.clientX, e.clientY, mName, material);
+                    });
                     card.addEventListener('dragstart', handleMaterialDragStart);
                     card.addEventListener('dragend', handleMaterialDragEnd);
                 } else {
@@ -1613,6 +1814,75 @@
         }
 
         let draggedMaterialCard = null;
+        
+        // 显示材料右键菜单
+        function showMaterialContextMenu(x, y, materialName, material) {
+            const menu = document.getElementById('contextMenu');
+            const colors = [
+                { name: '白色', value: '#ffffff' },
+                { name: '绿色', value: '#4aff7c' },
+                { name: '蓝色', value: '#4a9eff' },
+                { name: '黄色', value: '#ffa500' },
+                { name: '红色', value: '#ff4a4a' }
+            ];
+            
+            let html = '';
+            colors.forEach(color => {
+                const isActive = material.color === color.value;
+                html += `<div class="context-menu-item" onclick="setMaterialColor('${materialName}', '${color.value}')">
+                    <span class="color-option" style="background:${color.value};"></span>
+                    <span>${color.name}</span>
+                    ${isActive ? '<span style="color:#4aff7c;margin-left:auto;">✓</span>' : ''}
+                </div>`;
+            });
+            
+            html += `<div class="context-menu-divider"></div>`;
+            html += `<div class="context-menu-item danger" onclick="quickDeleteMaterial('${materialName}')">
+                <span>🗑️ 删除材料</span>
+            </div>`;
+            
+            menu.innerHTML = html;
+            menu.style.display = 'block';
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+            
+            // 确保菜单不超出屏幕
+            const rect = menu.getBoundingClientRect();
+            if (rect.right > window.innerWidth) {
+                menu.style.left = (x - rect.width) + 'px';
+            }
+            if (rect.bottom > window.innerHeight) {
+                menu.style.top = (y - rect.height) + 'px';
+            }
+        }
+        
+        // 设置材料颜色
+        function setMaterialColor(materialName, color) {
+            const flat = flattenGrid();
+            const idx = flat.findIndex(m => m && m.name === materialName);
+            if (idx >= 0 && flat[idx]) {
+                flat[idx].color = color;
+                writeFlatToGrid(flat);
+                loadMaterialsTable();
+                autoSave();
+                showNotification(`材料颜色已更新`, 'success');
+            }
+            hideContextMenu();
+        }
+        
+        // 隐藏右键菜单
+        function hideContextMenu() {
+            document.getElementById('contextMenu').style.display = 'none';
+        }
+        
+        // 点击其他地方关闭菜单
+        document.addEventListener('click', hideContextMenu);
+        document.addEventListener('contextmenu', (e) => {
+            if (!e.target.closest('.context-menu')) {
+                hideContextMenu();
+            }
+        });
+        
         function handleMaterialDragStart(e) { draggedMaterialCard = this; this.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', this.dataset.flatIndex); }
         function handleMaterialDragEnd(e) { this.classList.remove('dragging'); document.querySelectorAll('.material-card').forEach(c => c.classList.remove('drag-over')); draggedMaterialCard = null; }
         function handleMaterialDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; return false; }
@@ -1636,7 +1906,76 @@
             return false;
         }
 
-        function makeItemNameEditable(nameSpan, item) { /* 保持原有功能略 */ }
+        function makeItemNameEditable(nameSpan, item) {
+            const currentName = nameSpan.textContent;
+            
+            // 创建输入框
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = currentName;
+            input.style.cssText = 'background: rgba(0,0,0,0.5); border: 1px solid #4a9eff; color: #4a9eff; padding: 4px 8px; border-radius: 4px; font-size: 1.1em; font-weight: 600; width: 100%; outline: none;';
+            
+            // 替换span为input
+            nameSpan.replaceWith(input);
+            
+            // 使用 setTimeout 确保 DOM 更新后再聚焦和选中
+            setTimeout(() => {
+                input.focus();
+                input.select();
+            }, 10);
+            
+            // 保存函数
+            const saveName = function() {
+                const newName = input.value.trim();
+                if (newName && newName !== currentName) {
+                    // 更新物品名称
+                    const oldName = item.name;
+                    item.name = newName;
+                    
+                    // 更新 recipes 数组中的引用
+                    const itemIndex = recipes[currentProfession].findIndex(i => i.name === oldName);
+                    if (itemIndex >= 0) {
+                        recipes[currentProfession][itemIndex].name = newName;
+                    }
+                    
+                    autoSave();
+                    showNotification(`物品名称已更新为 "${newName}"`, 'success');
+                    
+                    // 重新加载左侧列表
+                    loadProfessionItems();
+                    
+                    // 重新选中该物品
+                    setTimeout(() => {
+                        const cells = document.querySelectorAll('.item-cell');
+                        cells.forEach(cell => {
+                            const cellItem = recipes[currentProfession][parseInt(cell.dataset.itemIndex)];
+                            if (cellItem && cellItem.name === newName) {
+                                selectItem(cellItem, cell);
+                            }
+                        });
+                    }, 10);
+                } else if (!newName) {
+                    // 如果名称为空，恢复原名称
+                    input.value = currentName;
+                }
+            };
+            
+            // 失去焦点时保存
+            input.addEventListener('blur', saveName);
+            
+            // 按键处理
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.blur();
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    this.value = currentName;
+                    this.blur();
+                }
+            });
+        }
+        
         function calculateItemCost(item) {
             let totalCost = 0;
             for (const [materialName, quantity] of Object.entries(item.materials)) {
@@ -1650,6 +1989,8 @@
             document.querySelectorAll("#itemsTableBody tr").forEach(r => r.classList.remove("selected"));
             row.classList.add("selected");
             selectedItem = item;
+            // 保存物品的索引
+            selectedItemIndex = recipes[currentProfession].indexOf(item);
             displayItemDetails(item);
             highlightRequiredMaterials(item);
         }
@@ -1676,7 +2017,89 @@
         }
 
         function displayItemDetails(item) {
-            document.getElementById("itemName").textContent = item.name;
+            const itemNameEl = document.getElementById("itemName");
+            // 应用物品的颜色
+            const itemColor = item.color || '#4a9eff';
+            itemNameEl.style.cursor = 'pointer';
+            itemNameEl.style.color = itemColor;
+            itemNameEl.title = '单击修改名称';
+            itemNameEl.textContent = item.name;
+            
+            // 添加单击编辑功能 - 直接绑定到 itemNameEl
+            itemNameEl.onclick = function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                
+                const currentName = this.textContent;
+                
+                // 创建输入框
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = currentName;
+                input.style.cssText = 'background: rgba(0,0,0,0.5); border: 1px solid #4a9eff; color: #4a9eff; padding: 4px 8px; border-radius: 4px; font-size: 1.1em; font-weight: 600; width: 100%; outline: none;';
+                
+                // 清空并添加输入框
+                this.textContent = '';
+                this.appendChild(input);
+                
+                // 使用 setTimeout 确保 DOM 更新后再聚焦和选中
+                setTimeout(() => {
+                    input.focus();
+                    input.select();
+                }, 10);
+                
+                // 保存函数
+                const saveName = function() {
+                    const newName = input.value.trim();
+                    if (newName && newName !== currentName) {
+                        // 使用索引更新物品名称
+                        if (selectedItemIndex >= 0 && selectedItemIndex < recipes[currentProfession].length) {
+                            recipes[currentProfession][selectedItemIndex].name = newName;
+                        }
+                        
+                        autoSave();
+                        showNotification(`物品名称已更新为 "${newName}"`, 'success');
+                        
+                        // 重新加载左侧列表
+                        loadProfessionItems();
+                        
+                        // 重新选中该物品
+                        setTimeout(() => {
+                            const cells = document.querySelectorAll('.item-cell');
+                            cells.forEach(cell => {
+                                if (parseInt(cell.dataset.itemIndex) === selectedItemIndex) {
+                                    const cellItem = recipes[currentProfession][selectedItemIndex];
+                                    selectItem(cellItem, cell);
+                                }
+                            });
+                        }, 10);
+                    } else if (!newName) {
+                        // 如果名称为空，恢复原名称
+                        input.value = currentName;
+                    }
+                    // 恢复为文本显示
+                    itemNameEl.textContent = newName || currentName;
+                    itemNameEl.style.cursor = 'pointer';
+                    itemNameEl.style.color = '#4a9eff';
+                    itemNameEl.title = '单击修改名称';
+                };
+                
+                // 失去焦点时保存
+                input.addEventListener('blur', saveName);
+                
+                // 按键处理
+                input.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.blur();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        this.value = currentName;
+                        this.blur();
+                    }
+                });
+            };
+            
             document.getElementById("itemLevel").textContent = `需要等级: ${item.level}`;
             const catRow = document.getElementById('itemCategoryRow');
             const catInput = document.getElementById('itemCategoryInput');
@@ -1771,6 +2194,14 @@
                 const qtyInput = document.createElement('input'); qtyInput.type = 'number'; qtyInput.value = entry.qty; qtyInput.min = 1;
                 qtyInput.style.cssText = 'width:36px; min-width:36px; background:rgba(0,0,0,0.35); border:1px solid rgba(255,165,0,0.5); color:#ffa500; border-radius:4px; padding:0 3px; font-size:0.9em; text-align:center; height:18px;';
                 qtyInput.addEventListener('change', () => { const v = parseInt(qtyInput.value); if (v > 0) entry.qty = v; else qtyInput.value = entry.qty; });
+                // 添加单击全选功能
+                qtyInput.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    this.select();
+                });
+                qtyInput.addEventListener('focus', function() {
+                    this.select();
+                });
                 const delSpan = document.createElement('span'); delSpan.textContent = '×'; delSpan.style.cssText = 'color:#ff6b6b; cursor:pointer; font-size:1em; flex-shrink:0;';
                 delSpan.addEventListener('click', (e) => { e.stopPropagation(); materialBatchQueue.splice(idx, 1); renderBatchQueue(); });
                 tag.appendChild(nameSpan); tag.appendChild(qtyInput); tag.appendChild(delSpan);
@@ -1852,7 +2283,6 @@
             autoSave();
         }
 
-        function setupItemNameEditing() { /* 略 */ }
         function deleteItem() {
             if (!selectedItem) { showNotification('请先选择要删除的物品', 'warning'); return; }
             const itemIndex = recipes[currentProfession].findIndex(item => item.name === selectedItem.name);
