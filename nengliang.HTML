@@ -156,37 +156,14 @@
         #importFile {
             display: none;
         }
-        /* 高亮样式 - 按排名区分颜色 */
+        /* 高亮样式 - 统一黄色 */
         .highlight-top5 {
-            font-weight: 800;
-            border-radius: 16px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        }
-        .highlight-rank-1 {
             background: linear-gradient(135deg, #ffd700, #ffed4e) !important;
             color: #1e293b !important;
-            border: 2px solid #f59e0b;
-            box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
-        }
-        .highlight-rank-2 {
-            background: linear-gradient(135deg, #c0c0c0, #e5e7eb) !important;
-            color: #1e293b !important;
-            border: 2px solid #9ca3af;
-        }
-        .highlight-rank-3 {
-            background: linear-gradient(135deg, #cd7f32, #d4a574) !important;
-            color: #1e293b !important;
-            border: 2px solid #b8860b;
-        }
-        .highlight-rank-4 {
-            background: linear-gradient(135deg, #60a5fa, #93c5fd) !important;
-            color: #1e293b !important;
-            border: 2px solid #3b82f6;
-        }
-        .highlight-rank-5 {
-            background: linear-gradient(135deg, #34d399, #6ee7b7) !important;
-            color: #1e293b !important;
-            border: 2px solid #10b981;
+            border: 3px solid #f59e0b;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+            font-weight: 800;
+            border-radius: 16px;
         }
         .delete-row-btn, .move-up-btn, .move-down-btn {
             background: none;
@@ -583,7 +560,7 @@
                     <button class="zone-del-btn" onclick="delZone('${zone.key}')">删除分区</button>
                 </div>
                 <table>
-                    <thead><tr><th>账号</th><th>当前能量</th><th>还差</th><th>回满时间</th><th>剩余时间</th><th>操作</th></tr></thead>
+                    <thead><tr><th>账号</th><th>当前能量</th><th>排名</th><th>还差</th><th>回满时间</th><th>剩余时间</th><th>操作</th></tr></thead>
                     <tbody id="tbody-${zone.key}"></tbody>
                 </table>
             `;
@@ -657,10 +634,9 @@
                 energyInput.addEventListener('focus', function() {
                     this.select();
                 });
-                // 根据排名添加不同的高亮样式
+                // 根据排名添加高亮样式
                 if (rank && rank >= 1 && rank <= 5) {
                     energyInput.classList.add('highlight-top5');
-                    energyInput.classList.add(`highlight-rank-${rank}`);
                     energyInput.title = `排名: 第${rank}名（按回满时间）`;
                 }
                 energyInput.addEventListener('blur', ((z, idx2, accountRef) => (e) => {
@@ -678,8 +654,26 @@
                 })(zone.key, idx, acc));
                 tdEnergy.appendChild(energyInput);
                 
+                // 排名列（在能量框和还差之间）
+                const tdRank = document.createElement('td');
+                if (rank && rank >= 1 && rank <= 5) {
+                    const rankLabel = document.createElement('span');
+                    rankLabel.textContent = `#${rank}`;
+                    rankLabel.style.display = 'inline-block';
+                    rankLabel.style.fontSize = '0.85rem';
+                    rankLabel.style.fontWeight = '900';
+                    rankLabel.style.padding = '3px 8px';
+                    rankLabel.style.borderRadius = '12px';
+                    rankLabel.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+                    rankLabel.style.color = 'white';
+                    rankLabel.style.whiteSpace = 'nowrap';
+                    rankLabel.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+                    tdRank.appendChild(rankLabel);
+                }
+                
                 const tdNeed = document.createElement('td');
                 tdNeed.innerText = Math.ceil(need);
+                
                 const tdFull = document.createElement('td');
                 tdFull.innerText = fullTimeObj.toLocaleString().slice(5, -3);
                 const tdCountdown = document.createElement('td');
@@ -721,6 +715,7 @@
                 
                 tr.appendChild(tdName);
                 tr.appendChild(tdEnergy);
+                tr.appendChild(tdRank);
                 tr.appendChild(tdNeed);
                 tr.appendChild(tdFull);
                 tr.appendChild(tdCountdown);
@@ -753,24 +748,41 @@
                 const uniqueKey = `${zone.key}|${acc.name}`;
                 const rank = rankMap.get(uniqueKey);
                 
-                const needCell = row.children[2];
+                const needCell = row.children[3];
                 if(needCell) needCell.innerText = Math.ceil(need);
-                const fullCell = row.children[3];
+                const fullCell = row.children[4];
                 if(fullCell) fullCell.innerText = fullObj.toLocaleString().slice(5, -3);
-                const cdCell = row.children[4];
+                const cdCell = row.children[5];
                 if(cdCell && cdCell.innerText !== remainStr) cdCell.innerText = remainStr;
+                
+                // 更新排名列
+                const rankCell = row.children[2];
+                if(rankCell) {
+                    rankCell.innerHTML = '';
+                    if(rank && rank >= 1 && rank <= 5) {
+                        const rankLabel = document.createElement('span');
+                        rankLabel.textContent = `#${rank}`;
+                        rankLabel.style.display = 'inline-block';
+                        rankLabel.style.fontSize = '0.85rem';
+                        rankLabel.style.fontWeight = '900';
+                        rankLabel.style.padding = '3px 8px';
+                        rankLabel.style.borderRadius = '12px';
+                        rankLabel.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)';
+                        rankLabel.style.color = 'white';
+                        rankLabel.style.whiteSpace = 'nowrap';
+                        rankLabel.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+                        rankCell.appendChild(rankLabel);
+                    }
+                }
                 
                 const energyInput = row.children[1]?.querySelector('input');
                 if(energyInput) {
-                    // 清除所有旧的高亮类
+                    // 清除旧的高亮类
                     energyInput.classList.remove('highlight-top5');
-                    for(let r=1; r<=5; r++) {
-                        energyInput.classList.remove(`highlight-rank-${r}`);
-                    }
+                    
                     // 添加新的高亮类
                     if(rank && rank >= 1 && rank <= 5) {
                         energyInput.classList.add('highlight-top5');
-                        energyInput.classList.add(`highlight-rank-${rank}`);
                         energyInput.title = `排名: 第${rank}名（按回满时间）`;
                     } else {
                         energyInput.title = '';
