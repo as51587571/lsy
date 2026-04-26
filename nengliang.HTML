@@ -10,34 +10,34 @@
         }
         body {
             font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-            margin: 20px 24px;
+            margin: 12px 16px;
             background: #f0f2f5;
             height: 100vh;
             overflow-y: auto;
         }
         h1 {
-            font-size: 1.8rem;
-            margin: 0 0 6px 0;
+            font-size: 1.5rem;
+            margin: 0 0 4px 0;
             color: #1e2a3a;
         }
         .sub {
             color: #4a627a;
-            margin-bottom: 18px;
+            margin-bottom: 12px;
             border-left: 4px solid #ffb347;
             padding-left: 12px;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
         }
         .zones-container {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-            margin-bottom: 20px;
+            gap: 12px;
+            margin-bottom: 12px;
         }
         .zone-card {
             background: white;
-            border-radius: 16px;
+            border-radius: 12px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            padding: 16px 18px;
+            padding: 12px 14px;
             border: 1px solid #e2e8f0;
             transition: all 0.1s;
         }
@@ -45,15 +45,15 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             border-bottom: 1px solid #eef2f8;
-            padding-bottom: 10px;
+            padding-bottom: 8px;
         }
         .zone-title {
-            font-size: 1.3rem;
+            font-size: 1.1rem;
             font-weight: 700;
             background: #f8fafd;
-            padding: 4px 14px;
+            padding: 3px 12px;
             border-radius: 30px;
             margin: 0;
             color: #1f3b4c;
@@ -84,28 +84,28 @@
         }
         th {
             background: #eef3fc;
-            padding: 10px 5px;
+            padding: 6px 3px;
             font-weight: 600;
             color: #1e4663;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
         }
         td, th {
             border-bottom: 1px solid #e2e8f0;
-            padding: 10px 5px;
+            padding: 6px 3px;
             text-align: center;
             vertical-align: middle;
         }
         input[type="number"], input[type="text"] {
             text-align: center;
-            padding: 6px 4px;
+            padding: 4px 3px;
             border-radius: 12px;
             border: 1px solid #cbd5e1;
             font-weight: 500;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             transition: 0.1s;
         }
         input[type="text"] {
-            width: 130px;
+            width: 120px;
         }
         input:focus {
             border-color: #3b82f6;
@@ -115,23 +115,23 @@
         .btn-group {
             display: flex;
             flex-wrap: wrap;
-            gap: 12px;
-            margin-bottom: 22px;
+            gap: 8px;
+            margin-bottom: 14px;
             background: white;
-            padding: 14px 22px;
+            padding: 10px 16px;
             border-radius: 50px;
             align-items: center;
             box-shadow: 0 1px 5px rgba(0,0,0,0.05);
         }
         .btn {
-            padding: 7px 18px;
+            padding: 5px 14px;
             background: #2c6e9e;
             border: none;
             border-radius: 40px;
             color: white;
             font-weight: 600;
             cursor: pointer;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             transition: 0.2s;
         }
         .btn:hover { opacity: 0.85; transform: translateY(-1px);}
@@ -140,13 +140,13 @@
         .btn-warning { background: #e67e22; color: white; }
         .btn-info { background: #3b82f6; }
         .param-input {
-            width: 80px;
+            width: 70px;
             text-align: center;
-            padding: 6px;
+            padding: 4px;
             border-radius: 30px;
             border: 1px solid #bdc3c7;
             font-weight: 600;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
         }
         .tip {
             font-size: 0.75rem;
@@ -201,14 +201,14 @@
             }
         }
         footer {
-            margin-top: 18px;
-            font-size: 0.75rem;
+            margin-top: 10px;
+            font-size: 0.7rem;
             text-align: center;
             color: #6c7a8e;
-            padding-bottom: 10px;
+            padding-bottom: 8px;
         }
         .add-row-container {
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
         .small-notice {
             font-size: 0.7rem;
@@ -341,37 +341,36 @@
     }
 
     // ========== 核心能量恢复 ==========
+    // 精确计算能量：基于每个账号的记录时间和实际经过的时间
+    function calculateCurrentEnergy(account, maxEnergy, recPerHour) {
+        const now = Date.now();
+        const recordTime = account.recordTime || now;
+        const elapsedMs = now - recordTime;
+        if (elapsedMs <= 0) return account.current;
+        
+        // 计算经过的小时数（精确到毫秒）
+        const elapsedHours = elapsedMs / 3600000;
+        const recovered = elapsedHours * recPerHour;
+        
+        // 当前能量 = 记录时的能量 + 恢复的能量，不超过上限
+        let calculated = account.current + recovered;
+        return Math.min(maxEnergy, calculated);
+    }
+    
+    // 批量更新所有账号的显示能量（仅更新UI，不修改存储的基础值）
     function batchUpdateEnergyByCycles() {
         const now = Date.now();
         const maxEnergy = parseFloat(document.getElementById('maxEnergy').value) || 840;
         const recPerHour = parseFloat(document.getElementById('recoverPerHour').value) || 5;
-        let elapsedMs = now - lastRecalcTimestamp;
-        if (elapsedMs < 0) elapsedMs = 0;
-        const cycleMs = RECALC_INTERVAL_MS;
-        const fullCycles = Math.floor(elapsedMs / cycleMs);
-        if (fullCycles === 0) return false;
         
-        const incrementPerCycle = (RECALC_INTERVAL_MS / 3600000) * recPerHour;
         let changed = false;
-        
         for (let acc of accounts) {
-            if (acc.current < maxEnergy) {
-                let added = incrementPerCycle * fullCycles;
-                if (added > 0.001) {
-                    let newCur = acc.current + added;
-                    if (newCur > maxEnergy) newCur = maxEnergy;
-                    if (Math.abs(acc.current - newCur) > 0.001) {
-                        acc.current = newCur;
-                        changed = true;
-                    }
-                }
+            const calculated = calculateCurrentEnergy(acc, maxEnergy, recPerHour);
+            // 只有当计算值与存储值差异较大时才更新
+            if (Math.abs(acc.current - calculated) > 0.1) {
+                changed = true;
+                break;
             }
-            if (!acc.lastEnergySync) acc.lastEnergySync = now;
-        }
-        
-        if (changed) {
-            lastRecalcTimestamp += fullCycles * cycleMs;
-            saveData();
         }
         return changed;
     }
@@ -380,28 +379,23 @@
         let raw = parseFloat(newVal);
         if (isNaN(raw)) raw = 0;
         const capped = Math.min(maxE, Math.max(0, raw));
+        // 存储的是基础能量值，显示时会加上恢复的部分
         account.current = capped;
         account.recordTime = Date.now();
-        lastRecalcTimestamp = Date.now();
-        for(let acc of accounts) {
-            acc.lastEnergySync = Date.now();
-        }
         saveData();
     }
     
     function calibrateEnergyOnLoadOrOpen() {
-        batchUpdateEnergyByCycles();
         renderAll();
     }
     
-    let batchInterval = null;
-    function startBatchUpdater() {
-        if (batchInterval) clearInterval(batchInterval);
-        batchInterval = setInterval(() => {
-            const changed = batchUpdateEnergyByCycles();
-            if (changed) softRefreshUI(true);
-            else softRefreshUI(false);
-        }, RECALC_INTERVAL_MS);
+    let refreshInterval = null;
+    function startRefreshTimer() {
+        if (refreshInterval) clearInterval(refreshInterval);
+        // 每秒刷新UI，显示精确的能量值
+        refreshInterval = setInterval(() => {
+            softRefreshUI(false);
+        }, 1000);
     }
     
     // ======================== 账号移动功能 (同一分区内上下移动) ========================
@@ -468,7 +462,7 @@
         container.innerHTML = '';
         
         zonesConfig.forEach(zone => {
-            // 获取该分区账号，保持accounts中原本的顺序（因为在accounts中是连续的）
+            // 获取该分区账号，保持accounts中原本的顺序
             const zoneAccounts = accounts.filter(a => a.zone === zone.key);
             const card = document.createElement('div');
             card.className = 'zone-card';
@@ -487,7 +481,8 @@
             tbody.innerHTML = '';
             
             zoneAccounts.forEach((acc, idx) => {
-                const curVal = acc.current;
+                // 计算当前精确能量值
+                const curVal = calculateCurrentEnergy(acc, maxEnergy, recoverPerHour);
                 const need = Math.max(0, maxEnergy - curVal);
                 const fullTimeObj = getFullTimeObj(curVal, maxEnergy, recoverPerHour);
                 const remainStr = getCountdownText(curVal, maxEnergy, recoverPerHour);
@@ -582,8 +577,7 @@
     }
     
     // 轻量刷新 (每秒)
-    function softRefreshUI(forceEnergySync = false) {
-        if (forceEnergySync) batchUpdateEnergyByCycles();
+    function softRefreshUI(forceRecalc = false) {
         const maxEnergy = parseFloat(document.getElementById('maxEnergy').value) || 840;
         const recoverPerHour = parseFloat(document.getElementById('recoverPerHour').value) || 5;
         const top5Set = getTop5EnergyAccounts();
@@ -596,7 +590,8 @@
                 const acc = zoneAccounts[i];
                 const row = tbody.children[i];
                 if(!row) continue;
-                const cur = acc.current;
+                // 计算精确的当前能量
+                const cur = calculateCurrentEnergy(acc, maxEnergy, recoverPerHour);
                 const need = Math.max(0, maxEnergy - cur);
                 const fullObj = getFullTimeObj(cur, maxEnergy, recoverPerHour);
                 const remainStr = getCountdownText(cur, maxEnergy, recoverPerHour);
@@ -661,11 +656,10 @@
     window.onload = () => {
         loadData();
         calibrateEnergyOnLoadOrOpen();
-        startBatchUpdater();
-        setInterval(() => softRefreshUI(false), 1000);
+        startRefreshTimer();
         document.getElementById('maxEnergy').addEventListener('change', () => renderAll());
         document.getElementById('recoverPerHour').addEventListener('change', () => renderAll());
     };
 </script>
 </body>
-</html>                                                                                                         
+</html>
