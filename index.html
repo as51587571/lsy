@@ -321,27 +321,64 @@
         .item-details {
             text-align: center;
         }
+        #detailsPanel {
+            overflow-y: hidden !important;
+        }
+        #detailsPanel h2 {
+            margin-bottom: 3px;
+            font-size: 0.95em;
+            letter-spacing: 0;
+        }
+        .item-details .item-name {
+            margin-bottom: 4px;
+        }
+        .item-details .item-level {
+            margin-bottom: 4px;
+        }
+        #addMaterialEditor {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+        }
 
         .item-name {
-            font-size: 1.1em;
+            font-size: 1em;
             color: #4a9eff;
-            margin-bottom: 8px;
+            margin-bottom: 2px;
             font-weight: bold;
+            flex-shrink: 0;
+            min-height: 1.4em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .item-level {
             color: #aaa;
-            margin-bottom: 15px;
-            font-size: 0.9em;
+            margin-bottom: 0;
+            font-size: 0.82em;
+            flex-shrink: 0;
         }
 
         .materials-list {
             background: rgba(255,255,255,0.05);
             border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 15px;
-            max-height: 200px;
+            padding: 8px;
+            margin-bottom: 6px;
+            flex: 1;
+            min-height: 0;
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .materials-list h3 {
+            flex-shrink: 0;
+        }
+        #materialsList {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
         }
 
         .material-item {
@@ -360,6 +397,8 @@
             background: rgba(255,255,255,0.05);
             border-radius: 8px;
             padding: 12px;
+            flex-shrink: 0;
+            margin-top: 6px;
         }
 
         .input-group {
@@ -837,12 +876,12 @@
                 </div>
             </div>
 
-            <div class="panel" id="detailsPanel">
-                <div class="item-details">
-                    <h2>物品详情</h2>
-                    <div class="item-name" id="itemName" contenteditable="true" style="cursor: pointer; border-bottom: 1px dashed #4a9eff; padding: 2px;">未选择物品</div>
-                    <div class="item-level" id="itemLevel"></div>
-                    <div id="itemCategoryRow" style="display:none; margin-bottom:8px; font-size:0.85em;">
+            <div class="panel" id="detailsPanel" style="display:flex; flex-direction:column; overflow:hidden; overflow-y:hidden;">
+                <div class="item-details" style="display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden;">
+                    <h2 style="margin-bottom:3px; font-size:0.95em;">物品详情</h2>
+                    <div class="item-name" id="itemName" contenteditable="true" style="cursor:pointer; border-bottom:1px dashed #4a9eff; padding:2px; margin-bottom:3px; flex-shrink:0; flex-grow:0;">未选择物品</div>
+                    <div class="item-level" id="itemLevel" style="margin-bottom:0; flex-shrink:0;"></div>
+                    <div id="itemCategoryRow" style="display:none; margin-bottom:4px; font-size:0.85em;">
                         <label style="color:#4a9eff;">分类：</label>
                         <input type="text" id="itemCategoryInput" placeholder="输入分类名称" style="background:rgba(255,255,255,0.1); border:1px solid rgba(74,126,255,0.4); border-radius:4px; color:#fff; padding:2px 6px; font-size:0.9em; width:120px;" onchange="updateItemCategory(this.value)">
                     </div>
@@ -856,11 +895,11 @@
                     
                     <div class="materials-editor" id="addMaterialEditor">
                         <h4 style="color: #4a9eff; font-size: 0.9em; margin-bottom: 4px;">添加材料到物品
-                            <span style="color:#aaa; font-size:0.78em; font-weight:normal;">点击卡片直接入队列，数量可点击修改</span>
+                            <span style="color:#aaa; font-size:0.78em; font-weight:normal;">点击卡片入队列，数量直接可改</span>
                         </h4>
-                        <!-- 待添加队列 -->
-                        <div id="batchMaterialQueue" style="display:flex; flex-wrap:wrap; gap:4px; min-height:32px; margin-bottom:6px; padding:4px 6px; background:rgba(74,126,255,0.06); border:1px dashed rgba(74,126,255,0.25); border-radius:4px;">
-                            <span style="color:#555; font-size:0.76em; line-height:24px; padding:0 2px;">点击右侧材料卡片加入队列...</span>
+                        <!-- 待添加队列：单行横向滚动 -->
+                        <div id="batchMaterialQueue" style="display:grid; grid-template-columns:1fr 1fr; overflow-y:auto; align-content:flex-start; gap:4px; flex:1; min-height:40px; margin-bottom:6px; padding:4px 6px; background:rgba(74,126,255,0.06); border:1px dashed rgba(74,126,255,0.25); border-radius:4px; scrollbar-width:thin; scrollbar-color:rgba(74,126,255,0.3) transparent;">
+                            <span style="color:#555; font-size:0.76em; white-space:nowrap; flex-shrink:0;">点击右侧卡片加入...</span>
                         </div>
                         <!-- 隐藏的兼容字段 -->
                         <input type="hidden" id="itemMaterialName">
@@ -2313,45 +2352,39 @@
             const container = document.getElementById('batchMaterialQueue');
             if (!container) return;
             if (materialBatchQueue.length === 0) {
-                container.innerHTML = '<span style="color:#555; font-size:0.76em; line-height:24px; padding:0 2px;">点击右侧材料卡片加入队列...</span>';
+                container.innerHTML = '<span style="color:#555; font-size:0.76em; white-space:nowrap; flex-shrink:0;">点击右侧卡片加入...</span>';
                 return;
             }
             container.innerHTML = '';
             materialBatchQueue.forEach((entry, idx) => {
                 const tag = document.createElement('div');
-                tag.style.cssText = 'display:inline-flex; align-items:center; gap:3px; background:rgba(74,126,255,0.18); border:1px solid rgba(74,126,255,0.4); border-radius:12px; padding:2px 7px; font-size:0.78em; color:#4a9eff; cursor:default; user-select:none;';
+                tag.style.cssText = 'display:flex; align-items:center; gap:3px; background:rgba(74,126,255,0.18); border:1px solid rgba(74,126,255,0.4); border-radius:6px; padding:2px 6px; font-size:0.76em; color:#4a9eff; height:24px; width:100%; box-sizing:border-box; overflow:hidden;';
 
-                // 数量显示（可点击修改）
-                const qtySpan = document.createElement('span');
-                qtySpan.textContent = `x${entry.qty}`;
-                qtySpan.style.cssText = 'color:#ffa500; cursor:pointer; border-bottom:1px dashed rgba(255,165,0,0.5);';
-                qtySpan.title = '点击修改数量';
-                qtySpan.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    // 将数量替换为内联输入框
-                    const input = document.createElement('input');
-                    input.type = 'number';
-                    input.value = entry.qty;
-                    input.min = 1;
-                    input.style.cssText = 'width:44px; background:rgba(0,0,0,0.4); border:1px solid #ffa500; color:#ffa500; border-radius:4px; padding:1px 3px; font-size:0.9em; text-align:center;';
-                    qtySpan.replaceWith(input);
-                    input.focus();
-                    input.select();
-                    const save = () => {
-                        const v = parseInt(input.value);
-                        entry.qty = (v > 0) ? v : entry.qty;
-                        renderBatchQueue();
-                    };
-                    input.addEventListener('blur', save);
-                    input.addEventListener('keydown', (ke) => { if (ke.key === 'Enter') { ke.preventDefault(); save(); } });
-                });
-
+                // 材料名
                 const nameSpan = document.createElement('span');
                 nameSpan.textContent = entry.name;
+                nameSpan.style.cssText = 'flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0;';
 
+                // 数量直接显示为 input（无需点击切换）
+                const qtyInput = document.createElement('input');
+                qtyInput.type = 'number';
+                qtyInput.value = entry.qty;
+                qtyInput.min = 1;
+                qtyInput.style.cssText = 'width:36px; background:rgba(0,0,0,0.35); border:1px solid rgba(255,165,0,0.5); color:#ffa500; border-radius:4px; padding:0 3px; font-size:0.9em; text-align:center; height:18px; -moz-appearance:textfield;';
+                qtyInput.addEventListener('click', e => e.stopPropagation());
+                qtyInput.addEventListener('change', () => {
+                    const v = parseInt(qtyInput.value);
+                    if (v > 0) entry.qty = v;
+                    else qtyInput.value = entry.qty;
+                });
+                qtyInput.addEventListener('keydown', (ke) => {
+                    if (ke.key === 'Enter') { ke.preventDefault(); qtyInput.blur(); }
+                });
+
+                // 删除按鈕
                 const delSpan = document.createElement('span');
                 delSpan.textContent = '×';
-                delSpan.style.cssText = 'color:#ff6b6b; cursor:pointer; margin-left:2px;';
+                delSpan.style.cssText = 'color:#ff6b6b; cursor:pointer; font-size:1em; line-height:1; padding-left:1px;';
                 delSpan.addEventListener('click', (e) => {
                     e.stopPropagation();
                     materialBatchQueue.splice(idx, 1);
@@ -2359,7 +2392,7 @@
                 });
 
                 tag.appendChild(nameSpan);
-                tag.appendChild(qtySpan);
+                tag.appendChild(qtyInput);
                 tag.appendChild(delSpan);
                 container.appendChild(tag);
             });
