@@ -156,13 +156,37 @@
         #importFile {
             display: none;
         }
-        /* 高亮样式 */
+        /* 高亮样式 - 按排名区分颜色 */
         .highlight-top5 {
-            background-color: #fde047 !important;
-            color: #1e293b !important;
             font-weight: 800;
             border-radius: 16px;
-            box-shadow: 0 0 0 1px #eab308;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .highlight-rank-1 {
+            background: linear-gradient(135deg, #ffd700, #ffed4e) !important;
+            color: #1e293b !important;
+            border: 2px solid #f59e0b;
+            box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
+        }
+        .highlight-rank-2 {
+            background: linear-gradient(135deg, #c0c0c0, #e5e7eb) !important;
+            color: #1e293b !important;
+            border: 2px solid #9ca3af;
+        }
+        .highlight-rank-3 {
+            background: linear-gradient(135deg, #cd7f32, #d4a574) !important;
+            color: #1e293b !important;
+            border: 2px solid #b8860b;
+        }
+        .highlight-rank-4 {
+            background: linear-gradient(135deg, #60a5fa, #93c5fd) !important;
+            color: #1e293b !important;
+            border: 2px solid #3b82f6;
+        }
+        .highlight-rank-5 {
+            background: linear-gradient(135deg, #34d399, #6ee7b7) !important;
+            color: #1e293b !important;
+            border: 2px solid #10b981;
         }
         .delete-row-btn, .move-up-btn, .move-down-btn {
             background: none;
@@ -482,13 +506,39 @@
     }
     
     // ======================== UI 刷新 ========================
-    function getTop5EnergyAccounts() {
-        const accSnapshot = accounts.map(acc => ({ zone: acc.zone, name: acc.name, current: acc.current }));
-        const sorted = [...accSnapshot].sort((a,b) => b.current - a.current);
-        const top5 = sorted.slice(0,5);
-        const topSet = new Set();
-        for(let item of top5) topSet.add(`${item.zone}|${item.name}`);
-        return topSet;
+    // 获取TOP5账号，返回Map：key为"zone|name"，value为排名(1-5)
+    function getTop5EnergyAccountsWithRank() {
+        const maxEnergy = parseFloat(document.getElementById('maxEnergy').value) || 840;
+        const recoverPerHour = parseFloat(document.getElementById('recoverPerHour').value) || 5;
+        
+        // 计算每个账号的当前能量和剩余时间
+        const accSnapshot = accounts.map(acc => {
+            const cur = calculateCurrentEnergy(acc, maxEnergy, recoverPerHour);
+            const need = maxEnergy - cur;
+            const hoursNeeded = need / recoverPerHour;
+            return {
+                zone: acc.zone,
+                name: acc.name,
+                current: cur,
+                timeToFull: hoursNeeded // 越小表示越快满
+            };
+        });
+        
+        // 按照回满时间排序（时间越短排名越靠前）
+        const sorted = [...accSnapshot].sort((a, b) => {
+            // 已满的账号排在最后
+            if (a.timeToFull <= 0 && b.timeToFull > 0) return 1;
+            if (a.timeToFull > 0 && b.timeToFull <= 0) return -1;
+            if (a.timeToFull <= 0 && b.timeToFull <= 0) return 0;
+            return a.timeToFull - b.timeToFull;
+        });
+        
+        const top5 = sorted.slice(0, 5);
+        const rankMap = new Map();
+        for (let i = 0; i < top5.length; i++) {
+            rankMap.set(`${top5[i].zone}|${top5[i].name}`, i + 1);
+        }
+        return rankMap;
     }
     
     function getCountdownText(cur, maxEnergy, recoverPerHour) {
@@ -518,7 +568,7 @@
     function renderAll() {
         const maxEnergy = parseFloat(document.getElementById('maxEnergy').value) || 840;
         const recoverPerHour = parseFloat(document.getElementById('recoverPerHour').value) || 5;
-        const top5Set = getTop5EnergyAccounts();
+        const rankMap = getTop5EnergyAccountsWithRank();
         const container = document.getElementById('zonesContainer');
         container.innerHTML = '';
         
@@ -548,7 +598,7 @@
                 const fullTimeObj = getFullTimeObj(curVal, maxEnergy, recoverPerHour);
                 const remainStr = getCountdownText(curVal, maxEnergy, recoverPerHour);
                 const uniqueKey = `${zone.key}|${acc.name}`;
-                const isTop5 = top5Set.has(uniqueKey);
+                const rank = rankMap.get(uniqueKey); // 获取排名，undefined表示不在前5
                 const displayCur = formatEnergy(curVal);
                 
                 const tr = document.createElement('tr');
@@ -607,7 +657,12 @@
                 energyInput.addEventListener('focus', function() {
                     this.select();
                 });
-                if (isTop5) energyInput.classList.add('highlight-top5');
+                // 根据排名添加不同的高亮样式
+                if (rank && rank >= 1 && rank <= 5) {
+                    energyInput.classList.add('highlight-top5');
+                    energyInput.classList.add(`highlight-rank-${rank}`);
+                    energyInput.title = `排名: 第${rank}名（按回满时间）`;
+                }
                 energyInput.addEventListener('blur', ((z, idx2, accountRef) => (e) => {
                     let raw = parseFloat(e.target.value);
                     if (isNaN(raw)) raw = 0;
@@ -680,7 +735,7 @@
     function softRefreshUI(forceRecalc = false) {
         const maxEnergy = parseFloat(document.getElementById('maxEnergy').value) || 840;
         const recoverPerHour = parseFloat(document.getElementById('recoverPerHour').value) || 5;
-        const top5Set = getTop5EnergyAccounts();
+        const rankMap = getTop5EnergyAccountsWithRank();
         
         for(let zone of zonesConfig) {
             const zoneAccounts = accounts.filter(a => a.zone === zone.key);
@@ -696,7 +751,7 @@
                 const fullObj = getFullTimeObj(cur, maxEnergy, recoverPerHour);
                 const remainStr = getCountdownText(cur, maxEnergy, recoverPerHour);
                 const uniqueKey = `${zone.key}|${acc.name}`;
-                const isTop5 = top5Set.has(uniqueKey);
+                const rank = rankMap.get(uniqueKey);
                 
                 const needCell = row.children[2];
                 if(needCell) needCell.innerText = Math.ceil(need);
@@ -707,8 +762,19 @@
                 
                 const energyInput = row.children[1]?.querySelector('input');
                 if(energyInput) {
-                    if(isTop5) energyInput.classList.add('highlight-top5');
-                    else energyInput.classList.remove('highlight-top5');
+                    // 清除所有旧的高亮类
+                    energyInput.classList.remove('highlight-top5');
+                    for(let r=1; r<=5; r++) {
+                        energyInput.classList.remove(`highlight-rank-${r}`);
+                    }
+                    // 添加新的高亮类
+                    if(rank && rank >= 1 && rank <= 5) {
+                        energyInput.classList.add('highlight-top5');
+                        energyInput.classList.add(`highlight-rank-${rank}`);
+                        energyInput.title = `排名: 第${rank}名（按回满时间）`;
+                    } else {
+                        energyInput.title = '';
+                    }
                     if(document.activeElement !== energyInput) {
                         const displayVal = formatEnergy(cur);
                         if(energyInput.value != displayVal) energyInput.value = displayVal;
@@ -768,8 +834,60 @@
     function updateNameInZone(zoneKey, idx, newName) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) arr[idx].name = newName; renderAll(); saveData(); }
     function delRowInZone(zoneKey, idx) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) { accounts = accounts.filter(a=> a !== arr[idx]); renderAll(); saveData(); } }
     function clearAllData() { if(!confirm("彻底清空所有数据？将恢复默认值")) return; localStorage.clear(); loadData(); calibrateEnergyOnLoadOrOpen(); }
-    function exportData() { let data = { zonesConfig, accounts, maxEnergy: document.getElementById('maxEnergy').value, recoverPerHour: document.getElementById('recoverPerHour').value, showDecimal }; let a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})); a.download = `能量备份_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.json`; a.click(); URL.revokeObjectURL(a.href); showToast("导出成功！", "success"); }
-    function importData(input) { if(!input.files.length) return; let reader = new FileReader(); reader.onload = e => { try { let d=JSON.parse(e.target.result); if(d.zonesConfig && d.accounts) { zonesConfig=d.zonesConfig; accounts=d.accounts; for(let a of accounts) { if(!a.recordTime) a.recordTime=Date.now(); if(!a.lastEnergySync) a.lastEnergySync=Date.now(); } if(d.maxEnergy) document.getElementById('maxEnergy').value=d.maxEnergy; if(d.recoverPerHour) document.getElementById('recoverPerHour').value=d.recoverPerHour; if(typeof d.showDecimal === 'boolean') showDecimal=d.showDecimal; updateDecimalButtonUI(); lastRecalcTimestamp = Date.now(); saveData(); calibrateEnergyOnLoadOrOpen(); showToast("恢复成功！", "success"); } else throw new Error(); } catch(e){ showToast("导入失败，文件格式错误！", "error"); } input.value=''; }; reader.readAsText(input.files[0]); }
+    function exportData() {
+        // 导出数据：确保包含所有必要字段
+        let data = {
+            zonesConfig: zonesConfig,
+            accounts: accounts,  // accounts已经包含recordTime，直接导出
+            maxEnergy: document.getElementById('maxEnergy').value,
+            recoverPerHour: document.getElementById('recoverPerHour').value,
+            showDecimal: showDecimal,
+            exportTime: new Date().toISOString(),  // 记录导出时间，方便调试
+            version: '2.0'  // 版本号，方便后续兼容处理
+        };
+        
+        let a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'}));
+        a.download = `能量备份_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        showToast("导出成功！数据完整", "success");
+    }
+    function importData(input) {
+        if(!input.files.length) return;
+        let reader = new FileReader();
+        reader.onload = e => {
+            try {
+                let d = JSON.parse(e.target.result);
+                if(d.zonesConfig && d.accounts) {
+                    zonesConfig = d.zonesConfig;
+                    accounts = d.accounts;
+                    const now = Date.now();
+                    // 确保每个账号都有recordTime，保留原始值
+                    for(let a of accounts) {
+                        // 如果导出时没有recordTime（旧版本），则使用当前时间
+                        // 如果有recordTime，保留原始值以确保计算准确
+                        if(!a.recordTime) {
+                            a.recordTime = now;
+                            console.warn(`账号 ${a.name} 缺少recordTime，已重置`);
+                        }
+                        if(!a.lastEnergySync) a.lastEnergySync = now;
+                    }
+                    if(d.maxEnergy) document.getElementById('maxEnergy').value = d.maxEnergy;
+                    if(d.recoverPerHour) document.getElementById('recoverPerHour').value = d.recoverPerHour;
+                    if(typeof d.showDecimal === 'boolean') showDecimal = d.showDecimal;
+                    updateDecimalButtonUI();
+                    saveData();
+                    calibrateEnergyOnLoadOrOpen();
+                    showToast("恢复成功！能量计算准确", "success");
+                } else throw new Error();
+            } catch(e) {
+                showToast("导入失败，文件格式错误！", "error");
+            }
+            input.value = '';
+        };
+        reader.readAsText(input.files[0]);
+    }
     
     // 初始化
     window.onload = () => {
