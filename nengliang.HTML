@@ -189,6 +189,13 @@
             background: #e2e8f0;
             color: #0f3b5c;
         }
+        .copy-btn {
+            color: #2c7a4d;
+        }
+        .copy-btn:hover {
+            background: #dcfce7;
+            color: #145c32;
+        }
         .action-buttons {
             display: flex;
             gap: 2px;
@@ -547,12 +554,47 @@
                 const tr = document.createElement('tr');
                 // 账号名
                 const tdName = document.createElement('td');
+                const nameWrapper = document.createElement('div');
+                nameWrapper.style.display = 'flex';
+                nameWrapper.style.alignItems = 'center';
+                nameWrapper.style.gap = '4px';
+                
                 const nameInput = document.createElement('input');
                 nameInput.type = 'text';
                 nameInput.value = acc.name;
-                nameInput.style.width = '130px';
+                nameInput.style.width = '120px';
+                nameInput.style.flex = '1';
+                // 点击输入框时全选文本
+                nameInput.addEventListener('focus', function() {
+                    this.select();
+                });
                 nameInput.addEventListener('change', ((z, idx2) => (e) => updateNameInZone(z, idx2, e.target.value))(zone.key, idx));
-                tdName.appendChild(nameInput);
+                
+                // 复制按钮
+                const copyBtn = document.createElement('button');
+                copyBtn.innerText = '📋';
+                copyBtn.className = 'copy-btn';
+                copyBtn.title = '复制角色名';
+                copyBtn.style.padding = '2px 6px';
+                copyBtn.style.fontSize = '0.9rem';
+                copyBtn.onclick = ((name) => () => {
+                    navigator.clipboard.writeText(name).then(() => {
+                        showToast(`已复制: ${name}`, 'success', 1500);
+                    }).catch(() => {
+                        // 降级方案：使用传统方法复制
+                        const textArea = document.createElement('textarea');
+                        textArea.value = name;
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        showToast(`已复制: ${name}`, 'success', 1500);
+                    });
+                })(acc.name);
+                
+                nameWrapper.appendChild(nameInput);
+                nameWrapper.appendChild(copyBtn);
+                tdName.appendChild(nameWrapper);
                 
                 // 能量输入框
                 const tdEnergy = document.createElement('td');
@@ -561,6 +603,10 @@
                 energyInput.step = showDecimal ? '0.1' : '1';
                 energyInput.value = displayCur;
                 energyInput.style.width = '88px';
+                // 点击能量输入框时全选文本
+                energyInput.addEventListener('focus', function() {
+                    this.select();
+                });
                 if (isTop5) energyInput.classList.add('highlight-top5');
                 energyInput.addEventListener('blur', ((z, idx2, accountRef) => (e) => {
                     let raw = parseFloat(e.target.value);
