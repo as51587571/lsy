@@ -1,7 +1,7 @@
 | 文件名 | 功能说明 | 备注 |
 |--------|----------|------|
-| index.html | 副职业
-| nengliang.HTML 能量计算器 
+| index.html  副职业
+| nengliang.HTML 能量 
 
 ---
 更新时间：2026-04-26
