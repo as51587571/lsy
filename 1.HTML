@@ -1,0 +1,2693 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游戏副职业成本计算器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+        }
+
+        .container {
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        header {
+            text-align: center;
+            padding: 4px 0 2px 0;
+            flex-shrink: 0;
+        }
+        
+        h1 {
+            font-size: 1.6em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 1px;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 150px 2fr 320px 2fr;
+            gap: 0;
+            flex: 1;
+            min-height: 0;
+            width: 100%;
+        }
+        
+        .panel {
+            background: rgba(42, 42, 42, 0.9);
+            border-radius: 0;
+            padding: 10px;
+            backdrop-filter: blur(10px);
+            box-shadow: none;
+            border: none;
+            border-right: 1px solid rgba(74, 126, 255, 0.2);
+            overflow-y: auto;
+            position: relative;
+            margin: 0;
+            height: 100%;
+            box-sizing: border-box;
+        }
+        
+        .panel:last-child {
+            border-right: none;
+        }
+
+        .panel h2 {
+            margin-bottom: 15px;
+            color: #4a9eff;
+            font-size: 1.1em;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .profession-list {
+            list-style: none;
+        }
+
+        .profession-item {
+            background: rgba(74, 126, 255, 0.1);
+            border: 1px solid rgba(74, 126, 255, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 0.9em;
+            position: relative;
+            user-select: none;
+        }
+        
+        .profession-item.dragging {
+            opacity: 0.5;
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(74, 126, 255, 0.5);
+        }
+        
+        .profession-item.drag-over {
+            background: rgba(74, 126, 255, 0.4);
+            border-color: #4a9eff;
+        }
+
+        .profession-item .delete-btn {
+            position: absolute;
+            right: 5px;
+            top: 5px;
+            background: rgba(255, 74, 74, 0.8);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            display: none;
+            line-height: 1;
+        }
+
+        .profession-item:hover .delete-btn {
+            display: block;
+        }
+
+        .profession-item:hover {
+            background: rgba(74, 126, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .profession-item.active {
+            background: rgba(74, 126, 255, 0.3);
+            border-color: #4a9eff;
+            box-shadow: 0 0 15px rgba(74, 126, 255, 0.3);
+        }
+
+        .profession-input-group {
+            margin-bottom: 15px;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            overflow: hidden;
+            font-size: 1em;
+        }
+
+        .items-table th {
+            background: rgba(74, 126, 255, 0.2);
+            padding: 4px 6px;
+            text-align: left;
+            font-weight: 600;
+            color: #4a9eff;
+            border-bottom: 2px solid rgba(74, 126, 255, 0.3);
+            font-size: 0.8em;
+            white-space: nowrap;
+        }
+
+        .items-table td {
+            padding: 2px 4px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .item-cell {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(74, 126, 255, 0.2);
+            border-radius: 4px;
+            padding: 3px 5px;
+            margin: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+            font-size: 0.82em;
+            overflow: hidden;
+            line-height: 1.3;
+        }
+        
+        .item-cell:hover {
+            background: rgba(74, 126, 255, 0.1);
+            border-color: rgba(74, 126, 255, 0.4);
+        }
+        
+        .item-cell.dragging {
+            opacity: 0.5;
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(74, 126, 255, 0.5);
+        }
+        
+        .item-cell.drag-over {
+            background: rgba(74, 126, 255, 0.3);
+            border: 2px solid #4a9eff;
+        }
+        
+        .item-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .item-name {
+            font-weight: bold;
+            color: #4a9eff;
+            font-size: 0.9em;
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .item-cost {
+            font-size: 0.85em;
+            color: #4aff7c;
+            flex-shrink: 0;
+        }
+        
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            overflow: hidden;
+            font-size: 1em;
+            table-layout: fixed;
+        }
+
+        .items-table td {
+            padding: 2px 4px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            overflow: hidden;
+        }
+
+        .item-name {
+            font-weight: bold;
+            color: #4a9eff;
+            font-size: 0.9em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            display: block;
+            line-height: 1.3;
+        }
+
+        .items-table tr {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+        
+        .items-table tr.dragging {
+            opacity: 0.5;
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(74, 126, 255, 0.5);
+        }
+        
+        .items-table tr.drag-over {
+            background: rgba(74, 126, 255, 0.3);
+            border: 2px solid #4a9eff;
+        }
+
+        .items-table tr:hover {
+            background: rgba(74, 126, 255, 0.1);
+        }
+
+        .items-table tr.selected {
+            background: rgba(74, 126, 255, 0.2);
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .btn {
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4a9eff 0%, #2a7fff 100%);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4aff7c 0%, #2aff50 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff4a4a 0%, #ff2a2a 100%);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .item-details {
+            text-align: center;
+        }
+
+        .item-name {
+            font-size: 1.1em;
+            color: #4a9eff;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .item-level {
+            color: #aaa;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+
+        .materials-list {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .material-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.9em;
+        }
+
+        .material-item:last-child {
+            border-bottom: none;
+        }
+
+        .calculation-section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            gap: 8px;
+        }
+
+        .input-group label {
+            flex: 1;
+            font-size: 0.9em;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid rgba(74, 126, 255, 0.3);
+            border-radius: 4px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 0.9em;
+        }
+
+        .calculate-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #4a9eff 0%, #2a7fff 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 126, 255, 0.4);
+        }
+
+        .result {
+            background: rgba(74, 255, 126, 0.1);
+            border: 1px solid rgba(74, 255, 126, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            font-size: 1.1em;
+            color: #4aff7c;
+        }
+
+        /* 材料库 3列 grid 卡片布局 */
+        .materials-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-auto-rows: min-content;
+            gap: 3px;
+            margin-bottom: 6px;
+            align-content: start;
+        }
+
+        .material-card {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(74, 126, 255, 0.25);
+            border-radius: 4px;
+            padding: 4px 6px;
+            cursor: grab;
+            transition: background 0.2s, border-color 0.2s;
+            user-select: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .material-card:hover {
+            background: rgba(74, 126, 255, 0.13);
+            border-color: rgba(74, 126, 255, 0.5);
+        }
+
+        .material-card.dragging {
+            opacity: 0.4;
+            transform: scale(1.04);
+            box-shadow: 0 6px 18px rgba(74, 126, 255, 0.55);
+            cursor: grabbing;
+        }
+
+        .material-card.drag-over {
+            background: rgba(74, 126, 255, 0.28);
+            border: 2px solid #4a9eff;
+            box-shadow: 0 0 10px rgba(74, 126, 255, 0.4);
+        }
+
+        .material-card.empty-card {
+            background: rgba(74, 126, 255, 0.03);
+            border: 1px dashed rgba(74, 126, 255, 0.15);
+            cursor: default;
+            height: 20px;
+        }
+
+        .material-card.highlighted-card {
+            border-color: #4aff7c;
+            background: rgba(74, 255, 124, 0.1);
+            box-shadow: 0 0 8px rgba(74, 255, 124, 0.3);
+        }
+
+        .material-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 4px;
+            line-height: 1.4;
+        }
+
+        .material-name {
+            font-weight: bold;
+            color: #4a9eff;
+            font-size: 0.9em;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
+        }
+
+        .material-price {
+            font-size: 0.85em;
+            color: #ffa500;
+            cursor: pointer;
+            transition: color 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .material-price:hover {
+            color: #ffcc00;
+        }
+
+        .material-card .card-delete-btn {
+            position: absolute;
+            top: 2px;
+            right: 3px;
+            width: 16px;
+            height: 16px;
+            background: rgba(255,74,74,0.75);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 10px;
+            line-height: 1;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+        .material-card:hover .card-delete-btn {
+            display: flex;
+        }
+
+        .materials-table tr {
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+        
+        .materials-table tr.dragging {
+            opacity: 0.5;
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(74, 126, 255, 0.5);
+        }
+        
+        .materials-table tr.drag-over {
+            background: rgba(74, 126, 255, 0.3);
+            border: 2px solid #4a9eff;
+        }
+
+        .materials-table tr:hover {
+            background: rgba(74, 126, 255, 0.1);
+        }
+
+        .materials-table tr.selected {
+            background: rgba(74, 126, 255, 0.2);
+        }
+
+        .materials-table tr.highlighted {
+            background: rgba(255, 215, 0, 0.3) !important;
+            border: 1px solid rgba(255, 215, 0, 0.6);
+            cursor: pointer;
+        }
+
+        .materials-table tr.highlighted:hover {
+            background: rgba(255, 215, 0, 0.5) !important;
+        }
+
+        .material-form {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-size: 0.9em;
+            color: #4a9eff;
+            margin-bottom: 2px;
+        }
+
+        .form-group input, .form-group select {
+            padding: 8px;
+            border: 1px solid rgba(74, 126, 255, 0.3);
+            border-radius: 4px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 0.9em;
+        }
+
+        .materials-editor {
+            background: rgba(255,255,255,0.05);
+            border-radius: 0 0 8px 8px;
+            padding: 8px 10px;
+            margin-bottom: 0;
+            margin-top: 0;
+        }
+
+        .materials-editor h4 {
+            color: #4a9eff;
+            margin-bottom: 6px;
+            font-size: 0.9em;
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            z-index: 2000;
+            animation: slideIn 0.3s ease;
+            font-size: 0.9em;
+            max-width: 300px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .notification.success {
+            background: linear-gradient(135deg, #4aff7c 0%, #2aff50 100%);
+        }
+
+        .notification.error {
+            background: linear-gradient(135deg, #ff4a4a 0%, #ff2a2a 100%);
+        }
+
+        .notification.warning {
+            background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+        }
+
+        .notification.info {
+            background: linear-gradient(135deg, #4a9eff 0%, #2a7fff 100%);
+        }
+
+        /* ===== 物品分类标签页 ===== */
+        .item-category-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            padding: 4px 0 6px 0;
+            flex-shrink: 0;
+            border-bottom: 1px solid rgba(74, 126, 255, 0.25);
+            margin-bottom: 4px;
+        }
+
+        .item-tab {
+            padding: 3px 10px;
+            border: 1px solid rgba(74, 126, 255, 0.35);
+            border-radius: 12px;
+            background: rgba(74, 126, 255, 0.08);
+            color: #8ab4ff;
+            font-size: 0.78em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            white-space: nowrap;
+            letter-spacing: 0.5px;
+        }
+
+        .item-tab:hover {
+            background: rgba(74, 126, 255, 0.2);
+            border-color: rgba(74, 126, 255, 0.6);
+            color: #c0d8ff;
+        }
+
+        .item-tab.active {
+            background: linear-gradient(135deg, rgba(74, 126, 255, 0.5) 0%, rgba(42, 127, 255, 0.4) 100%);
+            border-color: #4a9eff;
+            color: #ffffff;
+            box-shadow: 0 0 8px rgba(74, 126, 255, 0.4);
+            font-weight: bold;
+        }
+
+        .item-tab-count {
+            display: inline-block;
+            background: rgba(74, 126, 255, 0.3);
+            border-radius: 8px;
+            padding: 0 5px;
+            font-size: 0.85em;
+            margin-left: 3px;
+            color: #aaccff;
+        }
+
+        .item-tab.active .item-tab-count {
+            background: rgba(255, 255, 255, 0.25);
+            color: #fff;
+        }
+
+        .item-tab-add {
+            padding: 3px 10px;
+            border: 1px dashed rgba(74, 126, 255, 0.5);
+            border-radius: 12px;
+            background: transparent;
+            color: rgba(74, 158, 255, 0.7);
+            font-size: 0.78em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        .item-tab-add:hover {
+            background: rgba(74, 126, 255, 0.15);
+            border-color: #4a9eff;
+            color: #4a9eff;
+        }
+
+        /* 分类右键上下文菜单 */
+        .cat-context-menu {
+            position: fixed;
+            background: rgba(28, 35, 58, 0.97);
+            border: 1px solid rgba(74, 126, 255, 0.45);
+            border-radius: 8px;
+            padding: 4px 0;
+            z-index: 9999;
+            min-width: 130px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+        }
+
+        .cat-context-menu-item {
+            padding: 7px 16px;
+            font-size: 0.82em;
+            color: #c8d8ff;
+            cursor: pointer;
+            transition: background 0.15s;
+            white-space: nowrap;
+        }
+
+        .cat-context-menu-item:hover {
+            background: rgba(74, 126, 255, 0.25);
+            color: #fff;
+        }
+
+        .cat-context-menu-item.danger {
+            color: #ff7a7a;
+        }
+
+        .cat-context-menu-item.danger:hover {
+            background: rgba(255, 74, 74, 0.2);
+        }
+
+        /* 分类内联重命名输入框 */
+        .item-tab-rename-input {
+            background: rgba(255,255,255,0.12);
+            border: 1px solid #4a9eff;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 0.78em;
+            padding: 2px 8px;
+            outline: none;
+            width: 80px;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎮 制作成本计算器</h1>
+            <p>阿林</p>
+            <div style="position: absolute; top: 20px; right: 20px; display: flex; gap: 10px;">
+                <button class="btn btn-success" onclick="testSave()" style="font-size: 0.8em; padding: 5px 10px;">🧪 测试保存</button>
+                <button class="btn btn-warning" onclick="testLoad()" style="font-size: 0.8em; padding: 5px 10px;">🧪 测试加载</button>
+                <button class="btn btn-info" onclick="exportData()" style="font-size: 0.8em; padding: 5px 10px;">📤 导出数据</button>
+                <label class="btn btn-warning" style="font-size: 0.8em; padding: 5px 10px; cursor: pointer;">
+                    📥 导入数据
+                    <input type="file" accept=".json" onchange="importData(event)" style="display: none;">
+                </label>
+            </div>
+        </header>
+        <div id="localStorageStatus" style="position: fixed; top: 8px; left: 12px; font-size: 0.7em; color: #aaa; background: rgba(0,0,0,0.55); padding: 3px 10px; border-radius: 4px; z-index: 9999;"></div>
+
+        <div class="main-content">
+            <div class="panel" id="professionPanel">
+                <h2>制作管理</h2>
+                <div class="profession-input-group">
+                    <input type="text" id="newProfessionInput" placeholder="请输入新职业名称" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid rgba(74, 126, 255, 0.3); border-radius: 4px; background: rgba(255,255,255,0.1); color: white; font-size: 0.9em;">
+                    <button class="btn btn-success" onclick="addProfession()" style="width: 100%; margin-bottom: 10px;">添加职业</button>
+                </div>
+                <ul class="profession-list" id="professionList">
+                    <li class="profession-item active" data-profession="铁匠">
+                        ⚔️ 铁匠
+                        <span class="delete-btn" onclick="deleteProfession('铁匠')">×</span>
+                    </li>
+                    <li class="profession-item" data-profession="手工">
+                        🧵 手工
+                        <span class="delete-btn" onclick="deleteProfession('手工')">×</span>
+                    </li>
+                    <li class="profession-item" data-profession="炼金">
+                        ⚗️ 炼金
+                        <span class="delete-btn" onclick="deleteProfession('炼金')">×</span>
+                    </li>
+                    <li class="profession-item" data-profession="料理">
+                        🍳 料理
+                        <span class="delete-btn" onclick="deleteProfession('料理')">×</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="panel" id="itemsPanel" style="display:flex; flex-direction:column; overflow:hidden;">
+                <h2 id="professionTitle" style="flex-shrink:0;">铁匠 - 制作物品</h2>
+                <div id="itemCategoryTabs" class="item-category-tabs"></div>
+                <div style="flex:1; overflow-y:auto; min-height:0; overflow-x:hidden;">
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>制作物品</th>
+                            <th>制作物品</th>
+                            <th>制作物品</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsTableBody">
+                    </tbody>
+                </table>
+                </div>
+
+                <div class="button-group" style="flex-shrink:0; margin-top:8px; padding-top:8px; border-top:1px solid rgba(74,126,255,0.2);">
+                    <button class="btn btn-success" onclick="addItem()">添加物品</button>
+                    <button class="btn btn-danger" onclick="deleteItem()">删除物品</button>
+                </div>
+            </div>
+
+            <div class="panel" id="detailsPanel">
+                <div class="item-details">
+                    <h2>物品详情</h2>
+                    <div class="item-name" id="itemName" contenteditable="true" style="cursor: pointer; border-bottom: 1px dashed #4a9eff; padding: 2px;">未选择物品</div>
+                    <div class="item-level" id="itemLevel"></div>
+                    <div id="itemCategoryRow" style="display:none; margin-bottom:8px; font-size:0.85em;">
+                        <label style="color:#4a9eff;">分类：</label>
+                        <input type="text" id="itemCategoryInput" placeholder="输入分类名称" style="background:rgba(255,255,255,0.1); border:1px solid rgba(74,126,255,0.4); border-radius:4px; color:#fff; padding:2px 6px; font-size:0.9em; width:120px;" onchange="updateItemCategory(this.value)">
+                    </div>
+                    
+                    <div class="materials-list">
+                        <h3 style="margin-bottom: 10px; color: #4a9eff; font-size: 1em;">材料需求</h3>
+                        <div id="materialsList">
+                            <p style="color: #aaa; font-size: 0.9em;">请选择一个物品查看材料需求</p>
+                        </div>
+                    </div>
+                    
+                    <div class="materials-editor">
+                        <h4 style="color: #4a9eff; font-size: 0.9em; margin-bottom: 5px;">添加材料到物品</h4>
+                        <div class="form-row" style="margin-bottom: 8px;">
+                            <div class="form-group">
+                                <label for="itemMaterialName">材料名称:</label>
+                                <input type="text" id="itemMaterialName" placeholder="请输入材料名称" style="width: 100%;">
+                            </div>
+                            <div class="form-group">
+                                <label for="itemMaterialQuantity">数量:</label>
+                                <input type="number" id="itemMaterialQuantity" placeholder="请输入数量" min="1" style="width: 100%;">
+                            </div>
+                        </div>
+                        <button class="btn btn-success" onclick="addMaterialToCurrentItem()" style="width: 100%;">添加到物品</button>
+                    </div>
+
+                    <div class="calculation-section">
+                        <h3 style="margin-bottom: 10px; color: #4a9eff; font-size: 1em;">成本计算</h3>
+                        <div class="input-group">
+                            <label for="craftQuantity">制作数量:</label>
+                            <input type="number" id="craftQuantity" value="1" min="1">
+                        </div>
+                        <button class="calculate-btn" onclick="calculateCost()">💰 计算成本</button>
+                        <div class="result" id="costResult" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel" id="materialsPanel" style="display:flex; flex-direction:column; overflow:hidden;">
+                <h2 id="materialsPanelTitle" style="flex-shrink:0;">📚 材料库管理</h2>
+                <div class="materials-grid" id="materialsGrid" style="flex:1; overflow-y:auto; min-height:0; overflow-x:hidden; margin-bottom:0;">
+                </div>
+
+                <div class="materials-editor" style="flex-shrink:0; margin-top:0; border-top:1px solid rgba(74,126,255,0.2); padding-top:8px;">
+                    <h4>材料编辑</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="materialName">材料名称:</label>
+                            <input type="text" id="materialName" placeholder="请输入材料名称">
+                        </div>
+                        <div class="form-group">
+                            <label for="materialPrice">单价:</label>
+                            <input type="number" id="materialPrice" placeholder="请输入单价" min="0">
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-success" onclick="addMaterial()">添加材料</button>
+                        <button class="btn btn-danger" onclick="deleteMaterial()">删除材料</button>
+                        <button class="btn btn-info" onclick="addEmptyCell()">添加空行</button>
+                        <button class="btn btn-secondary" onclick="removeEmptyCells()">清理空格</button>
+                        <button class="btn btn-secondary" onclick="resetMaterials()">重置材料库</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 每个职业独立的材料库：professionMaterials[职业名] = { grid: [], map: {} }
+        let professionMaterials = {};
+
+        // 默认材料数据生成函数
+        function getDefaultMaterialGrid() {
+            return [
+                [{ name: "奥里哈康矿石", price: 5000 }, { name: "奥里哈康铸块", price: 8000 }, { name: "秘银矿石", price: 2000 }],
+                [{ name: "秘银铸块", price: 4000 }, { name: "铁矿石", price: 100 }, { name: "铁铸块", price: 200 }],
+                [{ name: "皮革", price: 150 }, { name: "高级皮革", price: 800 }, { name: "布料", price: 100 }],
+                [{ name: "丝绸", price: 500 }, { name: "魔法粉末", price: 1000 }, { name: "生命药水", price: 300 }],
+                [{ name: "魔法药水", price: 400 }, { name: "木材", price: 50 }, { name: "高级木材", price: 300 }],
+            ];
+        }
+
+        function buildMaterialMap(grid) {
+            const map = {};
+            grid.forEach(row => row.forEach(item => { if (item) map[item.name] = { price: item.price }; }));
+            return map;
+        }
+
+        function initProfessionMaterials(professionName) {
+            if (!professionMaterials[professionName]) {
+                const grid = getDefaultMaterialGrid();
+                professionMaterials[professionName] = { grid: grid, map: buildMaterialMap(grid) };
+            }
+        }
+
+        // 初始化4个默认职业的材料库
+        ["铁匠", "手工", "炼金", "料理"].forEach(p => initProfessionMaterials(p));
+
+        // 当前职业材料库访问器（始终反映 currentProfession）
+        function getMaterialGrid() { return professionMaterials[currentProfession].grid; }
+        function getMaterials()     { return professionMaterials[currentProfession].map; }
+        function setMaterialGrid(grid) { professionMaterials[currentProfession].grid = grid; }
+        function setMaterials(map)     { professionMaterials[currentProfession].map = map; }
+
+        // 兼容旧代码的全局代理（动态指向当前职业的数据）
+        // 注意：凡是直接赋值 materialGrid = [] 或 materials = {} 的地方已全部改用 setXxx()
+        Object.defineProperty(window, 'materialGrid', {
+            get() { return getMaterialGrid(); },
+            set(v) { setMaterialGrid(v); },
+            configurable: true
+        });
+        Object.defineProperty(window, 'materials', {
+            get() { return getMaterials(); },
+            set(v) { setMaterials(v); },
+            configurable: true
+        });
+
+        let recipes = {
+            "铁匠": [
+                { name: "奥里哈康长剑", category: "长剑", level: 35, craftQuantity: 1, materials: { "奥里哈康铸块": 8, "秘銀铸块": 4, "魔法粉末": 2 } },
+                { name: "奥里哈康巨剑", category: "巨剑", level: 40, craftQuantity: 1, materials: { "奥里哈康铸块": 12, "秘銀铸块": 6, "魔法粉末": 3 } },
+                { name: "奥里哈康短剑", category: "短剑", level: 30, craftQuantity: 1, materials: { "奥里哈康铸块": 4, "秘銀铸块": 2, "魔法粉末": 1 } },
+                { name: "奥里哈康钉锤", category: "钉锤", level: 38, craftQuantity: 1, materials: { "奥里哈康铸块": 10, "秘銀铸块": 5, "魔法粉末": 2 } },
+                { name: "奥里哈康臂甲", category: "臂甲", level: 32, craftQuantity: 1, materials: { "奥里哈康铸块": 6, "高级皮革": 4, "魔法粉末": 2 } },
+                { name: "铁长剑", category: "长剑", level: 10, craftQuantity: 1, materials: { "铁铸块": 5, "皮革": 2 } },
+                { name: "铁巨剑", category: "巨剑", level: 15, craftQuantity: 1, materials: { "铁铸块": 8, "皮革": 3 } },
+                { name: "秘銀长剑", category: "长剑", level: 25, craftQuantity: 1, materials: { "秘銀铸块": 6, "铁铸块": 2, "魔法粉末": 1 } }
+            ],
+            "手工": [
+                { name: "皮甲", level: 12, craftQuantity: 1, materials: { "皮革": 8, "布料": 4 } },
+                { name: "丝绸长袍", level: 20, craftQuantity: 1, materials: { "丝绸": 10, "高级皮革": 3 } }
+            ],
+            "炼金": [
+                { name: "生命药剂", level: 5, craftQuantity: 3, materials: { "魔法粉末": 2, "生命药水": 1 } },
+                { name: "魔法药剂", level: 8, craftQuantity: 3, materials: { "魔法粉末": 3, "魔法药水": 1 } }
+            ],
+            "料理": [
+                { name: "烤肉", level: 3, craftQuantity: 5, materials: { "皮革": 1, "魔法药水": 1 } },
+                { name: "面包", level: 1, craftQuantity: 10, materials: { "布料": 2, "生命药水": 1 } }
+            ]
+        };
+
+        let currentProfession = "铁匠";
+        let selectedItem = null;
+        let selectedMaterial = null;
+
+        // 测试保存功能
+        function testSave() {
+            console.log('=== 测试保存功能 ===');
+            console.log('当前职业数据:', recipes);
+            console.log('当前材料数据:', professionMaterials);
+            console.log('当前职业:', currentProfession);
+            
+            const data = {
+                recipes: recipes,
+                professionMaterials: professionMaterials,
+                currentProfession: currentProfession,
+                timestamp: new Date().toISOString()
+            };
+            
+            console.log('准备保存的数据:', data);
+            localStorage.setItem('calculatorData', JSON.stringify(data));
+            
+            // 验证保存
+            const saved = localStorage.getItem('calculatorData');
+            console.log('保存后的数据:', saved);
+            console.log('保存成功:', !!saved);
+            
+            showNotification('测试保存完成，请查看控制台', 'info');
+        }
+        
+        // 测试加载功能
+        function testLoad() {
+            console.log('=== 测试加载功能 ===');
+            const saved = localStorage.getItem('calculatorData');
+            console.log('localStorage中的数据:', saved);
+            
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    console.log('解析后的数据:', data);
+                    
+                    recipes = data.recipes || recipes;
+                    if (data.professionMaterials) professionMaterials = data.professionMaterials;
+                    currentProfession = data.currentProfession || currentProfession;
+                    
+                    console.log('加载后的职业数据:', recipes);
+                    console.log('加载后的材料数据:', professionMaterials);
+                    console.log('加载后的当前职业:', currentProfession);
+                    
+                    // 重新加载界面
+                    loadProfessionList();
+                    loadProfessionItems();
+                    loadMaterialsTable();
+                    
+                    showNotification('测试加载完成，请查看控制台', 'info');
+                } catch (error) {
+                    console.error('加载失败:', error);
+                    showNotification('测试加载失败: ' + error.message, 'error');
+                }
+            } else {
+                console.log('localStorage中没有保存的数据');
+                showNotification('localStorage中没有保存的数据', 'warning');
+            }
+        }
+        
+        // 更新localStorage状态显示
+        function updateLocalStorageStatus() {
+            const statusDiv = document.getElementById('localStorageStatus');
+            const savedData = localStorage.getItem('calculatorData');
+            if (savedData) {
+                try {
+                    const data = JSON.parse(savedData);
+                    const professionCount = Object.keys(data.recipes || {}).length;
+                    let materialCount = 0;
+                    if (data.professionMaterials) {
+                        Object.values(data.professionMaterials).forEach(pm => {
+                            materialCount += Object.keys(pm.map || {}).length;
+                        });
+                    } else {
+                        materialCount = Object.keys(data.materials || {}).length;
+                    }
+                    const saveTime = data.timestamp ? new Date(data.timestamp).toLocaleString() : '未知';
+                    statusDiv.textContent = `✅ 已保存: ${professionCount}职业, ${materialCount}材料 (${saveTime})`;
+                    statusDiv.style.color = '#4aff7c';
+                } catch (error) {
+                    statusDiv.textContent = `❌ 数据损坏: ${error.message}`;
+                    statusDiv.style.color = '#ff4a4a';
+                }
+            } else {
+                statusDiv.textContent = '❌ 无保存数据';
+                statusDiv.style.color = '#ff4a4a';
+            }
+        }
+        
+        // 自动保存功能
+        function autoSave() {
+            const data = {
+                recipes: recipes,
+                professionMaterials: professionMaterials,
+                professionCategories: professionCategories,
+                currentProfession: currentProfession,
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('calculatorData', JSON.stringify(data));
+            updateLocalStorageStatus(); // 更新状态显示
+        }
+        
+        // 自动加载数据
+        function autoLoad() {
+            const savedData = localStorage.getItem('calculatorData');
+            if (savedData) {
+                try {
+                    const data = JSON.parse(savedData);
+                    
+                    if (data.recipes) {
+                        recipes = data.recipes;
+                    }
+                    
+                    if (data.professionMaterials) {
+                        // 新格式：每职业独立材料库
+                        professionMaterials = data.professionMaterials;
+                        // 确保所有职业都有材料库
+                        Object.keys(recipes).forEach(p => initProfessionMaterials(p));
+                    } else if (data.materials || data.materialGrid) {
+                        // 旧格式兼容：将旧的全局材料库分配给所有职业
+                        const oldGrid = data.materialGrid || (() => {
+                            const oldMats = data.materials || {};
+                            const names = Object.keys(oldMats);
+                            const grid = [];
+                            for (let i = 0; i < names.length; i += 2) {
+                                const row = [{ name: names[i], price: oldMats[names[i]].price }];
+                                if (i + 1 < names.length) row.push({ name: names[i+1], price: oldMats[names[i+1]].price });
+                                else row.push(null);
+                                grid.push(row);
+                            }
+                            return grid;
+                        })();
+                        const oldMap = buildMaterialMap(oldGrid);
+                        Object.keys(recipes).forEach(p => {
+                            professionMaterials[p] = { grid: JSON.parse(JSON.stringify(oldGrid)), map: Object.assign({}, oldMap) };
+                        });
+                    } else {
+                        Object.keys(recipes).forEach(p => initProfessionMaterials(p));
+                    }
+                    
+                    if (data.professionCategories) {
+                        professionCategories = data.professionCategories;
+                    }
+
+                    if (data.currentProfession) {
+                        currentProfession = data.currentProfession;
+                    }
+                    
+                    updateLocalStorageStatus();
+                    return true;
+                } catch (error) {
+                    console.error('数据加载失败:', error);
+                    return false;
+                }
+            }
+            return false;
+        }
+        
+        // 数据导出功能
+        function exportData() {
+            const data = {
+                recipes: recipes,
+                professionMaterials: professionMaterials,
+                professionCategories: professionCategories,
+                currentProfession: currentProfession,
+                exportTime: new Date().toISOString(),
+                version: '2.1'
+            };
+            
+            const dataStr = JSON.stringify(data, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `calculator_data_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            showNotification('数据已导出', 'success');
+        }
+        
+        // 数据导入功能
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    // 验证数据格式
+                    if (data.recipes && (data.professionMaterials || data.materials)) {
+                        recipes = data.recipes;
+                        currentProfession = data.currentProfession || Object.keys(recipes)[0] || '铁匠';
+                        
+                        if (data.professionMaterials) {
+                            professionMaterials = data.professionMaterials;
+                            Object.keys(recipes).forEach(p => initProfessionMaterials(p));
+                        } else {
+                            // 旧格式兼容
+                            const oldMap = data.materials || {};
+                            const names = Object.keys(oldMap);
+                            const oldGrid = [];
+                            for (let i = 0; i < names.length; i += 2) {
+                                const row = [{ name: names[i], price: oldMap[names[i]].price }];
+                                if (i + 1 < names.length) row.push({ name: names[i+1], price: oldMap[names[i+1]].price });
+                                else row.push(null);
+                                oldGrid.push(row);
+                            }
+                            const oldMat = buildMaterialMap(oldGrid);
+                            professionMaterials = {};
+                            Object.keys(recipes).forEach(p => {
+                                professionMaterials[p] = { grid: JSON.parse(JSON.stringify(oldGrid)), map: Object.assign({}, oldMat) };
+                            });
+                        }
+                        
+                        // 恢复分类数据
+                        if (data.professionCategories) {
+                            professionCategories = data.professionCategories;
+                        } else {
+                            professionCategories = {}; // 旧数据自动重新推断
+                        }
+                        currentItemCategory = '';
+
+                        // 重新加载界面
+                        loadProfessionList();
+                        setupProfessionEventListeners();
+                        renderCategoryTabs();
+                        loadProfessionItems();
+                        loadMaterialsTable();
+                        
+                        // 保存导入的数据
+                        autoSave();
+                        
+                        showNotification('数据导入成功', 'success');
+                    } else {
+                        showNotification('数据格式不正确', 'error');
+                    }
+                } catch (error) {
+                    console.error('数据导入失败:', error);
+                    showNotification('数据导入失败', 'error');
+                }
+            };
+            
+            reader.readAsText(file);
+            // 清空文件输入
+            event.target.value = '';
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            console.log('页面加载完成');
+            console.log('初始职业数据:', Object.keys(recipes));
+            console.log('初始材料数据:', Object.keys(materials));
+            
+            // 自动加载数据
+            const dataLoaded = autoLoad();
+            
+            console.log('数据加载后:', dataLoaded ? '成功' : '失败');
+            console.log('加载后职业数据:', Object.keys(recipes));
+            console.log('加载后材料数据:', Object.keys(materials));
+            
+            // 初始化界面
+            loadProfessionList();
+            renderCategoryTabs();
+            loadProfessionItems();
+            loadMaterialsTable();
+            setupProfessionEventListeners();
+            
+            if (dataLoaded) {
+                showNotification('数据已自动加载', 'info');
+            }
+            
+            updateLocalStorageStatus(); // 更新状态显示
+            setupItemNameEditing(); // 设置物品名称编辑功能
+        });
+
+        function setupProfessionEventListeners() {
+            const professionItems = document.querySelectorAll(".profession-item");
+            console.log('找到职业项目:', professionItems.length);
+            
+            professionItems.forEach((item, index) => {
+                console.log(`设置职业 ${index + 1}:`, item.dataset.profession);
+                
+                item.addEventListener("click", function(e) {
+                    console.log('职业被点击:', this.dataset.profession);
+                    handleProfessionClick.call(this, e);
+                });
+                
+                item.addEventListener("mouseenter", function(e) {
+                    handleProfessionMouseEnter.call(this, e);
+                });
+                
+                item.addEventListener("mouseleave", function(e) {
+                    handleProfessionMouseLeave.call(this, e);
+                });
+                
+                // 添加拖动事件
+                item.draggable = true;
+                item.addEventListener('dragstart', handleDragStart);
+                item.addEventListener('dragend', handleDragEnd);
+                item.addEventListener('dragover', handleDragOver);
+                item.addEventListener('drop', handleDrop);
+                item.addEventListener('dragenter', handleDragEnter);
+                item.addEventListener('dragleave', handleDragLeave);
+            });
+        }
+        
+        let draggedElement = null;
+        
+        function handleDragStart(e) {
+            draggedElement = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML);
+        }
+        
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            
+            // 移除所有drag-over类
+            const allItems = document.querySelectorAll('.profession-item');
+            allItems.forEach(item => item.classList.remove('drag-over'));
+        }
+        
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+        
+        function handleDragEnter(e) {
+            if (draggedElement !== this) {
+                this.classList.add('drag-over');
+            }
+        }
+        
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+        
+        function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            
+            if (draggedElement !== this) {
+                // 交换职业在recipes中的位置
+                const draggedProfession = draggedElement.dataset.profession;
+                const targetProfession = this.dataset.profession;
+                
+                // 保存职业数据
+                const draggedData = recipes[draggedProfession];
+                const targetData = recipes[targetProfession];
+                
+                // 交换数据
+                recipes[draggedProfession] = targetData;
+                recipes[targetProfession] = draggedData;
+                
+                // 如果当前职业被拖动，更新当前职业
+                if (currentProfession === draggedProfession) {
+                    currentProfession = targetProfession;
+                } else if (currentProfession === targetProfession) {
+                    currentProfession = draggedProfession;
+                }
+                
+                // 重新加载职业列表
+                loadProfessionList();
+                loadProfessionItems();
+                setupProfessionEventListeners();
+                
+                showNotification(`已交换 ${draggedProfession} 和 ${targetProfession} 的位置`, 'success');
+                autoSave(); // 自动保存
+            }
+            
+            return false;
+        }
+        
+        function loadProfessionList() {
+            const professionList = document.getElementById("professionList");
+            professionList.innerHTML = "";
+            
+            Object.keys(recipes).forEach(professionName => {
+                const li = document.createElement('li');
+                li.className = 'profession-item';
+                if (professionName === currentProfession) {
+                    li.classList.add('active');
+                }
+                li.dataset.profession = professionName;
+                li.draggable = true;
+                li.innerHTML = `${getProfessionIcon(professionName)} ${professionName}<span class="delete-btn" onclick="deleteProfession('${professionName}')">×</span>`;
+                professionList.appendChild(li);
+            });
+        }
+
+        function handleProfessionClick(e) {
+            document.querySelectorAll(".profession-item").forEach(i => i.classList.remove("active"));
+            this.classList.add("active");
+            currentProfession = this.dataset.profession;
+            currentItemCategory = ''; // 切换职业时重置分类
+            initProfessionMaterials(currentProfession); // 确保有材料库
+            renderCategoryTabs();
+            loadProfessionItems();
+            loadMaterialsTable(); // 切换职业时刷新材料库面板
+            autoSave(); // 自动保存
+        }
+
+        function handleProfessionMouseEnter() {
+            const deleteBtn = this.querySelector('.delete-btn');
+            if (deleteBtn) {
+                deleteBtn.style.display = 'block';
+            }
+        }
+
+        function handleProfessionMouseLeave() {
+            const deleteBtn = this.querySelector('.delete-btn');
+            if (deleteBtn) {
+                deleteBtn.style.display = 'none';
+            }
+        }
+
+        // 当前选中的分类标签（空字符串表示全部）
+        let currentItemCategory = '';
+
+        // 每个职业的自定义分类列表（持久化）
+        // 格式: { '铁匠': ['长剑', '巨剑', ...], ... }
+        let professionCategories = {};
+
+        // 初始化某职业的分类列表（从现有物品自动推断）
+        function initProfessionCategories(profName) {
+            if (professionCategories[profName]) return;
+            const items = recipes[profName] || [];
+            const seen = new Set();
+            const cats = [];
+            items.forEach(item => {
+                const cat = item.category || guessItemCategory(item);
+                item.category = cat; // 回写到物品上
+                if (!seen.has(cat)) { seen.add(cat); cats.push(cat); }
+            });
+            professionCategories[profName] = cats.length ? cats : [];
+        }
+
+        // 从物品名称自动推断类别（备用）
+        function guessItemCategory(item) {
+            if (item.category) return item.category;
+            const name = item.name;
+            if (name.includes('巨剑')) return '巨剑';
+            if (name.includes('长剑')) return '长剑';
+            if (name.includes('短剑')) return '短剑';
+            if (name.includes('钉锤') || name.includes('锤')) return '钉锤';
+            if (name.includes('臂甲') || name.includes('盔甲') || name.includes('胸甲') || name.includes('脚甲') || name.includes('甲')) return '甲装';
+            if (name.includes('长袍') || name.includes('袍') || name.includes('皮甲')) return '服装';
+            if (name.includes('剑') || name.includes('刀') || name.includes('斧') || name.includes('弓') || name.includes('枪')) return '武器';
+            if (name.includes('药剂') || name.includes('药水') || name.includes('药')) return '药剂';
+            if (name.includes('烤') || name.includes('面包') || name.includes('料理')) return '料理';
+            return '其他';
+        }
+
+        // 兼容旧代码：guessCategory 别名
+        function guessCategory(item) { return guessItemCategory(item); }
+
+        // 获取当前职业的有序分类列表
+        function getItemCategories() {
+            initProfessionCategories(currentProfession);
+            return professionCategories[currentProfession] || [];
+        }
+
+        // 关闭当前显示的上下文菜单
+        let _activeCatMenu = null;
+        function closeCatContextMenu() {
+            if (_activeCatMenu) { _activeCatMenu.remove(); _activeCatMenu = null; }
+        }
+        document.addEventListener('click', closeCatContextMenu);
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCatContextMenu(); });
+
+        // 显示分类管理上下文菜单
+        function showCatContextMenu(x, y, cat) {
+            closeCatContextMenu();
+            const menu = document.createElement('div');
+            menu.className = 'cat-context-menu';
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+
+            const renameItem = document.createElement('div');
+            renameItem.className = 'cat-context-menu-item';
+            renameItem.textContent = '✏️ 重命名分类';
+            renameItem.addEventListener('click', e => { e.stopPropagation(); closeCatContextMenu(); startRenameCategory(cat); });
+            menu.appendChild(renameItem);
+
+            const deleteItem = document.createElement('div');
+            deleteItem.className = 'cat-context-menu-item danger';
+            deleteItem.textContent = '🗑️ 删除分类';
+            deleteItem.addEventListener('click', e => { e.stopPropagation(); closeCatContextMenu(); deleteCategory(cat); });
+            menu.appendChild(deleteItem);
+
+            document.body.appendChild(menu);
+            _activeCatMenu = menu;
+
+            // 防止超出屏幕
+            const rect = menu.getBoundingClientRect();
+            if (rect.right > window.innerWidth) menu.style.left = (window.innerWidth - rect.width - 8) + 'px';
+            if (rect.bottom > window.innerHeight) menu.style.top = (y - rect.height) + 'px';
+        }
+
+        // 分类重命名
+        function startRenameCategory(oldCat) {
+            const newName = prompt(`重命名分类「${oldCat}」，请输入新名称:`, oldCat);
+            if (!newName || !newName.trim() || newName.trim() === oldCat) return;
+            const trimmed = newName.trim();
+            const cats = professionCategories[currentProfession];
+            if (cats.includes(trimmed)) {
+                showNotification('该分类名称已存在', 'warning'); return;
+            }
+            // 更新分类列表
+            const idx = cats.indexOf(oldCat);
+            if (idx >= 0) cats[idx] = trimmed;
+            // 更新所有该分类的物品
+            (recipes[currentProfession] || []).forEach(item => {
+                if ((item.category || guessItemCategory(item)) === oldCat) item.category = trimmed;
+            });
+            if (currentItemCategory === oldCat) currentItemCategory = trimmed;
+            renderCategoryTabs();
+            loadProfessionItems();
+            autoSave();
+            showNotification(`分类已重命名为「${trimmed}」`, 'success');
+        }
+
+        // 删除分类（将该分类的物品全部归入「其他」）
+        function deleteCategory(cat) {
+            const cats = professionCategories[currentProfession];
+            const items = recipes[currentProfession] || [];
+            const affected = items.filter(i => (i.category || guessItemCategory(i)) === cat);
+            if (affected.length > 0) {
+                if (!confirm(`删除分类「${cat}」，其中 ${affected.length} 个物品将被归入「其他」。确认删除？`)) return;
+                affected.forEach(i => { i.category = '其他'; });
+                if (!cats.includes('其他')) cats.push('其他');
+            }
+            const idx = cats.indexOf(cat);
+            if (idx >= 0) cats.splice(idx, 1);
+            if (currentItemCategory === cat) currentItemCategory = '';
+            renderCategoryTabs();
+            loadProfessionItems();
+            autoSave();
+            showNotification(`分类「${cat}」已删除`, 'success');
+        }
+
+        // 添加新分类
+        function addCategory() {
+            const name = prompt('请输入新分类名称:');
+            if (!name || !name.trim()) return;
+            const trimmed = name.trim();
+            initProfessionCategories(currentProfession);
+            const cats = professionCategories[currentProfession];
+            if (cats.includes(trimmed)) {
+                showNotification('该分类已存在', 'warning'); return;
+            }
+            cats.push(trimmed);
+            currentItemCategory = trimmed;
+            renderCategoryTabs();
+            loadProfessionItems();
+            autoSave();
+            showNotification(`分类「${trimmed}」已添加`, 'success');
+        }
+
+        // 渲染分类标签栏
+        function renderCategoryTabs() {
+            const tabsEl = document.getElementById('itemCategoryTabs');
+            if (!tabsEl) return;
+            tabsEl.innerHTML = '';
+            tabsEl.style.display = 'flex';
+
+            initProfessionCategories(currentProfession);
+            const cats = professionCategories[currentProfession] || [];
+            const allItems = recipes[currentProfession] || [];
+
+            // 全部标签
+            const allTab = document.createElement('span');
+            allTab.className = 'item-tab' + (currentItemCategory === '' ? ' active' : '');
+            allTab.innerHTML = `全部<span class="item-tab-count">${allItems.length}</span>`;
+            allTab.addEventListener('click', () => { currentItemCategory = ''; renderCategoryTabs(); loadProfessionItems(); });
+            tabsEl.appendChild(allTab);
+
+            // 各分类标签
+            cats.forEach(cat => {
+                const count = allItems.filter(i => (i.category || guessItemCategory(i)) === cat).length;
+                const tab = document.createElement('span');
+                tab.className = 'item-tab' + (currentItemCategory === cat ? ' active' : '');
+                tab.innerHTML = `${cat}<span class="item-tab-count">${count}</span>`;
+
+                // 左键切换分类
+                tab.addEventListener('click', e => {
+                    if (e.target.classList.contains('item-tab-rename-input')) return;
+                    currentItemCategory = cat;
+                    renderCategoryTabs();
+                    loadProfessionItems();
+                });
+
+                // 右键显示管理菜单
+                tab.addEventListener('contextmenu', e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showCatContextMenu(e.clientX, e.clientY, cat);
+                });
+
+                tabsEl.appendChild(tab);
+            });
+
+            // “+ 添加分类”按鈕
+            const addBtn = document.createElement('span');
+            addBtn.className = 'item-tab-add';
+            addBtn.textContent = '+ 新分类';
+            addBtn.title = '添加新分类';
+            addBtn.addEventListener('click', e => { e.stopPropagation(); addCategory(); });
+            tabsEl.appendChild(addBtn);
+        }
+
+        function loadProfessionItems() {
+            const tbody = document.getElementById("itemsTableBody");
+            const title = document.getElementById("professionTitle");
+            
+            title.textContent = `${currentProfession} - 制作物品`;
+            tbody.innerHTML = "";
+
+            const allItems = recipes[currentProfession] || [];
+            // 按当前标签筛选
+            const items = currentItemCategory
+                ? allItems.filter(i => guessCategory(i) === currentItemCategory)
+                : allItems;
+
+            const columnsPerRow = 3; // 每行显示3个物品
+            
+            for (let i = 0; i < items.length; i += columnsPerRow) {
+                const row = tbody.insertRow();
+                
+                for (let j = 0; j < columnsPerRow; j++) {
+                    const itemIndex = i + j;
+                    if (itemIndex < items.length) {
+                        const item = items[itemIndex];
+                        // 真实索引（在原数组中）
+                        const realIndex = allItems.indexOf(item);
+                        const cost = calculateItemCost(item);
+                        const cell = row.insertCell();
+                        cell.draggable = true;
+                        cell.dataset.itemIndex = realIndex;
+                        cell.className = 'item-cell';
+                        
+                        cell.innerHTML = `
+                            <div class="item-content">
+                                <span class="item-name editable-item-name" data-item-name="${item.name}" style="cursor: pointer; color: #4a9eff;">${item.name}</span>
+                                <span class="item-cost">${cost.toLocaleString()}</span>
+                            </div>
+                        `;
+                        
+                        // 添加拖动事件
+                        cell.addEventListener('dragstart', handleItemDragStart);
+                        cell.addEventListener('dragend', handleItemDragEnd);
+                        cell.addEventListener('dragover', handleItemDragOver);
+                        cell.addEventListener('drop', handleItemDrop);
+                        cell.addEventListener('dragenter', handleItemDragEnter);
+                        cell.addEventListener('dragleave', handleItemDragLeave);
+                        
+                        // 物品选择事件
+                        cell.addEventListener("click", (e) => {
+                            selectItem(item, cell);
+                        });
+                        cell.style.cursor = "pointer";
+                    } else {
+                        // 空单元格
+                        const cell = row.insertCell();
+                        cell.innerHTML = '';
+                    }
+                }
+            }
+        }
+        
+        let draggedItemCell = null;
+        
+        function handleItemDragStart(e) {
+            draggedItemCell = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', this.innerHTML);
+        }
+        
+        function handleItemDragEnd(e) {
+            this.classList.remove('dragging');
+            
+            // 移除所有drag-over类
+            const allCells = document.querySelectorAll('.item-cell');
+            allCells.forEach(cell => cell.classList.remove('drag-over'));
+        }
+        
+        function handleItemDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+        
+        function handleItemDragEnter(e) {
+            if (draggedItemCell !== this) {
+                this.classList.add('drag-over');
+            }
+        }
+        
+        function handleItemDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+        
+        function handleItemDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            
+            if (draggedItemCell !== this) {
+                // 获取拖拽和目标的索引
+                const draggedIndex = parseInt(draggedItemCell.dataset.itemIndex);
+                const targetIndex = parseInt(this.dataset.itemIndex);
+                
+                // 交换物品在数组中的位置
+                const items = recipes[currentProfession];
+                const draggedItem = items[draggedIndex];
+                const targetItem = items[targetIndex];
+                
+                // 交换位置
+                items[draggedIndex] = targetItem;
+                items[targetIndex] = draggedItem;
+                
+                // 重新加载物品列表
+                loadProfessionItems();
+                
+                showNotification(`已交换 ${draggedItem.name} 和 ${targetItem.name} 的位置`, 'success');
+            }
+            
+            return false;
+        }
+
+        // ── 将 materialGrid 二维数组扁平化为一维列表 ──────────────────────
+        function flattenGrid() {
+            const flat = [];
+            for (const row of materialGrid) {
+                for (const item of row) {
+                    flat.push(item); // null 代表空槽
+                }
+            }
+            return flat;
+        }
+
+        // 将一维列表写回二维 grid（固定3列）
+        function writeFlatToGrid(flat) {
+            const grid = [];
+            for (let i = 0; i < flat.length; i += 3) {
+                const row = [flat[i] ?? null];
+                if (i + 1 < flat.length) row.push(flat[i + 1] ?? null); else row.push(null);
+                if (i + 2 < flat.length) row.push(flat[i + 2] ?? null); else row.push(null);
+                grid.push(row);
+            }
+            setMaterialGrid(grid);
+            // 同步 map
+            const map = {};
+            flat.forEach(item => { if (item) map[item.name] = { price: item.price }; });
+            setMaterials(map);
+        }
+
+        function loadMaterialsTable() {
+            // 更新面板标题
+            const panelTitle = document.getElementById("materialsPanelTitle");
+            if (panelTitle) panelTitle.textContent = `📚 ${currentProfession} · 材料库`;
+
+            const container = document.getElementById("materialsGrid");
+            container.innerHTML = "";
+
+            const flat = flattenGrid();
+            // 保证3的倍数格（3列对齐）
+            while (flat.length % 3 !== 0) flat.push(null);
+
+            flat.forEach((material, index) => {
+                const card = document.createElement("div");
+                card.dataset.flatIndex = index;
+
+                if (material) {
+                    const mName = material.name;
+                    card.className = 'material-card';
+                    card.draggable = true;
+                    card.dataset.materialName = mName;
+                    card.innerHTML = `
+                        <button class="card-delete-btn" title="删除材料">×</button>
+                        <div class="material-content">
+                            <span class="material-name">${mName}</span>
+                            <span class="material-price editable-price" data-name="${mName}">${material.price.toLocaleString()}</span>
+                        </div>
+                    `;
+
+                    // 删除按钮
+                    card.querySelector('.card-delete-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        quickDeleteMaterial(mName);
+                    });
+
+                    // 点击选择材料
+                    card.querySelector('.material-name').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        selectMaterialByName(mName, material);
+                    });
+
+                    // 双击价格编辑
+                    card.querySelector('.editable-price').addEventListener('dblclick', (e) => {
+                        e.stopPropagation();
+                        makePriceEditable(e.currentTarget, mName);
+                    });
+
+                    // 拖拽事件
+                    card.addEventListener('dragstart', handleMaterialDragStart);
+                    card.addEventListener('dragend',   handleMaterialDragEnd);
+                } else {
+                    card.className = 'material-card empty-card';
+                    card.draggable = false;
+                    card.dataset.isEmpty = 'true';
+                }
+
+                // 所有格子都接受 drop
+                card.addEventListener('dragover',  handleMaterialDragOver);
+                card.addEventListener('drop',      handleMaterialDrop);
+                card.addEventListener('dragenter', handleMaterialDragEnter);
+                card.addEventListener('dragleave', handleMaterialDragLeave);
+
+                container.appendChild(card);
+            });
+
+            // 高亮选中物品需要的材料
+            if (selectedItem) highlightRequiredMaterials(selectedItem);
+        }
+
+        // 快速删除（从卡片删除按钮调用）
+        function quickDeleteMaterial(name) {
+            const usedBy = [];
+            for (const [prof, items] of Object.entries(recipes)) {
+                for (const item of items) {
+                    if (item.materials && item.materials[name]) usedBy.push(`${prof}·${item.name}`);
+                }
+            }
+            if (usedBy.length > 0) {
+                showNotification(`无法删除，${name} 被以下物品使用: ${usedBy.join(', ')}`, 'error');
+                return;
+            }
+            const flat = flattenGrid();
+            const idx = flat.findIndex(m => m && m.name === name);
+            if (idx >= 0) flat[idx] = null;
+            writeFlatToGrid(flat);
+            loadMaterialsTable();
+            showNotification(`材料 ${name} 已删除`, 'success');
+            autoSave();
+        }
+
+        // 通过名称选择材料（填充到编辑框）
+        function selectMaterialByName(name, material) {
+            document.getElementById("materialName").value = name;
+            document.getElementById("materialPrice").value = material.price;
+            document.getElementById("itemMaterialName").value = name;
+            selectedMaterial = name;
+        }
+
+        let draggedMaterialCard = null;
+
+        function handleMaterialDragStart(e) {
+            draggedMaterialCard = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', this.dataset.flatIndex);
+        }
+
+        function handleMaterialDragEnd(e) {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.material-card').forEach(c => c.classList.remove('drag-over'));
+            draggedMaterialCard = null;
+        }
+
+        function handleMaterialDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleMaterialDragEnter(e) {
+            if (draggedMaterialCard !== this) this.classList.add('drag-over');
+        }
+
+        function handleMaterialDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        function handleMaterialDrop(e) {
+            e.stopPropagation();
+            if (!draggedMaterialCard || draggedMaterialCard === this) return false;
+
+            const fromIdx = parseInt(draggedMaterialCard.dataset.flatIndex);
+            const toIdx   = parseInt(this.dataset.flatIndex);
+
+            if (isNaN(fromIdx) || isNaN(toIdx)) return false;
+
+            const flat = flattenGrid();
+            // 保证3的倍数
+            while (flat.length % 3 !== 0) flat.push(null);
+
+            // 交换两个位置（空槽也可以交换）
+            const tmp = flat[fromIdx];
+            flat[fromIdx] = flat[toIdx];
+            flat[toIdx] = tmp;
+
+            writeFlatToGrid(flat);
+            loadMaterialsTable();
+            autoSave();
+            return false;
+        }
+
+        function makeItemNameEditable(nameSpan, item) {
+            const currentName = item.name;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = currentName;
+            input.style.cssText = 'background: rgba(255,255,255,0.2); border: 1px solid #4a9eff; color: white; padding: 2px 4px; border-radius: 3px; font-size: 0.9em; width: 150px;';
+            
+            const saveEdit = () => {
+                const newName = input.value.trim();
+                if (!newName) {
+                    showNotification('物品名称不能为空', 'warning');
+                    nameSpan.textContent = currentName;
+                    return;
+                }
+                
+                if (newName === currentName) {
+                    nameSpan.textContent = currentName;
+                    return;
+                }
+                
+                // 检查是否已存在同名物品
+                const existingItem = recipes[currentProfession].find(i => i.name === newName);
+                if (existingItem) {
+                    showNotification('已存在同名物品', 'warning');
+                    nameSpan.textContent = currentName;
+                    return;
+                }
+                
+                // 更新物品名称
+                item.name = newName;
+                nameSpan.textContent = newName;
+                nameSpan.setAttribute('data-item-name', newName);
+                
+                // 更新显示
+                if (selectedItem && selectedItem.name === currentName) {
+                    selectedItem.name = newName;
+                    document.getElementById("itemName").textContent = newName;
+                }
+                
+                showNotification(`物品名称已更新为 ${newName}`, 'success');
+                autoSave(); // 自动保存
+            };
+            
+            input.addEventListener('blur', saveEdit);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    saveEdit();
+                } else if (e.key === 'Escape') {
+                    nameSpan.textContent = currentName;
+                }
+            });
+            
+            nameSpan.innerHTML = '';
+            nameSpan.appendChild(input);
+            input.focus();
+            input.select();
+        }
+
+        function calculateItemCost(item) {
+            let totalCost = 0;
+            for (const [materialName, quantity] of Object.entries(item.materials)) {
+                const material = materials[materialName];
+                if (material) {
+                    totalCost += material.price * quantity;
+                }
+            }
+            return totalCost;
+        }
+
+        function selectItem(item, row) {
+            document.querySelectorAll("#itemsTableBody tr").forEach(r => r.classList.remove("selected"));
+            row.classList.add("selected");
+            selectedItem = item;
+            displayItemDetails(item);
+            highlightRequiredMaterials(item);
+        }
+
+        function selectMaterial(name, material, row) {
+            selectedMaterial = name;
+            document.getElementById("materialName").value = name;
+            document.getElementById("materialPrice").value = material ? material.price : '';
+            document.getElementById("itemMaterialName").value = name;
+        }
+
+        function highlightRequiredMaterials(item) {
+            document.querySelectorAll('.material-card').forEach(c => c.classList.remove('highlighted-card'));
+            if (!item || !item.materials) return;
+            const needed = new Set(Object.keys(item.materials));
+            document.querySelectorAll('.material-card[data-material-name]').forEach(card => {
+                if (needed.has(card.dataset.materialName)) card.classList.add('highlighted-card');
+            });
+        }
+
+        function toggleHighlight() {
+            document.querySelectorAll('.material-card[data-material-name]').forEach(card => {
+                card.classList.toggle("highlighted-card");
+            });
+        }
+
+        function updateItemCategory(newCat) {
+            if (!selectedItem) return;
+            const cat = newCat.trim();
+            if (!cat) return;
+            selectedItem.category = cat;
+            // 如果新分类不在列表中，自动添加
+            initProfessionCategories(currentProfession);
+            const cats = professionCategories[currentProfession];
+            if (!cats.includes(cat)) cats.push(cat);
+            renderCategoryTabs();
+            loadProfessionItems();
+            autoSave();
+            showNotification(`分类已更新为「${cat}」`, 'success');
+        }
+
+        function displayItemDetails(item) {
+            document.getElementById("itemName").textContent = item.name;
+            document.getElementById("itemLevel").textContent = `需要等级: ${item.level}`;
+            // 显示分类输入框
+            const catRow = document.getElementById('itemCategoryRow');
+            const catInput = document.getElementById('itemCategoryInput');
+            if (catRow && catInput) {
+                catRow.style.display = 'block';
+                catInput.value = guessCategory(item);
+            }
+            
+            const materialsList = document.getElementById("materialsList");
+            materialsList.innerHTML = "";
+
+            for (const [materialName, quantity] of Object.entries(item.materials)) {
+                const material = materials[materialName];
+                if (material) {
+                    const materialItem = document.createElement("div");
+                    materialItem.className = "material-item";
+                    materialItem.innerHTML = `
+                        <span class="editable-material-name" data-material-name="${materialName}" style="cursor: pointer; color: #4a9eff;">${materialName}</span>
+                        <span> x</span>
+                        <span class="editable-material-quantity" data-material-name="${materialName}" style="cursor: pointer; color: #ffa500;">${quantity}</span>
+                        <span> 单价: ${material.price.toLocaleString()}</span>
+                        <span class="delete-material-btn" data-material-name="${materialName}" style="cursor: pointer; color: #ff4a4a; margin-left: 10px; font-size: 0.8em;">×</span>
+                    `;
+                    materialsList.appendChild(materialItem);
+                    
+                    // 为材料名称添加点击编辑事件
+                    const nameSpan = materialItem.querySelector('.editable-material-name');
+                    nameSpan.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        makeMaterialNameEditable(nameSpan, item, materialName);
+                    });
+                    
+                    // 为材料数量添加点击编辑事件
+                    const quantitySpan = materialItem.querySelector('.editable-material-quantity');
+                    quantitySpan.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        makeMaterialQuantityEditable(quantitySpan, item, materialName);
+                    });
+                    
+                    // 为删除按钮添加点击事件
+                    const deleteBtn = materialItem.querySelector('.delete-material-btn');
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteMaterialFromItem(item, materialName);
+                    });
+                }
+            }
+            
+            // 添加新材料按钮
+            const addMaterialBtn = document.createElement("div");
+            addMaterialBtn.className = "add-material-btn";
+            addMaterialBtn.innerHTML = `<span style="cursor: pointer; color: #4aff7c; font-size: 0.9em; margin-top: 10px; display: inline-block;">+ 添加新材料</span>`;
+            addMaterialBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                addNewMaterialToItem(item);
+            });
+            materialsList.appendChild(addMaterialBtn);
+        }
+
+        function deleteMaterialFromItem(item, materialName) {
+            if (!item.materials[materialName]) {
+                showNotification('材料不存在', 'error');
+                return;
+            }
+            
+            delete item.materials[materialName];
+            
+            // 更新显示
+            displayItemDetails(item);
+            loadProfessionItems();
+            
+            showNotification(`已删除材料 ${materialName}`, 'success');
+        }
+        
+        function addNewMaterialToItem(item) {
+            const materialName = prompt('请输入新材料名称:');
+            if (!materialName || !materialName.trim()) {
+                showNotification('请输入材料名称', 'warning');
+                return;
+            }
+            
+            const materialQuantity = parseInt(prompt('请输入材料数量:')) || 1;
+            if (isNaN(materialQuantity) || materialQuantity <= 0) {
+                showNotification('请输入有效的材料数量', 'warning');
+                return;
+            }
+            
+            // 检查是否已存在
+            if (item.materials[materialName]) {
+                showNotification('该材料已存在', 'warning');
+                return;
+            }
+            
+            // 添加材料
+            item.materials[materialName] = materialQuantity;
+            
+            // 如果材料库中没有该材料，自动添加
+            if (!materials[materialName]) {
+                const flat = flattenGrid();
+                const emptyIdx = flat.findIndex(m => m === null);
+                if (emptyIdx >= 0) {
+                    flat[emptyIdx] = { name: materialName, price: 100 };
+                } else {
+                    flat.push({ name: materialName, price: 100 });
+                }
+                writeFlatToGrid(flat);
+                loadMaterialsTable();
+                showNotification(`已自动添加材料 ${materialName} 到材料库`, 'info');
+            }
+            
+            // 更新显示
+            displayItemDetails(item);
+            loadProfessionItems();
+            
+            showNotification(`已添加材料 ${materialName} x${materialQuantity}`, 'success');
+        }
+
+        function makeMaterialNameEditable(nameSpan, item, oldMaterialName) {
+            const currentName = oldMaterialName;
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = currentName;
+            input.style.cssText = 'background: rgba(255,255,255,0.2); border: 1px solid #4a9eff; color: white; padding: 2px 4px; border-radius: 3px; font-size: 0.8em; width: 120px;';
+            
+            const saveEdit = () => {
+                const newName = input.value.trim();
+                if (!newName) {
+                    showNotification('材料名称不能为空', 'warning');
+                    nameSpan.textContent = currentName;
+                    return;
+                }
+                
+                if (newName === currentName) {
+                    nameSpan.textContent = currentName;
+                    return;
+                }
+                
+                // 更新物品中的材料名称
+                const quantity = item.materials[oldMaterialName];
+                delete item.materials[oldMaterialName];
+                item.materials[newName] = quantity;
+                
+                // 更新显示
+                nameSpan.textContent = newName;
+                nameSpan.setAttribute('data-material-name', newName);
+                
+                // 更新数量元素的data属性
+                const quantitySpan = nameSpan.parentElement.querySelector('.editable-material-quantity');
+                if (quantitySpan) {
+                    quantitySpan.setAttribute('data-material-name', newName);
+                }
+                
+                // 更新物品列表
+                loadProfessionItems();
+                
+                showNotification(`材料名称已更新为 ${newName}`, 'success');
+            };
+            
+            input.addEventListener('blur', saveEdit);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    saveEdit();
+                } else if (e.key === 'Escape') {
+                    nameSpan.textContent = currentName;
+                }
+            });
+            
+            nameSpan.innerHTML = '';
+            nameSpan.appendChild(input);
+            input.focus();
+            input.select();
+        }
+        
+        function makeMaterialQuantityEditable(quantitySpan, item, materialName) {
+            const currentQuantity = item.materials[materialName];
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.value = currentQuantity;
+            input.min = '1';
+            input.style.cssText = 'background: rgba(255,255,255,0.2); border: 1px solid #ffa500; color: white; padding: 2px 4px; border-radius: 3px; font-size: 0.8em; width: 60px;';
+            
+            const saveEdit = () => {
+                const newQuantity = parseInt(input.value);
+                if (isNaN(newQuantity) || newQuantity <= 0) {
+                    showNotification('材料数量必须大于0', 'warning');
+                    quantitySpan.textContent = currentQuantity;
+                    return;
+                }
+                
+                if (newQuantity === currentQuantity) {
+                    quantitySpan.textContent = currentQuantity;
+                    return;
+                }
+                
+                // 更新物品中的材料数量
+                item.materials[materialName] = newQuantity;
+                
+                // 更新显示
+                quantitySpan.textContent = newQuantity;
+                
+                // 更新物品列表
+                loadProfessionItems();
+                
+                showNotification(`材料数量已更新为 ${newQuantity}`, 'success');
+            };
+            
+            input.addEventListener('blur', saveEdit);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    saveEdit();
+                } else if (e.key === 'Escape') {
+                    quantitySpan.textContent = currentQuantity;
+                }
+            });
+            
+            quantitySpan.innerHTML = '';
+            quantitySpan.appendChild(input);
+            input.focus();
+            input.select();
+        }
+
+        function calculateCost() {
+            if (!selectedItem) {
+                showNotification('请先选择一个物品', 'warning');
+                return;
+            }
+
+            const quantity = parseInt(document.getElementById("craftQuantity").value);
+            if (isNaN(quantity) || quantity <= 0) {
+                showNotification('请输入有效的制作数量', 'warning');
+                return;
+            }
+
+            const singleCost = calculateItemCost(selectedItem);
+            const totalCost = singleCost * quantity;
+
+            const resultDiv = document.getElementById("costResult");
+            resultDiv.innerHTML = `
+                <div>单个成本: ${singleCost.toLocaleString()}</div>
+                <div>${quantity}个总成本: ${totalCost.toLocaleString()}</div>
+            `;
+            resultDiv.style.display = "block";
+        }
+
+        function addMaterialToCurrentItem() {
+            const materialName = document.getElementById("itemMaterialName").value;
+            const materialQuantity = parseInt(document.getElementById("itemMaterialQuantity").value) || 1;
+            
+            if (!materialName) {
+                showNotification('请输入材料名称', 'warning');
+                return;
+            }
+            
+            if (!selectedItem) {
+                showNotification('请先选择要添加材料的物品', 'warning');
+                return;
+            }
+            
+            // 添加材料到当前物品
+            if (!selectedItem.materials) {
+                selectedItem.materials = {};
+            }
+            
+            selectedItem.materials[materialName] = materialQuantity;
+            
+            // 更新显示
+            displayItemDetails(selectedItem);
+            loadProfessionItems();
+            
+            // 清空编辑表单
+            document.getElementById("itemMaterialName").value = "";
+            document.getElementById("itemMaterialQuantity").value = "";
+            
+            showNotification(`已添加 ${materialName} x${materialQuantity} 到物品 ${selectedItem.name}`, 'success');
+            autoSave(); // 自动保存
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement("div");
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.animation = "slideOut 0.3s ease";
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        document.body.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
+        
+        // 添加职业函数
+        function addProfession() {
+            const input = document.getElementById('newProfessionInput');
+            const professionName = input.value.trim();
+            
+            if (professionName && !recipes[professionName]) {
+                recipes[professionName] = [];
+                initProfessionMaterials(professionName); // 初始化该职业的材料库
+                loadProfessionList();
+                setupProfessionEventListeners();
+                input.value = '';
+                showNotification(`职业 ${professionName} 已添加`, 'success');
+                autoSave(); // 自动保存
+            } else if (recipes[professionName]) {
+                showNotification('该职业已存在', 'error');
+            } else {
+                showNotification('请输入职业名称', 'error');
+            }
+        }
+
+        function deleteProfession(professionName) {
+            if (!recipes[professionName]) {
+                showNotification(`职业 ${professionName} 不存在`, 'error');
+                return;
+            }
+            
+            if (recipes[professionName] && recipes[professionName].length > 0) {
+                showNotification(`无法删除，职业 ${professionName} 中还有物品`, 'error');
+                return;
+            }
+            
+            delete recipes[professionName];
+            delete professionMaterials[professionName]; // 同时删除该职业的材料库
+            
+            if (currentProfession === professionName) {
+                const remainingProfessions = Object.keys(recipes);
+                if (remainingProfessions.length > 0) {
+                    currentProfession = remainingProfessions[0];
+                    loadProfessionItems();
+                }
+            }
+            
+            loadProfessionList();
+            setupProfessionEventListeners();
+            showNotification(`职业 ${professionName} 已删除`, 'success');
+            autoSave(); // 自动保存
+        }
+
+        function getProfessionIcon(professionName) {
+            const icons = {
+                '铁匠': '⚔️',
+                '手工': '🧵',
+                '炼金': '⚗️',
+                '料理': '🍳'
+            };
+            return icons[professionName] || '📁';
+        }
+
+        function addItem() {
+            // 确定归属分类：在哪个分类下添加就归入哪个
+            const targetCat = currentItemCategory || '其他';
+
+            const newItem = {
+                name: "新物品",
+                category: targetCat,
+                level: 1,
+                craftQuantity: 1,
+                materials: {}
+            };
+            
+            recipes[currentProfession].push(newItem);
+
+            // 如果该分类不在列表中，自动添加
+            initProfessionCategories(currentProfession);
+            const cats = professionCategories[currentProfession];
+            if (!cats.includes(targetCat)) cats.push(targetCat);
+
+            renderCategoryTabs();
+            loadProfessionItems();
+            
+            showNotification(`已在「${targetCat}」分类下添加新物品，请选择后编辑`, 'info');
+            autoSave(); // 自动保存
+        }
+
+        function editItemName() {
+            if (!selectedItem) {
+                showNotification('请先选择要改名的物品', 'warning');
+                return;
+            }
+            
+            const currentName = selectedItem.name;
+            const newName = prompt('请输入新的物品名称:', currentName);
+            
+            if (!newName || newName.trim() === '') {
+                showNotification('物品名称不能为空', 'warning');
+                return;
+            }
+            
+            if (newName === currentName) {
+                showNotification('物品名称未改变', 'info');
+                return;
+            }
+            
+            // 检查是否已存在同名物品
+            const existingItem = recipes[currentProfession].find(i => i.name === newName);
+            if (existingItem) {
+                showNotification('已存在同名物品', 'error');
+                return;
+            }
+            
+            // 更新物品名称
+            selectedItem.name = newName;
+            
+            // 更新显示
+            document.getElementById("itemName").textContent = newName;
+            loadProfessionItems();
+            
+            showNotification(`物品名称已更新为 ${newName}`, 'success');
+            autoSave(); // 自动保存
+        }
+        
+        // 为物品名称添加编辑事件监听器
+        function setupItemNameEditing() {
+            const itemNameElement = document.getElementById("itemName");
+            if (itemNameElement) {
+                itemNameElement.addEventListener('blur', function() {
+                    if (!selectedItem) return;
+                    
+                    const newName = this.textContent.trim();
+                    const currentName = selectedItem.name;
+                    
+                    if (!newName) {
+                        this.textContent = currentName;
+                        showNotification('物品名称不能为空', 'warning');
+                        return;
+                    }
+                    
+                    if (newName === currentName) return;
+                    
+                    // 检查是否已存在同名物品
+                    const existingItem = recipes[currentProfession].find(i => i.name === newName);
+                    if (existingItem) {
+                        this.textContent = currentName;
+                        showNotification('已存在同名物品', 'error');
+                        return;
+                    }
+                    
+                    // 更新物品名称
+                    selectedItem.name = newName;
+                    loadProfessionItems();
+                    showNotification(`物品名称已更新为 ${newName}`, 'success');
+                    autoSave();
+                });
+                
+                itemNameElement.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.blur();
+                    }
+                });
+                
+                itemNameElement.addEventListener('focus', function() {
+                    if (!selectedItem) {
+                        this.blur();
+                        showNotification('请先选择一个物品', 'warning');
+                    } else {
+                        // 自动全选文本
+                        const range = document.createRange();
+                        range.selectNodeContents(this);
+                        const selection = window.getSelection();
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                    }
+                });
+            }
+        }
+
+        function deleteItem() {
+            if (!selectedItem) {
+                showNotification('请先选择要删除的物品', 'warning');
+                return;
+            }
+            
+            const itemIndex = recipes[currentProfession].findIndex(item => item.name === selectedItem.name);
+            if (itemIndex < 0) {
+                showNotification('物品不存在', 'error');
+                return;
+            }
+
+            recipes[currentProfession].splice(itemIndex, 1);
+            renderCategoryTabs();
+            loadProfessionItems();
+            
+            const deletedItemName = selectedItem.name;
+            selectedItem = null;
+            document.getElementById("itemName").textContent = "未选择物品";
+            document.getElementById("itemLevel").textContent = "";
+            document.getElementById("materialsList").innerHTML = '<p style="color: #aaa; font-size: 0.9em;">请选择一个物品查看材料需求</p>';
+            document.getElementById("costResult").style.display = "none";
+            
+            highlightRequiredMaterials(null);
+            showNotification(`物品 ${deletedItemName} 已删除`, 'success');
+            autoSave(); // 自动保存
+        }
+
+        function resetMaterials() {
+            // 仅重置当前职业的材料库布局
+            const grid = getDefaultMaterialGrid();
+            professionMaterials[currentProfession] = { grid: grid, map: buildMaterialMap(grid) };
+            loadMaterialsTable();
+            showNotification(`${currentProfession} 材料库已重置`, 'success');
+            autoSave();
+        }
+
+        function addEmptyCell() {
+            // 追加3个空槽（一行）
+            const flat = flattenGrid();
+            flat.push(null, null, null);
+            writeFlatToGrid(flat);
+            loadMaterialsTable();
+            showNotification('已添加空行', 'success');
+            autoSave();
+        }
+        
+        function addNewRow() {
+            addEmptyCell();
+        }
+        
+        function removeEmptyCells() {
+            const flat = flattenGrid();
+            const before = flat.length;
+            const compact = flat.filter(m => m !== null);
+            if (compact.length === before) {
+                showNotification('没有空格需要清理', 'info');
+                return;
+            }
+            writeFlatToGrid(compact);
+            loadMaterialsTable();
+            showNotification(`已清理 ${before - compact.length} 个空格`, 'success');
+            autoSave();
+        }
+
+        function addMaterial() {
+            const name = document.getElementById("materialName").value;
+            const price = parseInt(document.getElementById("materialPrice").value);
+
+            if (!name || isNaN(price) || price < 0) {
+                showNotification('请输入有效的材料信息', 'warning');
+                return;
+            }
+
+            // 查找第一个空槽，或追加新槽
+            const flat = flattenGrid();
+            const emptyIdx = flat.findIndex(m => m === null);
+            if (emptyIdx >= 0) {
+                flat[emptyIdx] = { name: name, price: price };
+            } else {
+                flat.push({ name: name, price: price });
+            }
+            writeFlatToGrid(flat);
+
+            loadMaterialsTable();
+            showNotification('材料已添加', 'success');
+            autoSave(); // 自动保存
+        }
+
+        function deleteMaterial() {
+            const name = document.getElementById("materialName").value;
+
+            if (!name) {
+                showNotification('请先选择要删除的材料', 'warning');
+                return;
+            }
+
+            const flat = flattenGrid();
+            const idx = flat.findIndex(m => m && m.name === name);
+            if (idx < 0) {
+                showNotification('材料不存在', 'error');
+                return;
+            }
+
+            let usedByItems = [];
+            for (const [profession, items] of Object.entries(recipes)) {
+                for (const item of items) {
+                    if (item.materials && item.materials[name]) {
+                        usedByItems.push(`${profession} - ${item.name}`);
+                    }
+                }
+            }
+
+            if (usedByItems.length > 0) {
+                showNotification(`无法删除，此材料被以下物品使用: ${usedByItems.join(", ")}`, 'error');
+                return;
+            }
+
+            flat[idx] = null;
+            writeFlatToGrid(flat);
+            loadMaterialsTable();
+
+            document.getElementById("materialName").value = "";
+            document.getElementById("materialPrice").value = "";
+
+            showNotification('材料已删除', 'success');
+            autoSave(); // 自动保存
+        }
+
+        function makePriceEditable(priceSpan, materialName) {
+            const mat = materials[materialName];
+            if (!mat) return;
+            const currentPrice = mat.price;
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.value = currentPrice;
+            input.style.cssText = 'background: rgba(255,255,255,0.2); border: 1px solid #4a9eff; color: white; padding: 2px 4px; border-radius: 3px; font-size: 0.8em; width: 70px;';
+            
+            const saveEdit = () => {
+                const newPrice = parseInt(input.value);
+                if (!isNaN(newPrice) && newPrice >= 0) {
+                    // 同步更新 flat grid 中该材料的价格
+                    const flat = flattenGrid();
+                    flat.forEach(item => { if (item && item.name === materialName) item.price = newPrice; });
+                    writeFlatToGrid(flat);
+
+                    loadMaterialsTable();
+                    loadProfessionItems();
+                    if (selectedItem) {
+                        displayItemDetails(selectedItem);
+                        highlightRequiredMaterials(selectedItem);
+                    }
+                    showNotification(`材料 ${materialName} 价格已更新为 ${newPrice.toLocaleString()}`, 'success');
+                    autoSave();
+                }
+            };
+            
+            input.addEventListener('blur', saveEdit);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') saveEdit();
+            });
+            
+            priceSpan.innerHTML = '';
+            priceSpan.appendChild(input);
+            input.focus();
+            input.select();
+        }
+
+        function showNotification(message, type) {
+            const notification = document.createElement("div");
+            notification.className = "notification";
+
+            switch(type) {
+                case "success":
+                    notification.style.background = "linear-gradient(135deg, #4aff7c 0%, #2aff50 100%)";
+                    break;
+                case "error":
+                    notification.style.background = "linear-gradient(135deg, #ff4a4a 0%, #ff2a2a 100%)";
+                    break;
+                case "warning":
+                    notification.style.background = "linear-gradient(135deg, #ffa500 0%, #ff8c00 100%)";
+                    break;
+                default:
+                    notification.style.background = "linear-gradient(135deg, #4a9eff 0%, #2a7fff 100%)";
+                    break;
+            }
+
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.animation = "slideOut 0.3s ease";
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
+                        
