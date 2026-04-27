@@ -1664,6 +1664,17 @@
             const professionList = document.getElementById("professionList");
             professionList.innerHTML = "";
             
+            // 确保 professionOrder 包含所有在 recipes 中的职业
+            const allProfessions = Object.keys(recipes);
+            allProfessions.forEach(prof => {
+                if (!professionOrder.includes(prof)) {
+                    professionOrder.push(prof);
+                }
+            });
+            
+            // 清理 professionOrder 中不存在的职业
+            professionOrder = professionOrder.filter(prof => recipes[prof]);
+            
             // 按照 professionOrder 数组的顺序显示职业，确保拖拽后的顺序被正确反映
             professionOrder.forEach(professionName => {
                 // 只添加仍然存在的职业（防止删除后残留）
