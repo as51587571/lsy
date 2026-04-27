@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游戏币收入记录</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 10px;
+        }
+        
+        .container { max-width: 1100px; margin: 0 auto; }
+        
+        header { text-align: center; color: white; margin-bottom: 8px; }
+        header h1 { font-size: 1.4em; margin-bottom: 2px; }
+        header p { font-size: 0.8em; opacity: 0.8; }
+        
+        .panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+        }
+        .panel h3 { margin-bottom: 8px; color: #333; font-size: 0.95em; }
+        
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr 1fr 1fr auto;
+            gap: 8px;
+            align-items: end;
+        }
+        
+        .input-group { display: flex; flex-direction: column; }
+        .input-group label { font-size: 0.75em; color: #666; margin-bottom: 3px; font-weight: bold; }
+        .input-group input, .input-group select {
+            padding: 7px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.85em;
+        }
+        .input-group input:focus, .input-group select:focus { outline: none; border-color: #4a9eff; }
+        
+        .group-wrapper { display: flex; gap: 4px; align-items: end; }
+        .group-wrapper select { flex: 1; }
+        .btn-manage {
+            background: #4a9eff;
+            color: white;
+            height: 32px;
+            padding: 6px 8px;
+            font-size: 0.8em;
+            white-space: nowrap;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .btn-add {
+            background: linear-gradient(135deg, #4aff7c 0%, #2aff50 100%);
+            color: white;
+            height: 32px;
+            padding: 6px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .stat-value { font-size: 1.3em; font-weight: bold; margin-bottom: 2px; }
+        .stat-label { font-size: 0.7em; opacity: 0.9; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.85em; }
+        th { background: #f8f8f8; font-weight: bold; color: #333; }
+        tr:hover { background: #fafafa; }
+        
+        .filter-bar {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .filter-btn {
+            padding: 4px 10px;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            font-size: 0.75em;
+            transition: all 0.2s;
+        }
+        .filter-btn:hover { border-color: #4a9eff; color: #4a9eff; }
+        .filter-btn.active { background: #4a9eff; color: white; border-color: #4a9eff; }
+        
+        .btn-delete {
+            background: #ff4a4a;
+            color: white;
+            border: none;
+            padding: 3px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.75em;
+        }
+        .btn-delete:hover { background: #ff2a2a; }
+        
+        .button-group { display: flex; gap: 8px; margin-top: 8px; }
+        .btn {
+            padding: 7px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8em;
+            font-weight: bold;
+            flex: 1;
+        }
+        .btn-clear { background: #ffa500; color: white; }
+        .btn-export { background: #4a9eff; color: white; }
+        .btn-import { background: #9b59b6; color: white; cursor: pointer; text-align: center; }
+        
+        /* 分组管理面板 */
+        .group-manager {
+            display: none;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 8px;
+        }
+        .group-manager.show { display: block; }
+        .group-manager h4 { font-size: 0.85em; color: #333; margin-bottom: 8px; }
+        .group-list { max-height: 120px; overflow-y: auto; margin-bottom: 8px; }
+        .group-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 8px;
+            border-bottom: 1px solid #eee;
+            font-size: 0.85em;
+        }
+        .group-item:last-child { border-bottom: none; }
+        .btn-delete-group {
+            background: #ff4a4a;
+            color: white;
+            border: none;
+            padding: 2px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+        .add-group-row { display: flex; gap: 6px; }
+        .add-group-row input {
+            flex: 1;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+        .btn-add-group {
+            background: #4aff7c;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.8em;
+        }
+        
+        /* 通知系统 */
+        #notificationContainer {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 320px;
+        }
+        .notification {
+            padding: 10px 16px;
+            border-radius: 6px;
+            color: white;
+            font-size: 0.85em;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            animation: slideInLeft 0.3s ease;
+            cursor: pointer;
+        }
+        .notification.success { background: linear-gradient(135deg, #11998e, #38ef7d); }
+        .notification.error { background: linear-gradient(135deg, #eb3349, #f45c43); }
+        .notification.warning { background: linear-gradient(135deg, #f7971e, #ffd200); color: #333; }
+        .notification.info { background: linear-gradient(135deg, #667eea, #764ba2); }
+        
+        @keyframes slideInLeft {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOutLeft {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(-100%); opacity: 0; }
+        }
+        
+        @media (max-width: 768px) {
+            .input-row { grid-template-columns: 1fr 1fr; }
+            .stats { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div id="notificationContainer"></div>
+    
+    <div class="container">
+        <header>
+            <h1>🎮 游戏币收入记录</h1>
+            <p>简单快速记录游戏币和人民币收入</p>
+        </header>
+        
+        <div class="panel">
+            <div class="input-row">
+                <div class="input-group">
+                    <label>日期</label>
+                    <input type="date" id="dateInput">
+                </div>
+                <div class="input-group">
+                    <label>分组</label>
+                    <div class="group-wrapper">
+                        <select id="groupSelect"></select>
+                        <button class="btn-manage" onclick="toggleGroupManager()">管理</button>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>游戏币</label>
+                    <input type="number" id="gameCoinInput" placeholder="0" min="0">
+                </div>
+                <div class="input-group">
+                    <label>人民币</label>
+                    <input type="number" id="rmbInput" placeholder="0" min="0" step="0.01">
+                </div>
+                <button class="btn-add" onclick="addRecord()">添加</button>
+            </div>
+            <!-- 分组管理面板 -->
+            <div class="group-manager" id="groupManager">
+                <h4>管理分组</h4>
+                <div class="group-list" id="groupList"></div>
+                <div class="add-group-row">
+                    <input type="text" id="newGroupName" placeholder="输入新分组名称" onkeypress="if(event.key==='Enter') addGroup()">
+                    <button class="btn-add-group" onclick="addGroup()">添加</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h3>总体统计</h3>
+            <div class="stats">
+                <div class="stat-box">
+                    <div class="stat-value" id="totalRecords">0</div>
+                    <div class="stat-label">记录数</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="totalGameCoin">0</div>
+                    <div class="stat-label">游戏币总计</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="totalRmb">¥0</div>
+                    <div class="stat-label">人民币总计</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-value" id="avgRmb">¥0</div>
+                    <div class="stat-label">日均收入</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h3>分组统计</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>分组</th>
+                        <th>记录数</th>
+                        <th>游戏币</th>
+                        <th>人民币</th>
+                        <th>占比</th>
+                    </tr>
+                </thead>
+                <tbody id="groupStatsTable">
+                    <tr><td colspan="5" style="text-align:center;color:#999;padding:12px;">暂无数据</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="panel">
+            <h3>收入记录</h3>
+            <div class="filter-bar" id="filterBar">
+                <button class="filter-btn active" onclick="filterByGroup('全部')">全部</button>
+            </div>
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>分组</th>
+                            <th>游戏币</th>
+                            <th>人民币</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordTable">
+                        <tr><td colspan="5" style="text-align:center;color:#999;padding:15px;">暂无记录</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="button-group">
+                <button class="btn btn-clear" onclick="clearAll()">清空记录</button>
+                <button class="btn btn-export" onclick="exportData()">导出</button>
+                <label class="btn btn-import">导入<input type="file" accept=".json" onchange="importData(event)" style="display:none;"></label>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let records = JSON.parse(localStorage.getItem('gameIncome') || '[]');
+        let currentFilter = '全部';
+        const defaultGroups = ['日常任务', '副本掉落', '交易收入', '活动奖励', '其他'];
+        let customGroups = JSON.parse(localStorage.getItem('customGroups') || 'null') || [...defaultGroups];
+        
+        document.getElementById('dateInput').valueAsDate = new Date();
+        
+        // ===== 通知系统 =====
+        function showNotify(msg, type = 'info', duration = 2500) {
+            const container = document.getElementById('notificationContainer');
+            const el = document.createElement('div');
+            el.className = 'notification ' + type;
+            el.textContent = msg;
+            el.onclick = () => removeNotify(el);
+            container.appendChild(el);
+            setTimeout(() => removeNotify(el), duration);
+        }
+        
+        function removeNotify(el) {
+            if (!el || !el.parentNode) return;
+            el.style.animation = 'slideOutLeft 0.3s ease';
+            setTimeout(() => el.remove(), 300);
+        }
+        
+        // ===== 分组管理 =====
+        function toggleGroupManager() {
+            const mgr = document.getElementById('groupManager');
+            if (mgr.classList.contains('show')) {
+                mgr.classList.remove('show');
+            } else {
+                renderGroupList();
+                mgr.classList.add('show');
+                document.getElementById('newGroupName').focus();
+            }
+        }
+        
+        function renderGroupList() {
+            const list = document.getElementById('groupList');
+            list.innerHTML = customGroups.map((g, i) => `
+                <div class="group-item">
+                    <span>${g}</span>
+                    <button class="btn-delete-group" onclick="deleteGroup(${i})" ${customGroups.length <= 1 ? 'disabled style="opacity:0.5"' : ''}>删除</button>
+                </div>
+            `).join('');
+        }
+        
+        function addGroup() {
+            const input = document.getElementById('newGroupName');
+            const name = input.value.trim();
+            if (!name) { showNotify('请输入分组名称', 'warning'); return; }
+            if (customGroups.includes(name)) { showNotify('该分组已存在', 'warning'); return; }
+            customGroups.push(name);
+            saveGroups();
+            initGroupSelect();
+            renderGroupList();
+            input.value = '';
+            input.focus();
+            showNotify(`分组「${name}」已添加`, 'success');
+        }
+        
+        function deleteGroup(index) {
+            if (customGroups.length <= 1) { showNotify('至少需要保留一个分组', 'warning'); return; }
+            const deletedGroup = customGroups[index];
+            const hasRecords = records.some(r => r.group === deletedGroup);
+            
+            if (hasRecords) {
+                records.forEach(r => { if (r.group === deletedGroup) r.group = customGroups[0]; });
+                if (currentFilter === deletedGroup) currentFilter = '全部';
+                saveData();
+                renderRecords();
+                updateStats();
+            } else {
+                if (currentFilter === deletedGroup) currentFilter = '全部';
+            }
+            
+            customGroups.splice(index, 1);
+            saveGroups();
+            initGroupSelect();
+            renderGroupList();
+            updateFilterBar();
+            showNotify('分组已删除', 'success');
+        }
+        
+        function saveGroups() {
+            localStorage.setItem('customGroups', JSON.stringify(customGroups));
+        }
+        
+        // ===== 初始化 =====
+        function initGroupSelect() {
+            const select = document.getElementById('groupSelect');
+            const lastGroup = localStorage.getItem('lastSelectedGroup') || customGroups[0];
+            select.innerHTML = customGroups.map(g => 
+                `<option value="${g}" ${g === lastGroup ? 'selected' : ''}>${g}</option>`
+            ).join('');
+        }
+        
+        initGroupSelect();
+        
+        document.getElementById('groupSelect').addEventListener('change', function() {
+            localStorage.setItem('lastSelectedGroup', this.value);
+        });
+        
+        renderRecords();
+        updateStats();
+        
+        // ===== 记录操作 =====
+        function addRecord() {
+            const date = document.getElementById('dateInput').value;
+            const group = document.getElementById('groupSelect').value;
+            const gameCoin = parseFloat(document.getElementById('gameCoinInput').value) || 0;
+            const rmb = parseFloat(document.getElementById('rmbInput').value) || 0;
+            
+            if (gameCoin === 0 && rmb === 0) { showNotify('请至少输入游戏币或人民币', 'warning'); return; }
+            
+            records.unshift({ id: Date.now(), date, group, gameCoin, rmb });
+            saveData();
+            renderRecords();
+            updateStats();
+            
+            document.getElementById('gameCoinInput').value = '';
+            document.getElementById('rmbInput').value = '';
+            showNotify('记录已添加', 'success');
+        }
+        
+        function deleteRecord(id) {
+            records = records.filter(r => r.id !== id);
+            saveData();
+            renderRecords();
+            updateStats();
+            showNotify('记录已删除', 'success');
+        }
+        
+        function clearAll() {
+            if (records.length === 0) { showNotify('没有记录可清空', 'warning'); return; }
+            records = [];
+            saveData();
+            renderRecords();
+            updateStats();
+            showNotify('所有记录已清空', 'success');
+        }
+        
+        // ===== 渲染 =====
+        function renderRecords() {
+            const tbody = document.getElementById('recordTable');
+            const filtered = currentFilter === '全部' ? records : records.filter(r => r.group === currentFilter);
+            
+            if (filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;padding:15px;">暂无记录</td></tr>';
+                updateFilterBar();
+                return;
+            }
+            tbody.innerHTML = filtered.map(r => `
+                <tr>
+                    <td>${r.date}</td>
+                    <td>${r.group}</td>
+                    <td style="color:#4a9eff;">${r.gameCoin.toLocaleString()}</td>
+                    <td style="color:#4aff7c;">¥${r.rmb.toFixed(2)}</td>
+                    <td><button class="btn-delete" onclick="deleteRecord(${r.id})">删除</button></td>
+                </tr>
+            `).join('');
+            updateFilterBar();
+        }
+        
+        function updateFilterBar() {
+            const bar = document.getElementById('filterBar');
+            const groups = [...new Set(records.map(r => r.group))];
+            
+            if (groups.length === 0) {
+                bar.innerHTML = '<button class="filter-btn active">全部</button>';
+                return;
+            }
+            
+            bar.innerHTML = '<button class="filter-btn' + (currentFilter === '全部' ? ' active' : '') + '" onclick="filterByGroup(\'全部\')">全部</button>' +
+                groups.map(g => 
+                    '<button class="filter-btn' + (currentFilter === g ? ' active' : '') + '" onclick="filterByGroup(\'' + g + '\')">' + g + '</button>'
+                ).join('');
+        }
+        
+        function filterByGroup(group) {
+            currentFilter = group;
+            updateFilterBar();
+            renderRecords();
+        }
+        
+        function updateStats() {
+            const totalRecords = records.length;
+            const totalGameCoin = records.reduce((sum, r) => sum + r.gameCoin, 0);
+            const totalRmb = records.reduce((sum, r) => sum + r.rmb, 0);
+            const uniqueDates = [...new Set(records.map(r => r.date))];
+            const days = uniqueDates.length || 1;
+            const avgRmb = totalRmb / days;
+            
+            document.getElementById('totalRecords').textContent = totalRecords;
+            document.getElementById('totalGameCoin').textContent = formatNumber(totalGameCoin);
+            document.getElementById('totalRmb').textContent = `¥${totalRmb.toFixed(0)}`;
+            document.getElementById('avgRmb').textContent = `¥${avgRmb.toFixed(0)}`;
+            
+            updateGroupStats(totalGameCoin, totalRmb);
+        }
+        
+        function updateGroupStats(totalGameCoin, totalRmb) {
+            const tbody = document.getElementById('groupStatsTable');
+            if (records.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;padding:12px;">暂无数据</td></tr>';
+                return;
+            }
+            
+            const groupData = {};
+            records.forEach(r => {
+                if (!groupData[r.group]) groupData[r.group] = { count: 0, gameCoin: 0, rmb: 0 };
+                groupData[r.group].count++;
+                groupData[r.group].gameCoin += r.gameCoin;
+                groupData[r.group].rmb += r.rmb;
+            });
+            
+            const sorted = Object.entries(groupData).sort((a, b) => b[1].rmb - a[1].rmb);
+            
+            tbody.innerHTML = sorted.map(([group, data]) => {
+                const rmbPercent = totalRmb > 0 ? ((data.rmb / totalRmb) * 100).toFixed(1) : 0;
+                return `
+                    <tr>
+                        <td style="font-weight:bold;">${group}</td>
+                        <td>${data.count}</td>
+                        <td style="color:#4a9eff;">${formatNumber(data.gameCoin)}</td>
+                        <td style="color:#4aff7c;">¥${data.rmb.toFixed(2)}</td>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <div style="flex:1;background:#eee;border-radius:8px;height:16px;overflow:hidden;">
+                                    <div style="background:linear-gradient(90deg,#667eea,#764ba2);height:100%;width:${rmbPercent}%;"></div>
+                                </div>
+                                <span style="font-size:0.75em;color:#666;min-width:35px;">${rmbPercent}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function formatNumber(num) {
+            if (num >= 10000) return (num / 10000).toFixed(1) + '万';
+            return num.toLocaleString();
+        }
+        
+        function saveData() {
+            localStorage.setItem('gameIncome', JSON.stringify(records));
+        }
+        
+        function exportData() {
+            if (records.length === 0) { showNotify('没有数据可导出', 'warning'); return; }
+            const dataStr = JSON.stringify(records, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `游戏币收入_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            showNotify('数据已导出', 'success');
+        }
+        
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (!Array.isArray(imported)) { showNotify('文件格式不正确', 'error'); return; }
+                    records = [...imported, ...records];
+                    saveData();
+                    renderRecords();
+                    updateStats();
+                    showNotify(`成功导入 ${imported.length} 条记录`, 'success');
+                } catch (error) {
+                    showNotify('文件读取失败', 'error');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+        
+        // 回车键快速添加
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && e.target.tagName === 'INPUT' && !e.target.closest('.group-manager')) {
+                addRecord();
+            }
+        });
+    </script>
+</body>
+</html>
