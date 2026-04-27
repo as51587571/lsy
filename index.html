@@ -281,6 +281,13 @@
             background: rgba(74, 126, 255, 0.2);
         }
 
+        .item-cell.highlighted-cell {
+            background: rgba(74, 255, 124, 0.15) !important;
+            border: 2px solid #4aff7c !important;
+            box-shadow: 0 0 10px rgba(74, 255, 124, 0.4) !important;
+            position: relative;
+        }
+
         .button-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -1042,15 +1049,15 @@
                         <h3 style="margin-bottom: 10px; color: #4a9eff; font-size: 1em;">成本和收益计算</h3>
                         <div class="input-group">
                             <label for="craftQuantity">制作数量:</label>
-                            <input type="number" id="craftQuantity" value="1" min="1">
+                            <input type="number" id="craftQuantity" value="1" min="1" onclick="this.select()">
                         </div>
                         <div class="input-group" style="margin-top: 8px;">
                             <label for="sellPrice">售价:</label>
-                            <input type="number" id="sellPrice" placeholder="请输入物品售价" min="0">
+                            <input type="number" id="sellPrice" placeholder="请输入物品售价" min="0" onclick="this.select()">
                         </div>
                         <div class="input-group" style="margin-top: 8px;">
                             <label for="successCount">成功数量:</label>
-                            <input type="number" id="successCount" value="1" min="0" placeholder="实际制作成功的数量">
+                            <input type="number" id="successCount" value="1" min="0" placeholder="实际制作成功的数量" onclick="this.select()">
                         </div>
                         <div class="input-group" style="margin-top: 8px;">
                             <label for="feeRate">手续费:</label>
@@ -1471,6 +1478,9 @@
             
             // 取消材料库高亮
             highlightRequiredMaterials(null);
+            
+            // 取消物品单元格高亮
+            document.querySelectorAll('.item-cell').forEach(c => c.classList.remove('highlighted-cell'));
         }
         
         // 加载指定种族的数据
@@ -1539,6 +1549,8 @@
             loadMaterialsTable();
             setupProfessionEventListeners();
             updateLocalStorageStatus();
+            loadCalculationInputs();
+            setupCalculationInputListeners();
             // setupItemNameEditing(); // 这个函数不存在，注释掉
             
             // 监听种族选择器变化
@@ -1915,6 +1927,10 @@
                         row.insertCell().innerHTML = '';
                     }
                 }
+            }
+            // 如果有选中的物品，高亮显示
+            if (selectedItem) {
+                highlightSelectedItemCell(selectedItem);
             }
         }
         
@@ -2404,6 +2420,7 @@
             selectedItemIndex = recipes[currentProfession].indexOf(item);
             displayItemDetails(item);
             highlightRequiredMaterials(item);
+            highlightSelectedItemCell(item);
             
             // 显示取消选择按钮
             document.getElementById("clearSelectionBtn").style.display = "inline-block";
@@ -2414,6 +2431,23 @@
             if (!item || !item.materials) return;
             const needed = new Set(Object.keys(item.materials));
             document.querySelectorAll('.material-card[data-material-name]').forEach(card => { if (needed.has(card.dataset.materialName)) card.classList.add('highlighted-card'); });
+        }
+
+        // 高亮选中的物品单元格
+        function highlightSelectedItemCell(item) {
+            // 先清除所有物品单元格的高亮
+            document.querySelectorAll('.item-cell').forEach(c => c.classList.remove('highlighted-cell'));
+            
+            if (!item) return;
+            
+            // 找到对应的物品单元格并添加高亮
+            const cells = document.querySelectorAll('.item-cell');
+            cells.forEach(cell => {
+                const itemIndex = parseInt(cell.dataset.itemIndex);
+                if (!isNaN(itemIndex) && recipes[currentProfession][itemIndex] === item) {
+                    cell.classList.add('highlighted-cell');
+                }
+            });
         }
 
         function updateItemCategory(newCat) {
@@ -2980,6 +3014,57 @@
             priceSpan.appendChild(input);
             input.focus();
             input.select(); // 全选方便直接输入
+        }
+
+        // 保存成本和收益计算的输入框值
+        function saveCalculationInputs() {
+            const inputs = {
+                craftQuantity: document.getElementById('craftQuantity').value,
+                sellPrice: document.getElementById('sellPrice').value,
+                successCount: document.getElementById('successCount').value
+            };
+            localStorage.setItem('calculationInputs', JSON.stringify(inputs));
+        }
+
+        // 加载成本和收益计算的输入框值
+        function loadCalculationInputs() {
+            const saved = localStorage.getItem('calculationInputs');
+            if (saved) {
+                try {
+                    const inputs = JSON.parse(saved);
+                    if (inputs.craftQuantity !== undefined) {
+                        document.getElementById('craftQuantity').value = inputs.craftQuantity;
+                    }
+                    if (inputs.sellPrice !== undefined) {
+                        document.getElementById('sellPrice').value = inputs.sellPrice;
+                    }
+                    if (inputs.successCount !== undefined) {
+                        document.getElementById('successCount').value = inputs.successCount;
+                    }
+                } catch (e) {
+                    console.error('加载计算输入框数据失败:', e);
+                }
+            }
+        }
+
+        // 为计算输入框添加自动保存事件监听
+        function setupCalculationInputListeners() {
+            const craftQuantity = document.getElementById('craftQuantity');
+            const sellPrice = document.getElementById('sellPrice');
+            const successCount = document.getElementById('successCount');
+            
+            if (craftQuantity) {
+                craftQuantity.addEventListener('input', saveCalculationInputs);
+                craftQuantity.addEventListener('change', saveCalculationInputs);
+            }
+            if (sellPrice) {
+                sellPrice.addEventListener('input', saveCalculationInputs);
+                sellPrice.addEventListener('change', saveCalculationInputs);
+            }
+            if (successCount) {
+                successCount.addEventListener('input', saveCalculationInputs);
+                successCount.addEventListener('change', saveCalculationInputs);
+            }
         }
     </script>
 </body>
