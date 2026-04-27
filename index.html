@@ -534,13 +534,17 @@
             font-size: 0.85em;
             color: #ffa500;
             cursor: pointer;
-            transition: color 0.2s;
+            transition: all 0.2s;
             white-space: nowrap;
             flex-shrink: 0;
+            padding: 1px 4px;
+            border-radius: 3px;
+            position: relative;
         }
 
         .material-price:hover {
             color: #ffcc00;
+            background: rgba(255, 165, 0, 0.15);
         }
 
         .material-card .card-delete-btn {
@@ -1755,11 +1759,16 @@
                     card.className = 'material-card';
                     card.draggable = true;
                     card.dataset.materialName = mName;
-                    card.innerHTML = `<button class="card-delete-btn" title="删除材料">×</button><div class="material-content"><span class="material-name" style="color:${mColor};">${mName}</span><span class="material-price editable-price" data-name="${mName}">${material.price.toLocaleString()}</span></div>`;
+                    card.title = `右键菜单:修改名称/颜色`;
+                    card.innerHTML = `<button class="card-delete-btn" title="删除材料">×</button><div class="material-content"><span class="material-name" style="color:${mColor};">${mName}</span><span class="material-price editable-price" data-name="${mName}" title="点击直接修改价格">💰 ${material.price.toLocaleString()}</span></div>`;
                     card.querySelector('.card-delete-btn').addEventListener('click', (e) => { e.stopPropagation(); quickDeleteMaterial(mName); });
                     card.addEventListener('click', (e) => { if (e.target.classList.contains('card-delete-btn')) return; if (e.detail >= 2 && e.target.classList.contains('editable-price')) return; addToQueue(mName, 1); selectMaterialByName(mName, material); });
                     card.querySelector('.material-name').addEventListener('click', (e) => { e.stopPropagation(); addToQueue(mName, 1); selectMaterialByName(mName, material); });
-                    card.querySelector('.editable-price').addEventListener('dblclick', (e) => { e.stopPropagation(); makePriceEditable(e.currentTarget, mName); });
+                    // 点击💰价格直接内联编辑
+                    card.querySelector('.editable-price').addEventListener('click', (e) => { 
+                        e.stopPropagation(); 
+                        makePriceInlineEditable(e.currentTarget, mName); 
+                    });
                     // 添加右键菜单
                     card.addEventListener('contextmenu', (e) => {
                         e.preventDefault();
@@ -1818,6 +1827,8 @@
         // 显示材料右键菜单
         function showMaterialContextMenu(x, y, materialName, material) {
             const menu = document.getElementById('contextMenu');
+            menu.innerHTML = ''; // 清空旧内容
+            
             const colors = [
                 { name: '白色', value: '#ffffff' },
                 { name: '绿色', value: '#4aff7c' },
@@ -1826,22 +1837,48 @@
                 { name: '红色', value: '#ff4a4a' }
             ];
             
-            let html = '';
+            // 1. 修改价格
+            const priceItem = document.createElement('div');
+            priceItem.className = 'context-menu-item';
+            priceItem.innerHTML = `<span>💰 修改价格</span><span style="color:#ffa500;margin-left:auto;">${material.price.toLocaleString()}</span>`;
+            priceItem.onclick = () => editMaterialPriceFromMenu(materialName, material.price);
+            menu.appendChild(priceItem);
+            
+            // 2. 修改名称
+            const nameItem = document.createElement('div');
+            nameItem.className = 'context-menu-item';
+            nameItem.innerHTML = `<span>✏️ 修改名称</span><span style="color:#4a9eff;margin-left:auto;">${materialName}</span>`;
+            nameItem.onclick = () => editMaterialNameFromMenu(materialName);
+            menu.appendChild(nameItem);
+            
+            // 分割线
+            const divider1 = document.createElement('div');
+            divider1.className = 'context-menu-divider';
+            menu.appendChild(divider1);
+            
+            // 3. 颜色选项
             colors.forEach(color => {
+                const colorItem = document.createElement('div');
+                colorItem.className = 'context-menu-item';
                 const isActive = material.color === color.value;
-                html += `<div class="context-menu-item" onclick="setMaterialColor('${materialName}', '${color.value}')">
-                    <span class="color-option" style="background:${color.value};"></span>
-                    <span>${color.name}</span>
-                    ${isActive ? '<span style="color:#4aff7c;margin-left:auto;">✓</span>' : ''}
-                </div>`;
+                colorItem.innerHTML = `<span class="color-option" style="background:${color.value};"></span><span>${color.name}</span>${isActive ? '<span style="color:#4aff7c;margin-left:auto;">✓</span>' : ''}`;
+                colorItem.onclick = () => setMaterialColor(materialName, color.value);
+                menu.appendChild(colorItem);
             });
             
-            html += `<div class="context-menu-divider"></div>`;
-            html += `<div class="context-menu-item danger" onclick="quickDeleteMaterial('${materialName}')">
-                <span>🗑️ 删除材料</span>
-            </div>`;
+            // 分割线
+            const divider2 = document.createElement('div');
+            divider2.className = 'context-menu-divider';
+            menu.appendChild(divider2);
             
-            menu.innerHTML = html;
+            // 4. 删除材料
+            const deleteItem = document.createElement('div');
+            deleteItem.className = 'context-menu-item danger';
+            deleteItem.innerHTML = `<span>🗑️ 删除材料</span>`;
+            deleteItem.onclick = () => quickDeleteMaterial(materialName);
+            menu.appendChild(deleteItem);
+            
+            // 显示菜单
             menu.style.display = 'block';
             menu.style.left = x + 'px';
             menu.style.top = y + 'px';
@@ -1868,6 +1905,87 @@
                 showNotification(`材料颜色已更新`, 'success');
             }
             hideContextMenu();
+        }
+        
+        // 从右键菜单修改材料价格
+        function editMaterialPriceFromMenu(materialName, currentPrice) {
+            hideContextMenu();
+            const newPrice = prompt(`修改材料「${materialName}」的价格:\n当前价格: ${currentPrice.toLocaleString()}`, currentPrice);
+            if (newPrice === null) return; // 用户取消
+            
+            const price = parseInt(newPrice);
+            if (isNaN(price) || price < 0) {
+                showNotification('请输入有效的价格', 'error');
+                return;
+            }
+            
+            const flat = flattenGrid();
+            flat.forEach(item => { if (item && item.name === materialName) item.price = price; });
+            writeFlatToGrid(flat);
+            loadMaterialsTable();
+            loadProfessionItems();
+            if (selectedItem) { displayItemDetails(selectedItem); highlightRequiredMaterials(selectedItem); }
+            showNotification(`材料 ${materialName} 价格已更新为 ${price.toLocaleString()}`, 'success');
+            autoSave();
+        }
+        
+        // 从右键菜单修改材料名称
+        function editMaterialNameFromMenu(oldName) {
+            hideContextMenu();
+            const newName = prompt(`修改材料名称:\n当前名称: ${oldName}`, oldName);
+            if (newName === null || !newName.trim()) return;
+            const trimmedName = newName.trim();
+            
+            // 如果名称没变,直接返回
+            if (trimmedName === oldName) {
+                showNotification('名称未变化', 'info');
+                return;
+            }
+            
+            // 检查是否重名
+            const flat = flattenGrid();
+            if (flat.some(m => m && m.name === trimmedName && m.name !== oldName)) {
+                showNotification(`当前职业材料库中已存在同名材料「${trimmedName}」`, 'error');
+                return;
+            }
+            
+            // 更新材料名称
+            flat.forEach(item => { 
+                if (item && item.name === oldName) item.name = trimmedName; 
+            });
+            writeFlatToGrid(flat);
+            
+            // 更新所有使用该材料的物品
+            const items = recipes[currentProfession] || [];
+            let updatedItemCount = 0;
+            items.forEach(item => {
+                if (item.materials && item.materials[oldName]) {
+                    item.materials[trimmedName] = item.materials[oldName];
+                    delete item.materials[oldName];
+                    updatedItemCount++;
+                }
+            });
+            
+            // 刷新界面
+            loadMaterialsTable();
+            loadProfessionItems();
+            
+            // 如果当前选中的物品使用了该材料,重新显示详情
+            if (selectedItem && selectedItem.materials && (selectedItem.materials[trimmedName] || selectedItem.materials[oldName])) {
+                const itemIndex = recipes[currentProfession].findIndex(i => i.name === selectedItem.name);
+                if (itemIndex >= 0) {
+                    selectedItem = recipes[currentProfession][itemIndex];
+                    displayItemDetails(selectedItem);
+                    highlightRequiredMaterials(selectedItem);
+                }
+            }
+            
+            if (updatedItemCount > 0) {
+                showNotification(`✅ 材料名称已更新: 「${oldName}」→「${trimmedName}」\n已自动更新 ${updatedItemCount} 个物品`, 'success');
+            } else {
+                showNotification(`✅ 材料名称已更新: 「${oldName}」→「${trimmedName}」`, 'success');
+            }
+            autoSave();
         }
         
         // 隐藏右键菜单
@@ -2108,15 +2226,23 @@
             materialsList.innerHTML = "";
             for (const [materialName, quantity] of Object.entries(item.materials)) {
                 const material = materials[materialName];
+                const materialItem = document.createElement("div");
+                materialItem.className = "material-item";
+                
                 if (material) {
-                    const materialItem = document.createElement("div");
-                    materialItem.className = "material-item";
-                    materialItem.innerHTML = `<span class="editable-material-name" data-material-name="${materialName}" style="cursor: pointer; color: #4a9eff;">${materialName}</span><span> x</span><span class="editable-material-quantity" data-material-name="${materialName}" style="cursor: pointer; color: #ffa500;">${quantity}</span><span> 单价: ${material.price.toLocaleString()}</span><span class="delete-material-btn" data-material-name="${materialName}" style="cursor: pointer; color: #ff4a4a; margin-left: 10px; font-size: 0.8em;">×</span>`;
-                    materialsList.appendChild(materialItem);
-                    materialItem.querySelector('.editable-material-name').addEventListener('click', (e) => { e.stopPropagation(); makeMaterialNameEditable(materialItem.querySelector('.editable-material-name'), item, materialName); });
-                    materialItem.querySelector('.editable-material-quantity').addEventListener('click', (e) => { e.stopPropagation(); makeMaterialQuantityEditable(materialItem.querySelector('.editable-material-quantity'), item, materialName); });
-                    materialItem.querySelector('.delete-material-btn').addEventListener('click', (e) => { e.stopPropagation(); deleteMaterialFromItem(item, materialName); });
+                    // 材料存在于材料库中
+                    const materialColor = material.color || '#4a9eff';
+                    materialItem.innerHTML = `<span class="editable-material-name" data-material-name="${materialName}" style="cursor: pointer; color: ${materialColor};">${materialName}</span><span> x</span><span class="editable-material-quantity" data-material-name="${materialName}" style="cursor: pointer; color: #ffa500;">${quantity}</span><span> 单价: ${material.price.toLocaleString()}</span><span class="delete-material-btn" data-material-name="${materialName}" style="cursor: pointer; color: #ff4a4a; margin-left: 10px; font-size: 0.8em;">×</span>`;
+                } else {
+                    // 材料不存在(可能是改名了或已删除),显示警告
+                    materialItem.style.opacity = '0.6';
+                    materialItem.innerHTML = `<span class="editable-material-name" data-material-name="${materialName}" style="cursor: pointer; color: #ff6b6b; text-decoration: line-through;">${materialName}</span><span> x</span><span class="editable-material-quantity" data-material-name="${materialName}" style="cursor: pointer; color: #ffa500;">${quantity}</span><span style="color: #ff6b6b; margin-left: 5px; font-size: 0.8em;">(材料已删除或改名)</span><span class="delete-material-btn" data-material-name="${materialName}" style="cursor: pointer; color: #ff4a4a; margin-left: 10px; font-size: 0.8em;">×</span>`;
                 }
+                
+                materialsList.appendChild(materialItem);
+                materialItem.querySelector('.editable-material-name').addEventListener('click', (e) => { e.stopPropagation(); makeMaterialNameEditable(materialItem.querySelector('.editable-material-name'), item, materialName); });
+                materialItem.querySelector('.editable-material-quantity').addEventListener('click', (e) => { e.stopPropagation(); makeMaterialQuantityEditable(materialItem.querySelector('.editable-material-quantity'), item, materialName); });
+                materialItem.querySelector('.delete-material-btn').addEventListener('click', (e) => { e.stopPropagation(); deleteMaterialFromItem(item, materialName); });
             }
             const addMaterialBtn = document.createElement("div");
             addMaterialBtn.className = "add-material-btn";
@@ -2370,6 +2496,58 @@
             input.addEventListener('blur', saveEdit);
             input.addEventListener('keypress', (e) => { if (e.key === 'Enter') saveEdit(); });
             priceSpan.innerHTML = ''; priceSpan.appendChild(input); input.focus(); input.select();
+        }
+        
+        // 内联编辑价格(点击💰直接编辑)
+        function makePriceInlineEditable(priceSpan, materialName) {
+            const mat = materials[materialName];
+            if (!mat) return;
+            
+            // 如果已经在编辑状态,不再重复创建
+            if (priceSpan.querySelector('input')) return;
+            
+            const currentPrice = mat.price;
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.value = currentPrice;
+            input.style.cssText = 'background: rgba(255,255,255,0.25); border: 2px solid #ffa500; color: #ffcc00; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; width: 80px; font-weight: bold; outline: none;';
+            
+            const saveEdit = () => {
+                const newPrice = parseInt(input.value);
+                if (!isNaN(newPrice) && newPrice >= 0 && newPrice !== currentPrice) {
+                    // 更新价格
+                    const flat = flattenGrid();
+                    flat.forEach(item => { if (item && item.name === materialName) item.price = newPrice; });
+                    writeFlatToGrid(flat);
+                    
+                    // 刷新显示
+                    loadMaterialsTable();
+                    loadProfessionItems();
+                    if (selectedItem) { displayItemDetails(selectedItem); highlightRequiredMaterials(selectedItem); }
+                    
+                    showNotification(`💰 ${materialName}: ${currentPrice.toLocaleString()} → ${newPrice.toLocaleString()}`, 'success');
+                    autoSave();
+                } else if (newPrice === currentPrice) {
+                    // 没有修改,恢复显示
+                    loadMaterialsTable();
+                }
+            };
+            
+            input.addEventListener('blur', saveEdit);
+            input.addEventListener('keypress', (e) => { 
+                if (e.key === 'Enter') {
+                    input.blur(); // 触发blur事件保存
+                }
+                if (e.key === 'Escape') {
+                    loadMaterialsTable(); // 取消编辑
+                }
+            });
+            
+            // 替换内容为输入框
+            priceSpan.innerHTML = '';
+            priceSpan.appendChild(input);
+            input.focus();
+            input.select(); // 全选方便直接输入
         }
     </script>
 </body>
