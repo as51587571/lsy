@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>拍卖行价格计算器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .calculator-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 22px;
+        }
+
+        .main-input-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: end;
+        }
+
+        .calc-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .input-section {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .result-section-inline {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .section-divider {
+            margin: 15px 0;
+            border: none;
+            border-top: 2px dashed #ddd;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .input-group {
+            margin-bottom: 10px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .fee-settings {
+            margin-bottom: 20px;
+        }
+
+        .result-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 0;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .result-card {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .result-card label {
+            display: block;
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        .result-card .value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .result-card .value.highlight-value {
+            color: #667eea;
+            font-size: 18px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .highlight {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            margin-top: 8px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .loss-highlight {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            margin-top: 8px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .profit-highlight {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            margin-top: 8px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .calculate-btn {
+            width: 100%;
+            padding: 8px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .calculate-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .clear-btn {
+            width: 100%;
+            padding: 8px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-top: 6px;
+        }
+
+        .clear-btn:hover {
+            transform: translateY(-2px);
+            background: #d32f2f;
+        }
+
+        .info-text {
+            color: #666;
+            font-size: 12px;
+            margin-top: 6px;
+            text-align: center;
+        }
+
+        .second-calculation {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px dashed #ddd;
+        }
+
+        .loss-info {
+            color: #f44336;
+            font-weight: bold;
+        }
+
+        .profit-info {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator-container">
+        <h1>🏪 拍卖行价格计算器</h1>
+        
+        <!-- 第一部分：计算等价 -->
+        <div class="section-title">💰 计算等价</div>
+        <div class="calc-section">
+            <div class="input-section">
+                <div class="main-input-row">
+                    <div class="input-group">
+                        <label for="price1">10%手续费拍卖行的售价：</label>
+                        <input type="number" id="price1" placeholder="请输入10%拍卖行的价格" min="0" step="0.01">
+                    </div>
+                    <div class="input-group">
+                        <label for="fee1">低手续费 (%)</label>
+                        <input type="number" id="fee1" value="10" min="0" max="100" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label for="fee2">高手续费 (%)</label>
+                        <input type="number" id="fee2" value="20" min="0" max="100" step="0.1">
+                    </div>
+                </div>
+                <button class="calculate-btn" onclick="calculate()">计算等价价格</button>
+            </div>
+
+            <div class="result-section-inline">
+                <div class="result-section" id="results" style="display: none;">
+                    <div class="result-grid">
+                        <div class="result-card">
+                            <label>10%拍卖行实得</label>
+                            <div class="value" id="actual1">¥0.00</div>
+                        </div>
+                        <div class="result-card">
+                            <label>20%拍卖行应卖价</label>
+                            <div class="value highlight-value" id="price2">¥0.00</div>
+                        </div>
+                        <div class="result-card">
+                            <label>20%拍卖行实得</label>
+                            <div class="value" id="actual2">¥0.00</div>
+                        </div>
+                    </div>
+                    <div class="highlight" id="recommendation">
+                        计算结果
+                    </div>
+                    <p class="info-text">在20%手续费拍卖行卖这个价格，收益与10%拍卖行相同</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分隔线 -->
+        <hr class="section-divider">
+
+        <!-- 第二部分：计算盈亏 -->
+        <div class="section-title">📊 计算盈亏</div>
+        <div class="calc-section">
+            <div class="input-section">
+                <div class="input-group">
+                    <label for="actualPrice2">20%拍卖行实际售价：</label>
+                    <input type="number" id="actualPrice2" placeholder="输入你在20%拍卖行的实际售价" min="0" step="0.01">
+                </div>
+                <button class="calculate-btn" onclick="calculateLoss()">计算盈亏</button>
+            </div>
+            
+            <div class="result-section-inline">
+                <div id="lossResults" style="display: none;">
+                    <div class="result-grid">
+                        <div class="result-card">
+                            <label>实际售价</label>
+                            <div class="value" id="displayActualPrice2">¥0.00</div>
+                        </div>
+                        <div class="result-card">
+                            <label>扣除手续费后实得</label>
+                            <div class="value" id="displayActualGet2">¥0.00</div>
+                        </div>
+                        <div class="result-card">
+                            <label>与10%拍卖行相比</label>
+                            <div class="value" id="comparisonResult">¥0.00</div>
+                        </div>
+                    </div>
+                    <div id="lossOrProfit" class="loss-highlight">
+                        盈亏结果
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分隔线 -->
+        <hr class="section-divider">
+
+        <!-- 第三部分：反推计算 -->
+        <div class="section-title">🔄 反推计算</div>
+        <div class="calc-section">
+            <div class="input-section">
+                <div class="input-group">
+                    <label for="price2Reverse">20%手续费拍卖行的售价：</label>
+                    <input type="number" id="price2Reverse" placeholder="请输入20%拍卖行的价格" min="0" step="0.01">
+                </div>
+                <button class="calculate-btn" onclick="calculateReverse()">反推10%拍卖行价格</button>
+            </div>
+            
+            <div class="result-section-inline">
+                <div id="reverseResults" style="display: none;">
+                    <div class="result-grid">
+                        <div class="result-card">
+                            <label>20%拍卖行实得</label>
+                            <div class="value" id="reverseActual2">¥0.00</div>
+                        </div>
+                        <div class="result-card">
+                            <label>10%拍卖行应卖价</label>
+                            <div class="value highlight-value" id="reversePrice1">¥0.00</div>
+                        </div>
+                        <div class="result-card">
+                            <label>10%拍卖行实得</label>
+                            <div class="value" id="reverseActual1">¥0.00</div>
+                        </div>
+                    </div>
+                    <div class="highlight" id="reverseRecommendation">
+                        反推结果
+                    </div>
+                    <p class="info-text">在10%手续费拍卖行卖这个价格，收益与20%拍卖行相同</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 清空所有按钮 -->
+        <div style="text-align: center; margin-top: 15px;">
+            <button class="clear-btn" onclick="clearAll()" style="max-width: 200px; margin: 0 auto;">🗑️ 清空所有</button>
+        </div>
+    </div>
+
+    <script>
+        let globalData = {};
+
+        function calculate() {
+            const price1 = parseFloat(document.getElementById('price1').value);
+            const fee1 = parseFloat(document.getElementById('fee1').value);
+            const fee2 = parseFloat(document.getElementById('fee2').value);
+
+            if (isNaN(price1) || price1 <= 0) {
+                alert('请输入有效的价格');
+                return;
+            }
+
+            if (isNaN(fee1) || isNaN(fee2)) {
+                alert('请输入有效的手续费率');
+                return;
+            }
+
+            if (fee2 >= 100) {
+                alert('高手续费不能等于或超过100%');
+                return;
+            }
+
+            // 计算10%拍卖行的实际收益
+            const actual1 = price1 * (1 - fee1 / 100);
+
+            // 计算20%拍卖行需要卖多少才能获得相同收益
+            // actual1 = price2 * (1 - fee2/100)
+            // price2 = actual1 / (1 - fee2/100)
+            const price2 = actual1 / (1 - fee2 / 100);
+            const actual2 = price2 * (1 - fee2 / 100);
+
+            // 保存全局数据供第二次计算使用
+            globalData = {
+                price1: price1,
+                fee1: fee1,
+                fee2: fee2,
+                actual1: actual1,
+                price2: price2
+            };
+
+            // 显示结果
+            document.getElementById('actual1').textContent = `¥${actual1.toFixed(2)}`;
+            document.getElementById('price2').textContent = `¥${price2.toFixed(2)}`;
+            document.getElementById('actual2').textContent = `¥${actual2.toFixed(2)}`;
+
+            // 显示推荐信息
+            const markup = ((price2 - price1) / price1 * 100).toFixed(2);
+            document.getElementById('recommendation').innerHTML = `
+                💡 在${fee2}%手续费拍卖行需卖 ¥${price2.toFixed(2)}<br>
+                <small>比${fee1}%拍卖行贵 ${markup}%</small>
+            `;
+
+            // 显示结果区域
+            document.getElementById('results').style.display = 'block';
+            // 隐藏第二次计算结果
+            document.getElementById('lossResults').style.display = 'none';
+            // 自动聚焦到第二个输入框
+            setTimeout(() => {
+                document.getElementById('actualPrice2').focus();
+                // 滚动到第二个输入框位置
+                document.getElementById('actualPrice2').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
+
+        function calculateLoss() {
+            const actualPrice2 = parseFloat(document.getElementById('actualPrice2').value);
+            
+            if (isNaN(actualPrice2) || actualPrice2 <= 0) {
+                alert('请输入有效的实际售价');
+                return;
+            }
+
+            if (!globalData.actual1) {
+                alert('请先进行第一次计算');
+                return;
+            }
+
+            const { fee2, actual1 } = globalData;
+
+            // 计算20%拍卖行实际售价的实得金额
+            const actualGet2 = actualPrice2 * (1 - fee2 / 100);
+
+            // 计算与10%拍卖行的差额
+            const difference = actualGet2 - actual1;
+
+            // 显示结果
+            document.getElementById('displayActualPrice2').textContent = `¥${actualPrice2.toFixed(2)}`;
+            document.getElementById('displayActualGet2').textContent = `¥${actualGet2.toFixed(2)}`;
+
+            const comparisonElement = document.getElementById('comparisonResult');
+            const lossOrProfitElement = document.getElementById('lossOrProfit');
+
+            if (difference < 0) {
+                // 亏了
+                comparisonElement.innerHTML = `<span class="loss-info">亏 ¥${Math.abs(difference).toFixed(2)}</span>`;
+                const lossPercent = ((Math.abs(difference) / actual1) * 100).toFixed(2);
+                lossOrProfitElement.className = 'loss-highlight';
+                lossOrProfitElement.innerHTML = `
+                    😢 亏损 ¥${Math.abs(difference).toFixed(2)}<br>
+                    <small>相比10%拍卖行少赚 ${lossPercent}%</small>
+                `;
+            } else if (difference > 0) {
+                // 赚了
+                comparisonElement.innerHTML = `<span class="profit-info">赚 ¥${difference.toFixed(2)}</span>`;
+                const profitPercent = ((difference / actual1) * 100).toFixed(2);
+                lossOrProfitElement.className = 'profit-highlight';
+                lossOrProfitElement.innerHTML = `
+                    😊 多赚 ¥${difference.toFixed(2)}<br>
+                    <small>相比10%拍卖行多赚 ${profitPercent}%</small>
+                `;
+            } else {
+                // 持平
+                comparisonElement.innerHTML = `<span>持平</span>`;
+                lossOrProfitElement.className = 'highlight';
+                lossOrProfitElement.innerHTML = `
+                    ⚖️ 收益相同<br>
+                    <small>两个拍卖行到手金额一样</small>
+                `;
+            }
+
+            // 显示结果
+            document.getElementById('lossResults').style.display = 'block';
+        }
+
+        function clearAll() {
+            // 清空所有输入框
+            document.getElementById('price1').value = '';
+            document.getElementById('actualPrice2').value = '';
+            document.getElementById('price2Reverse').value = '';
+            
+            // 隐藏所有结果
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('lossResults').style.display = 'none';
+            document.getElementById('reverseResults').style.display = 'none';
+            
+            // 聚焦到第一个输入框
+            document.getElementById('price1').focus();
+        }
+
+        function calculateReverse() {
+            const price2 = parseFloat(document.getElementById('price2Reverse').value);
+            const fee1 = parseFloat(document.getElementById('fee1').value);
+            const fee2 = parseFloat(document.getElementById('fee2').value);
+
+            if (isNaN(price2) || price2 <= 0) {
+                alert('请输入有效的价格');
+                return;
+            }
+
+            if (isNaN(fee1) || isNaN(fee2)) {
+                alert('请输入有效的手续费率');
+                return;
+            }
+
+            if (fee1 >= 100) {
+                alert('低手续费不能等于或超过100%');
+                return;
+            }
+
+            // 计算20%拍卖行的实际收益
+            const actual2 = price2 * (1 - fee2 / 100);
+
+            // 计算10%拍卖行需要卖多少才能获得相同收益
+            // actual2 = price1 * (1 - fee1/100)
+            // price1 = actual2 / (1 - fee1/100)
+            const price1 = actual2 / (1 - fee1 / 100);
+            const actual1 = price1 * (1 - fee1 / 100);
+
+            // 显示结果
+            document.getElementById('reverseActual2').textContent = `¥${actual2.toFixed(2)}`;
+            document.getElementById('reversePrice1').textContent = `¥${price1.toFixed(2)}`;
+            document.getElementById('reverseActual1').textContent = `¥${actual1.toFixed(2)}`;
+
+            // 显示推荐信息
+            const discount = ((price1 - price2) / price2 * 100).toFixed(2);
+            document.getElementById('reverseRecommendation').innerHTML = `
+                💡 在${fee1}%手续费拍卖行需卖 ¥${price1.toFixed(2)}<br>
+                <small>比${fee2}%拍卖行便宜 ${Math.abs(discount)}%</small>
+            `;
+
+            // 显示结果区域
+            document.getElementById('reverseResults').style.display = 'block';
+        }
+
+        // 回车键触发计算
+        document.getElementById('price1').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                calculate();
+            }
+        });
+
+        document.getElementById('actualPrice2').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                calculateLoss();
+            }
+        });
+
+        document.getElementById('price2Reverse').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                calculateReverse();
+            }
+        });
+    </script>
+</body>
+</html>
