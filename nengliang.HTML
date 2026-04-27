@@ -288,8 +288,10 @@
     <button class="btn btn-success" onclick="addNewZone()">➕ 添加分区</button>
     <span>🎯 能量上限:</span>
     <input type="number" id="maxEnergy" class="param-input" value="840" step="1">
-    <span>⏱️ 每小时恢复:</span>
-    <input type="number" id="recoverPerHour" class="param-input" value="5" step="0.5">
+    <span>⏱️ 每3小时恢复:</span>
+    <input type="number" id="recoverPer3Hours" class="param-input" value="15" step="1">
+    <span style="font-size:0.75rem; color:#6b7280;">🕐 恢复基准时间:</span>
+    <input type="time" id="gameRecoveryTime" class="param-input" value="00:00" style="width:80px;">
     <button id="toggleDecimalBtn" class="btn btn-info" onclick="toggleDecimalMode()">🔢 显示小数</button>
     <button class="btn btn-warning" onclick="clearAllData()">🗑️ 清空数据</button>
     <button class="btn btn-info" onclick="exportData()">📤 导出备份</button>
@@ -328,6 +330,7 @@
             const savedRecover = localStorage.getItem('energyRecover');
             const savedDecimal = localStorage.getItem('energyShowDecimal');
             const savedLastCalc = localStorage.getItem('energyLastRecalcTime');
+            const savedGameRecoveryTime = localStorage.getItem('energyGameRecoveryTime');
 
             if (savedZones) zonesConfig = JSON.parse(savedZones);
             else zonesConfig = [
@@ -372,7 +375,14 @@
             }
             
             if (savedMaxEnergy) document.getElementById('maxEnergy').value = savedMaxEnergy;
-            if (savedRecover) document.getElementById('recoverPerHour').value = savedRecover;
+            // 兼容旧数据：如果只有每小时恢复率，转换成3小时恢复率
+            if (savedRecover) {
+                const oldHourlyRate = parseFloat(savedRecover) || 5;
+                document.getElementById('recoverPer3Hours').value = (oldHourlyRate * 3).toFixed(0);
+            }
+            if (savedGameRecoveryTime) {
+                document.getElementById('gameRecoveryTime').value = savedGameRecoveryTime;
+            }
             if (savedDecimal) showDecimal = (savedDecimal === 'true');
             if (savedLastCalc) lastRecalcTimestamp = parseInt(savedLastCalc);
             else lastRecalcTimestamp = Date.now();
@@ -396,17 +406,39 @@
             localStorage.setItem('energyZonesConfig', JSON.stringify(zonesConfig));
             localStorage.setItem('energyAccounts', JSON.stringify(accounts));
             localStorage.setItem('energyMax', document.getElementById('maxEnergy').value);
-            localStorage.setItem('energyRecover', document.getElementById('recoverPerHour').value);
+            localStorage.setItem('energyRecover', document.getElementById('recoverPer3Hours').value);
+            localStorage.setItem('energyGameRecoveryTime', document.getElementById('gameRecoveryTime').value);
             localStorage.setItem('energyShowDecimal', showDecimal);
             localStorage.setItem('energyLastRecalcTime', lastRecalcTimestamp);
         } catch(e) { console.warn(e); }
     }
 
     // ========== 核心能量恢复 ==========
-    // 精确计算能量：基于每个账号的记录时间和实际经过的时间
+    // 获取每小时恢复率（从3小时恢复率转换）
+    function getRecoverPerHour() {
+        const recoverPer3Hours = parseFloat(document.getElementById('recoverPer3Hours').value) || 15;
+        return recoverPer3Hours / 3;
+    }
+    
+    // 获取游戏恢复基准时间戳（今天的基准时间点）
+    function getGameRecoveryBaseTime() {
+        const timeStr = document.getElementById('gameRecoveryTime').value || '00:00';
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        const now = new Date();
+        const baseTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
+        // 如果基准时间已过，则用今天的；否则用昨天的
+        if (baseTime > now) {
+            baseTime.setDate(baseTime.getDate() - 1);
+        }
+        return baseTime.getTime();
+    }
+    
+    // 精确计算能量：基于游戏恢复周期
     function calculateCurrentEnergy(account, maxEnergy, recPerHour) {
         const now = Date.now();
         const recordTime = account.recordTime || now;
+        
+        // 计算从记录时间到现在经过的毫秒数
         const elapsedMs = now - recordTime;
         if (elapsedMs <= 0) return account.current;
         
@@ -423,7 +455,7 @@
     function batchUpdateEnergyByCycles() {
         const now = Date.now();
         const maxEnergy = parseFloat(document.getElementById('maxEnergy').value) || 840;
-        const recPerHour = parseFloat(document.getElementById('recoverPerHour').value) || 5;
+        const recPerHour = getRecoverPerHour();
         
         let changed = false;
         for (let acc of accounts) {
@@ -486,7 +518,7 @@
     // 获取TOP5账号，返回Map：key为"zone|name"，value为排名(1-5)
     function getTop5EnergyAccountsWithRank() {
         const maxEnergy = parseFloat(document.getElementById('maxEnergy').value) || 840;
-        const recoverPerHour = parseFloat(document.getElementById('recoverPerHour').value) || 5;
+        const recoverPerHour = getRecoverPerHour();
         
         // 计算每个账号的当前能量和剩余时间
         const accSnapshot = accounts.map(acc => {
@@ -544,7 +576,7 @@
     
     function renderAll() {
         const maxEnergy = parseFloat(document.getElementById('maxEnergy').value) || 840;
-        const recoverPerHour = parseFloat(document.getElementById('recoverPerHour').value) || 5;
+        const recoverPerHour = getRecoverPerHour();
         const rankMap = getTop5EnergyAccountsWithRank();
         const container = document.getElementById('zonesContainer');
         container.innerHTML = '';
@@ -729,7 +761,7 @@
     // 轻量刷新 (每秒)
     function softRefreshUI(forceRecalc = false) {
         const maxEnergy = parseFloat(document.getElementById('maxEnergy').value) || 840;
-        const recoverPerHour = parseFloat(document.getElementById('recoverPerHour').value) || 5;
+        const recoverPerHour = getRecoverPerHour();
         const rankMap = getTop5EnergyAccountsWithRank();
         
         for(let zone of zonesConfig) {
@@ -852,7 +884,8 @@
             zonesConfig: zonesConfig,
             accounts: accounts,  // accounts已经包含recordTime，直接导出
             maxEnergy: document.getElementById('maxEnergy').value,
-            recoverPerHour: document.getElementById('recoverPerHour').value,
+            recoverPer3Hours: document.getElementById('recoverPer3Hours').value,
+            gameRecoveryTime: document.getElementById('gameRecoveryTime').value,
             showDecimal: showDecimal,
             exportTime: new Date().toISOString(),  // 记录导出时间，方便调试
             version: '2.0'  // 版本号，方便后续兼容处理
@@ -886,7 +919,16 @@
                         if(!a.lastEnergySync) a.lastEnergySync = now;
                     }
                     if(d.maxEnergy) document.getElementById('maxEnergy').value = d.maxEnergy;
-                    if(d.recoverPerHour) document.getElementById('recoverPerHour').value = d.recoverPerHour;
+                    // 兼容旧数据
+                    if(d.recoverPer3Hours) {
+                        document.getElementById('recoverPer3Hours').value = d.recoverPer3Hours;
+                    } else if(d.recoverPerHour) {
+                        // 旧版本数据，转换
+                        document.getElementById('recoverPer3Hours').value = (parseFloat(d.recoverPerHour) * 3).toFixed(0);
+                    }
+                    if(d.gameRecoveryTime) {
+                        document.getElementById('gameRecoveryTime').value = d.gameRecoveryTime;
+                    }
                     if(typeof d.showDecimal === 'boolean') showDecimal = d.showDecimal;
                     updateDecimalButtonUI();
                     saveData();
@@ -907,7 +949,11 @@
         calibrateEnergyOnLoadOrOpen();
         startRefreshTimer();
         document.getElementById('maxEnergy').addEventListener('change', () => renderAll());
-        document.getElementById('recoverPerHour').addEventListener('change', () => renderAll());
+        document.getElementById('recoverPer3Hours').addEventListener('change', () => renderAll());
+        document.getElementById('gameRecoveryTime').addEventListener('change', () => {
+            renderAll();
+            saveData();
+        });
     };
 </script>
 </body>
