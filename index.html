@@ -860,9 +860,73 @@
             border: 1px solid rgba(255, 255, 255, 0.3);
             display: inline-block;
         }
+        
+        /* 弹窗样式 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #1a2a3a 0%, #2d3748 100%);
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 2px solid #4a9eff;
+            position: relative;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 28px;
+            color: #ff6b6b;
+            cursor: pointer;
+            transition: all 0.2s;
+            line-height: 1;
+        }
+        
+        .modal-close:hover {
+            color: #ff4a4a;
+            transform: scale(1.2);
+        }
+        
+        .modal-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #4a9eff;
+            margin-bottom: 20px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
+    <!-- 弹窗结构 -->
+    <div class="modal-overlay" id="resultModal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <div class="modal-title" id="modalTitle">计算结果</div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+    
     <div class="container">
         <header>
             <h1>🎮 制作成本计算器</h1>
@@ -964,13 +1028,33 @@
                     </div>
 
                     <div class="calculation-section">
-                        <h3 style="margin-bottom: 10px; color: #4a9eff; font-size: 1em;">成本计算</h3>
+                        <h3 style="margin-bottom: 10px; color: #4a9eff; font-size: 1em;">成本和收益计算</h3>
                         <div class="input-group">
                             <label for="craftQuantity">制作数量:</label>
                             <input type="number" id="craftQuantity" value="1" min="1">
                         </div>
-                        <button class="calculate-btn" onclick="calculateCost()">💰 计算成本</button>
-                        <div class="result" id="costResult" style="display: none;"></div>
+                        <div class="input-group" style="margin-top: 8px;">
+                            <label for="sellPrice">售价:</label>
+                            <input type="number" id="sellPrice" placeholder="请输入物品售价" min="0">
+                        </div>
+                        <div class="input-group" style="margin-top: 8px;">
+                            <label for="successCount">成功数量:</label>
+                            <input type="number" id="successCount" value="1" min="0" placeholder="实际制作成功的数量">
+                        </div>
+                        <div class="input-group" style="margin-top: 8px;">
+                            <label for="feeRate">手续费:</label>
+                            <select id="feeRate" style="background: rgba(0,0,0,0.5); border: 1px solid #4a9eff; color: #4a9eff; padding: 5px 10px; border-radius: 5px;">
+                                <option value="0.1">10% 手续费</option>
+                                <option value="0.2" selected>20% 手续费</option>
+                                <option value="0">0% 免手续费</option>
+                                <option value="custom">自定义</option>
+                            </select>
+                        </div>
+                        <div class="input-group" id="customFeeGroup" style="display: none; margin-top: 8px;">
+                            <label for="customFee">自定义费率(%):</label>
+                            <input type="number" id="customFee" value="15" min="0" max="100" step="0.1">
+                        </div>
+                        <button class="calculate-btn" onclick="calculateCostAndProfit()" style="margin-top: 12px;">💰 计算成本和收益</button>
                     </div>
                 </div>
             </div>
@@ -1692,7 +1776,6 @@
                     document.getElementById("itemName").textContent = "未选择物品";
                     document.getElementById("itemLevel").textContent = "";
                     document.getElementById("materialsList").innerHTML = '<p style="color: #aaa; font-size: 0.9em;">请选择一个物品查看材料需求</p>';
-                    document.getElementById("costResult").style.display = "none";
                     highlightRequiredMaterials(null);
                 } else if (selectedItemIndex > itemIndex) {
                     selectedItemIndex--;
@@ -2284,6 +2367,147 @@
         function makeMaterialNameEditable(nameSpan, item, oldMaterialName) { /* 略 */ }
         function makeMaterialQuantityEditable(quantitySpan, item, materialName) { /* 略 */ }
 
+        // 监听手续费选择变化
+        const feeRateSelect = document.getElementById('feeRate');
+        if (feeRateSelect) {
+            feeRateSelect.addEventListener('change', function() {
+                const customFeeGroup = document.getElementById('customFeeGroup');
+                if (this.value === 'custom') {
+                    customFeeGroup.style.display = 'block';
+                } else {
+                    customFeeGroup.style.display = 'none';
+                }
+            });
+        }
+        
+        // 弹窗控制函数
+        function openModal(title, content) {
+            const modal = document.getElementById('resultModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            
+            modalTitle.textContent = title;
+            modalBody.innerHTML = content;
+            modal.classList.add('active');
+        }
+        
+        function closeModal() {
+            const modal = document.getElementById('resultModal');
+            modal.classList.remove('active');
+        }
+        
+        // 点击弹窗外部关闭
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('resultModal');
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+        
+        function calculateCostAndProfit() {
+            if (!selectedItem) { showNotification('请先选择物品', 'warning'); return; }
+            
+            const quantity = parseInt(document.getElementById("craftQuantity").value);
+            const sellPrice = parseFloat(document.getElementById("sellPrice").value) || 0;
+            const successCount = parseInt(document.getElementById("successCount").value) || 0;
+            
+            if (isNaN(quantity) || quantity <= 0) { showNotification('请输入有效的制作数量', 'warning'); return; }
+            
+            // 计算单个成本
+            const singleCost = calculateItemCost(selectedItem);
+            const totalCost = singleCost * quantity;
+            
+            // 获取手续费率
+            let feeRate = parseFloat(feeRateSelect.value);
+            if (feeRateSelect.value === 'custom') {
+                feeRate = parseFloat(document.getElementById('customFee').value) / 100;
+                if (isNaN(feeRate) || feeRate < 0 || feeRate > 1) {
+                    showNotification('请输入有效的手续费率(0-100)', 'warning');
+                    return;
+                }
+            }
+            
+            // 计算收益
+            const totalRevenue = sellPrice * successCount; // 总收入（按成功数量计算）
+            const feeAmount = totalRevenue * feeRate; // 手续费
+            const netRevenue = totalRevenue - feeAmount; // 净收入
+            const profit = netRevenue - totalCost; // 利润
+            const successRate = quantity > 0 ? ((successCount / quantity) * 100) : 0; // 成功率
+            
+            // 实际单个成本（按成功数量分摊）
+            const actualSingleCost = successCount > 0 ? (totalCost / successCount) : 0;
+            const profitPerUnit = successCount > 0 ? (profit / successCount) : 0; // 单个利润
+            const profitRate = totalCost > 0 ? ((profit / totalCost) * 100) : 0; // 利润率
+            
+            // 构建弹窗内容
+            let html = `
+                <div style="margin-bottom: 20px; padding: 15px; background: rgba(74,158,255,0.1); border-radius: 8px; border-left: 4px solid #4a9eff;">
+                    <div style="font-weight: bold; color: #4a9eff; margin-bottom: 12px; font-size: 1.1em;">📊 制作明细</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <div>制作数量: <span style="color: #4a9eff; font-weight: bold; font-size: 1.1em;">${quantity}</span></div>
+                        <div>成功数量: <span style="color: #4aff7c; font-weight: bold; font-size: 1.1em;">${successCount}</span></div>
+                    </div>
+                    <div style="padding: 8px; background: rgba(255,165,0,0.1); border-radius: 5px; margin-bottom: 10px;">
+                        成功率: <span style="color: #ffa500; font-weight: bold; font-size: 1.2em;">${successRate.toFixed(1)}%</span>
+                    </div>
+                    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.15);">
+                        <div style="margin-bottom: 6px;">单个材料成本: <span style="color: #ffa500; font-weight: bold;">${singleCost.toLocaleString()}</span></div>
+                        <div style="margin-bottom: 6px;">总材料成本: <span style="color: #ff6b6b; font-weight: bold; font-size: 1.1em;">${totalCost.toLocaleString()}</span></div>
+                        ${successCount > 0 ? `<div style="color: #ffa500; font-size: 0.9em; margin-top: 8px; padding: 6px; background: rgba(255,165,0,0.05); border-radius: 4px;">💡 实际单个成本: <span style="font-weight: bold;">${actualSingleCost.toFixed(0)}</span> (含失败分摊)</div>` : ''}
+                    </div>
+                </div>
+            `;
+            
+            if (sellPrice > 0 && successCount > 0) {
+                const profitColor = profit >= 0 ? '#4aff7c' : '#ff6b6b';
+                const profitIcon = profit >= 0 ? '✅' : '❌';
+                html += `
+                    <div style="padding: 15px; background: rgba(74,255,124,0.1); border-radius: 8px; border-left: 4px solid ${profitColor};">
+                        <div style="font-weight: bold; color: ${profitColor}; margin-bottom: 12px; font-size: 1.1em;">💰 收益分析</div>
+                        <div style="margin-bottom: 6px;">单个售价: <span style="color: #4aff7c; font-weight: bold;">${sellPrice.toLocaleString()}</span></div>
+                        <div style="margin-bottom: 6px;">总收入(${successCount}个): <span style="color: #4aff7c; font-weight: bold; font-size: 1.1em;">${totalRevenue.toLocaleString()}</span></div>
+                        <div style="margin-bottom: 6px;">手续费(${(feeRate * 100).toFixed(1)}%): <span style="color: #ff6b6b; font-weight: bold;">-${feeAmount.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</span></div>
+                        <div style="margin-bottom: 10px;">净收入: <span style="color: #4aff7c; font-weight: bold; font-size: 1.1em;">${netRevenue.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}</span></div>
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 2px solid ${profitColor};">
+                            <div style="font-size: 1.3em; font-weight: bold; color: ${profitColor}; text-align: center; margin-bottom: 8px;">
+                                ${profitIcon} 利润: ${profit >= 0 ? '+' : ''}${profit.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center;">
+                                <div style="padding: 8px; background: rgba(255,255,255,0.05); border-radius: 5px;">
+                                    <div style="font-size: 0.85em; color: #888; margin-bottom: 4px;">单个利润</div>
+                                    <div style="font-size: 1.1em; font-weight: bold; color: ${profitColor};">${profitPerUnit >= 0 ? '+' : ''}${profitPerUnit.toFixed(0)}</div>
+                                </div>
+                                <div style="padding: 8px; background: rgba(255,255,255,0.05); border-radius: 5px;">
+                                    <div style="font-size: 0.85em; color: #888; margin-bottom: 4px;">利润率</div>
+                                    <div style="font-size: 1.1em; font-weight: bold; color: ${profitColor};">${profitRate.toFixed(1)}%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (sellPrice > 0 && successCount === 0) {
+                html += `
+                    <div style="padding: 15px; background: rgba(255,107,107,0.1); border-radius: 8px; border-left: 4px solid #ff6b6b; margin-top: 15px;">
+                        <div style="font-size: 1.2em; color: #ff6b6b; font-weight: bold; text-align: center;">
+                            ❌ 全部制作失败
+                        </div>
+                        <div style="color: #ff6b6b; font-size: 1.1em; text-align: center; margin-top: 8px;">
+                            亏损全部材料成本: <span style="font-weight: bold; font-size: 1.3em;">-${totalCost.toLocaleString()}</span>
+                        </div>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div style="padding: 15px; background: rgba(255,165,0,0.1); border-radius: 8px; border-left: 4px solid #ffa500; margin-top: 15px;">
+                        <div style="color: #ffa500; font-size: 1em; text-align: center;">💡 提示: 输入售价和成功数量后可查看收益分析</div>
+                    </div>
+                `;
+            }
+            
+            // 显示弹窗
+            openModal('成本和收益计算结果', html);
+        }
+        
         function calculateCost() {
             if (!selectedItem) { showNotification('请先选择一个物品', 'warning'); return; }
             const quantity = parseInt(document.getElementById("craftQuantity").value);
@@ -2420,7 +2644,6 @@
             document.getElementById("itemName").textContent = "未选择物品";
             document.getElementById("itemLevel").textContent = "";
             document.getElementById("materialsList").innerHTML = '<p style="color: #aaa; font-size: 0.9em;">请选择一个物品查看材料需求</p>';
-            document.getElementById("costResult").style.display = "none";
             highlightRequiredMaterials(null);
             showNotification(`物品已删除`, 'success');
             autoSave();
