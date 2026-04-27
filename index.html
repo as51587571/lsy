@@ -288,6 +288,50 @@
             position: relative;
         }
 
+        .item-cell.batch-selected {
+            background: rgba(255, 107, 107, 0.2) !important;
+            border: 2px solid #ff6b6b !important;
+            box-shadow: 0 0 8px rgba(255, 107, 107, 0.3) !important;
+        }
+
+        .batch-checkbox {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            width: 22px;
+            height: 22px;
+            cursor: pointer;
+            z-index: 10;
+            display: none;
+            transform: scale(1.3);
+        }
+
+        .batch-mode .batch-checkbox {
+            display: block;
+        }
+
+        .material-card.batch-selected {
+            background: rgba(255, 107, 107, 0.15) !important;
+            border-color: #ff6b6b !important;
+            box-shadow: 0 0 8px rgba(255, 107, 107, 0.3) !important;
+        }
+
+        .material-batch-checkbox {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            z-index: 10;
+            display: none;
+            transform: scale(1.3);
+        }
+
+        .materials-grid.batch-mode .material-batch-checkbox {
+            display: block;
+        }
+
         .button-group {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -552,29 +596,6 @@
         .material-price:hover {
             color: #ffcc00;
             background: rgba(255, 165, 0, 0.15);
-        }
-
-        .material-card .card-delete-btn {
-            position: absolute;
-            top: 2px;
-            right: 3px;
-            width: 16px;
-            height: 16px;
-            background: rgba(255,74,74,0.75);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            font-size: 10px;
-            line-height: 1;
-            cursor: pointer;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-        }
-
-        .material-card:hover .card-delete-btn {
-            display: flex;
         }
 
         .materials-table tr {
@@ -1004,7 +1025,9 @@
 
                 <div class="button-group" style="flex-shrink:0; margin-top:8px; padding-top:8px; border-top:1px solid rgba(74,126,255,0.2);">
                     <button class="btn btn-success" onclick="addItem()">添加物品</button>
-                    <button class="btn btn-danger" onclick="deleteItem()">删除物品</button>
+                    <button class="btn btn-info" onclick="toggleSelectAll()" id="selectAllBtn" style="display:none;">全选</button>
+                    <button class="btn btn-danger" onclick="batchDeleteItems()" id="batchDeleteBtn" style="display:none;">批量删除 (<span id="selectedCount">0</span>)</button>
+                    <button class="btn btn-secondary" onclick="toggleBatchMode()" id="batchModeBtn">批量模式</button>
                 </div>
             </div>
 
@@ -1096,8 +1119,10 @@
                     </div>
                     <div class="button-group">
                         <button class="btn btn-success" onclick="addMaterial()">添加材料</button>
-                        <button class="btn btn-danger" onclick="deleteMaterial()">删除材料</button>
-                        <button class="btn btn-info" onclick="addEmptyCell()">添加空行</button>
+                        <button class="btn btn-info" onclick="toggleMaterialBatchMode()" id="materialBatchModeBtn">批量模式</button>
+                        <button class="btn btn-info" onclick="toggleMaterialSelectAll()" id="materialSelectAllBtn" style="display:none;">全选</button>
+                        <button class="btn btn-danger" onclick="batchDeleteMaterials()" id="materialBatchDeleteBtn" style="display:none;">批量删除 (<span id="materialSelectedCount">0</span>)</button>
+                        <button class="btn btn-secondary" onclick="addEmptyCell()">添加空行</button>
                         <button class="btn btn-secondary" onclick="removeEmptyCells()">清理空格</button>
                         <button class="btn btn-secondary" onclick="resetMaterials()">重置材料库</button>
                     </div>
@@ -1862,14 +1887,23 @@
                         cell.draggable = true;
                         cell.dataset.itemIndex = realIndex;
                         cell.className = 'item-cell';
-                        cell.innerHTML = `<div class="item-content"><span class="item-name editable-item-name" data-item-index="${realIndex}" style="cursor: pointer; color: ${itemColor};">${item.name}</span><span class="item-cost">${cost.toLocaleString()}</span></div>`;
+                        cell.innerHTML = `<input type="checkbox" class="batch-checkbox" data-item-index="${realIndex}" onclick="toggleItemSelection(this, ${realIndex})"><div class="item-content"><span class="item-name editable-item-name" data-item-index="${realIndex}" style="cursor: pointer; color: ${itemColor};">${item.name}</span><span class="item-cost">${cost.toLocaleString()}</span></div>`;
                         cell.addEventListener('dragstart', handleItemDragStart);
                         cell.addEventListener('dragend', handleItemDragEnd);
                         cell.addEventListener('dragover', handleItemDragOver);
                         cell.addEventListener('drop', handleItemDrop);
                         cell.addEventListener('dragenter', handleItemDragEnter);
                         cell.addEventListener('dragleave', handleItemDragLeave);
-                        cell.addEventListener("click", (e) => { selectItem(item, cell); });
+                        cell.addEventListener("click", (e) => {
+                            if (batchMode) {
+                                // 批量模式下，点击任意位置切换选择
+                                const checkbox = cell.querySelector('.batch-checkbox');
+                                checkbox.checked = !checkbox.checked;
+                                toggleItemSelection(checkbox, realIndex);
+                            } else {
+                                selectItem(item, cell);
+                            }
+                        });
                         // 添加右键菜单
                         cell.addEventListener('contextmenu', (e) => {
                             e.preventDefault();
@@ -2080,10 +2114,28 @@
                     card.draggable = true;
                     card.dataset.materialName = mName;
                     card.title = `右键菜单:修改名称/颜色`;
-                    card.innerHTML = `<button class="card-delete-btn" title="删除材料">×</button><div class="material-content"><span class="material-name" style="color:${mColor};">${mName}</span><span class="material-price editable-price" data-name="${mName}" title="点击直接修改价格">💰 ${material.price.toLocaleString()}</span></div>`;
-                    card.querySelector('.card-delete-btn').addEventListener('click', (e) => { e.stopPropagation(); quickDeleteMaterial(mName); });
-                    card.addEventListener('click', (e) => { if (e.target.classList.contains('card-delete-btn')) return; if (e.detail >= 2 && e.target.classList.contains('editable-price')) return; addToQueue(mName, 1); selectMaterialByName(mName, material); });
-                    card.querySelector('.material-name').addEventListener('click', (e) => { e.stopPropagation(); addToQueue(mName, 1); selectMaterialByName(mName, material); });
+                    card.innerHTML = `<input type="checkbox" class="material-batch-checkbox" data-material-index="${index}" onclick="toggleMaterialSelection(this, ${index})"><div class="material-content"><span class="material-name" style="color:${mColor};">${mName}</span><span class="material-price editable-price" data-name="${mName}" title="点击直接修改价格">💰 ${material.price.toLocaleString()}</span></div>`;
+                    card.addEventListener('click', (e) => {
+                        // 双击价格编辑不受影响
+                        if (e.detail >= 2 && e.target.classList.contains('editable-price')) return;
+                        
+                        if (materialBatchMode) {
+                            // 批量模式下，点击任意位置切换选择
+                            const checkbox = card.querySelector('.material-batch-checkbox');
+                            checkbox.checked = !checkbox.checked;
+                            toggleMaterialSelection(checkbox, index);
+                        } else {
+                            addToQueue(mName, 1);
+                            selectMaterialByName(mName, material);
+                        }
+                    });
+                    card.querySelector('.material-name').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (!materialBatchMode) {
+                            addToQueue(mName, 1);
+                            selectMaterialByName(mName, material);
+                        }
+                    });
                     // 点击💰价格直接内联编辑
                     card.querySelector('.editable-price').addEventListener('click', (e) => { 
                         e.stopPropagation(); 
@@ -3076,6 +3128,222 @@
                 successCount.addEventListener('input', saveCalculationInputs);
                 successCount.addEventListener('change', saveCalculationInputs);
             }
+        }
+
+        // 批量选择相关变量
+        let batchMode = false;
+        let selectedItems = new Set();
+
+        // 切换批量模式
+        function toggleBatchMode() {
+            batchMode = !batchMode;
+            const itemsPanel = document.getElementById('itemsPanel');
+            const selectAllBtn = document.getElementById('selectAllBtn');
+            const batchDeleteBtn = document.getElementById('batchDeleteBtn');
+            const batchModeBtn = document.getElementById('batchModeBtn');
+            
+            if (batchMode) {
+                itemsPanel.classList.add('batch-mode');
+                selectAllBtn.style.display = 'inline-block';
+                batchDeleteBtn.style.display = 'inline-block';
+                batchModeBtn.textContent = '退出批量';
+                batchModeBtn.className = 'btn btn-warning';
+            } else {
+                itemsPanel.classList.remove('batch-mode');
+                selectAllBtn.style.display = 'none';
+                batchDeleteBtn.style.display = 'none';
+                batchModeBtn.textContent = '批量模式';
+                batchModeBtn.className = 'btn btn-secondary';
+                // 清空选择
+                selectedItems.clear();
+                updateSelectedCount();
+                document.querySelectorAll('.batch-checkbox').forEach(cb => cb.checked = false);
+                document.querySelectorAll('.item-cell').forEach(cell => cell.classList.remove('batch-selected'));
+            }
+        }
+
+        // 切换物品选择
+        function toggleItemSelection(checkbox, itemIndex) {
+            if (checkbox.checked) {
+                selectedItems.add(itemIndex);
+                checkbox.closest('.item-cell').classList.add('batch-selected');
+            } else {
+                selectedItems.delete(itemIndex);
+                checkbox.closest('.item-cell').classList.remove('batch-selected');
+            }
+            updateSelectedCount();
+        }
+
+        // 全选/取消全选
+        function toggleSelectAll() {
+            const checkboxes = document.querySelectorAll('.batch-checkbox');
+            const selectAllBtn = document.getElementById('selectAllBtn');
+            
+            if (selectedItems.size === checkboxes.length) {
+                // 取消全选
+                selectedItems.clear();
+                checkboxes.forEach(cb => {
+                    cb.checked = false;
+                    cb.closest('.item-cell').classList.remove('batch-selected');
+                });
+                selectAllBtn.textContent = '全选';
+            } else {
+                // 全选
+                selectedItems.clear();
+                checkboxes.forEach(cb => {
+                    cb.checked = true;
+                    const index = parseInt(cb.dataset.itemIndex);
+                    selectedItems.add(index);
+                    cb.closest('.item-cell').classList.add('batch-selected');
+                });
+                selectAllBtn.textContent = '取消全选';
+            }
+            updateSelectedCount();
+        }
+
+        // 更新选中数量显示
+        function updateSelectedCount() {
+            document.getElementById('selectedCount').textContent = selectedItems.size;
+        }
+
+        // 批量删除物品
+        function batchDeleteItems() {
+            if (selectedItems.size === 0) {
+                showNotification('请先选择要删除的物品', 'warning');
+                return;
+            }
+            
+            if (!confirm(`确定要删除选中的 ${selectedItems.size} 个物品吗？`)) {
+                return;
+            }
+            
+            // 按索引从大到小排序，避免删除时索引变化
+            const sortedIndices = Array.from(selectedItems).sort((a, b) => b - a);
+            
+            sortedIndices.forEach(index => {
+                if (index >= 0 && index < recipes[currentProfession].length) {
+                    recipes[currentProfession].splice(index, 1);
+                }
+            });
+            
+            // 清空选择
+            selectedItems.clear();
+            
+            // 重新加载
+            autoSave();
+            renderCategoryTabs();
+            loadProfessionItems();
+            
+            showNotification(`已删除 ${sortedIndices.length} 个物品`, 'success');
+        }
+
+        // 材料批量选择相关变量
+        let materialBatchMode = false;
+        let selectedMaterials = new Set();
+
+        // 切换材料批量模式
+        function toggleMaterialBatchMode() {
+            materialBatchMode = !materialBatchMode;
+            const materialsGrid = document.getElementById('materialsGrid');
+            const selectAllBtn = document.getElementById('materialSelectAllBtn');
+            const batchDeleteBtn = document.getElementById('materialBatchDeleteBtn');
+            const batchModeBtn = document.getElementById('materialBatchModeBtn');
+            
+            if (materialBatchMode) {
+                materialsGrid.classList.add('batch-mode');
+                selectAllBtn.style.display = 'inline-block';
+                batchDeleteBtn.style.display = 'inline-block';
+                batchModeBtn.textContent = '退出批量';
+                batchModeBtn.className = 'btn btn-warning';
+            } else {
+                materialsGrid.classList.remove('batch-mode');
+                selectAllBtn.style.display = 'none';
+                batchDeleteBtn.style.display = 'none';
+                batchModeBtn.textContent = '批量模式';
+                batchModeBtn.className = 'btn btn-info';
+                // 清空选择
+                selectedMaterials.clear();
+                updateMaterialSelectedCount();
+                document.querySelectorAll('.material-batch-checkbox').forEach(cb => cb.checked = false);
+                document.querySelectorAll('.material-card').forEach(card => card.classList.remove('batch-selected'));
+            }
+        }
+
+        // 切换材料选择
+        function toggleMaterialSelection(checkbox, materialIndex) {
+            if (checkbox.checked) {
+                selectedMaterials.add(materialIndex);
+                checkbox.closest('.material-card').classList.add('batch-selected');
+            } else {
+                selectedMaterials.delete(materialIndex);
+                checkbox.closest('.material-card').classList.remove('batch-selected');
+            }
+            updateMaterialSelectedCount();
+        }
+
+        // 材料全选/取消全选
+        function toggleMaterialSelectAll() {
+            const checkboxes = document.querySelectorAll('.material-batch-checkbox');
+            const selectAllBtn = document.getElementById('materialSelectAllBtn');
+            
+            if (selectedMaterials.size === checkboxes.length) {
+                // 取消全选
+                selectedMaterials.clear();
+                checkboxes.forEach(cb => {
+                    cb.checked = false;
+                    cb.closest('.material-card').classList.remove('batch-selected');
+                });
+                selectAllBtn.textContent = '全选';
+            } else {
+                // 全选
+                selectedMaterials.clear();
+                checkboxes.forEach(cb => {
+                    cb.checked = true;
+                    const index = parseInt(cb.dataset.materialIndex);
+                    selectedMaterials.add(index);
+                    cb.closest('.material-card').classList.add('batch-selected');
+                });
+                selectAllBtn.textContent = '取消全选';
+            }
+            updateMaterialSelectedCount();
+        }
+
+        // 更新材料选中数量显示
+        function updateMaterialSelectedCount() {
+            document.getElementById('materialSelectedCount').textContent = selectedMaterials.size;
+        }
+
+        // 批量删除材料
+        function batchDeleteMaterials() {
+            if (selectedMaterials.size === 0) {
+                showNotification('请先选择要删除的材料', 'warning');
+                return;
+            }
+            
+            if (!confirm(`确定要删除选中的 ${selectedMaterials.size} 个材料吗？`)) {
+                return;
+            }
+            
+            // 按索引从大到小排序，避免删除时索引变化
+            const sortedIndices = Array.from(selectedMaterials).sort((a, b) => b - a);
+            
+            const flat = flattenGrid();
+            sortedIndices.forEach(index => {
+                if (index >= 0 && index < flat.length) {
+                    flat[index] = null;
+                }
+            });
+            
+            writeFlatToGrid(flat);
+            
+            // 清空选择
+            selectedMaterials.clear();
+            
+            // 重新加载
+            loadMaterialsTable();
+            autoSave();
+            
+            showNotification(`已删除 ${sortedIndices.length} 个材料`, 'success');
         }
     </script>
 </body>
