@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游戏币比例计算器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .calc-container {
+            max-width: 700px;
+            width: 100%;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 2rem;
+        }
+
+        .calc-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .mode-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1.5rem;
+        }
+
+        .mode-tab {
+            flex: 1;
+            padding: 0.75rem;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #666;
+            text-align: center;
+        }
+
+        .mode-tab.active {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+        }
+
+        .input-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+        }
+
+        .platform-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 0.5rem;
+            color: white;
+        }
+
+        .badge-platform-a {
+            background: #3498db;
+        }
+
+        .badge-platform-b {
+            background: #27ae60;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            color: #333;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+        }
+
+        .form-input[readonly] {
+            background: #e9ecef;
+            cursor: not-allowed;
+        }
+
+        button.calculate-btn {
+            width: 100%;
+            padding: 0.875rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        button.calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .result-section {
+            background: #f8f9fa;
+            padding: 1.25rem;
+            border-radius: 10px;
+            margin-top: 1.5rem;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.875rem 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .result-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .result-highlight {
+            font-size: 22px;
+            font-weight: 700;
+            color: #27ae60;
+        }
+
+        .formula-box {
+            background: #fff9e6;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1.25rem;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.8;
+            border-left: 4px solid #f39c12;
+        }
+
+        .formula-box strong {
+            color: #333;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 640px) {
+            .calc-container {
+                padding: 1.5rem;
+            }
+
+            .calc-title {
+                font-size: 20px;
+            }
+
+            .mode-tabs {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="calc-container">
+        <div class="calc-title">🎮 游戏币比例计算器</div>
+
+        <div class="mode-tabs">
+            <div class="mode-tab active" onclick="setMode('A_to_B')">有手续费 → 无手续费</div>
+            <div class="mode-tab" onclick="setMode('B_to_A')">无手续费 → 有手续费</div>
+        </div>
+
+        <!-- 模式1: 有手续费平台 → 无手续费平台 -->
+        <div id="mode_A_to_B">
+            <div class="input-section">
+                <div class="section-title">
+                    <span class="platform-badge badge-platform-a">平台A</span>
+                    有手续费平台（已知）
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">售价（元）</label>
+                    <input type="number" id="priceA_1" class="form-input" value="100" step="0.01" oninput="calculate()">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">手续费（元）</label>
+                    <input type="number" id="feeA_1" class="form-input" value="2" step="0.01" oninput="calculate()">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">上架比例（万/元）</label>
+                    <input type="number" id="ratioA_1" class="form-input" value="56" step="0.01" oninput="calculate()">
+                </div>
+            </div>
+
+            <div class="input-section">
+                <div class="section-title">
+                    <span class="platform-badge badge-platform-b">平台B</span>
+                    无手续费平台（计算结果）
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">应上架比例（万/元）</label>
+                    <input type="number" id="ratioB_1" class="form-input" readonly style="font-size: 18px; font-weight: 600; color: #27ae60;">
+                </div>
+            </div>
+        </div>
+
+        <!-- 模式2: 无手续费平台 → 有手续费平台 -->
+        <div id="mode_B_to_A" class="hidden">
+            <div class="input-section">
+                <div class="section-title">
+                    <span class="platform-badge badge-platform-b">平台B</span>
+                    无手续费平台（已知）
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">售价（元）</label>
+                    <input type="number" id="priceB_2" class="form-input" value="100" step="0.01" oninput="calculate()">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">上架比例（万/元）</label>
+                    <input type="number" id="ratioB_2" class="form-input" value="56" step="0.01" oninput="calculate()">
+                </div>
+            </div>
+
+            <div class="input-section">
+                <div class="section-title">
+                    <span class="platform-badge badge-platform-a">平台A</span>
+                    有手续费平台（计算结果）
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">手续费（元）</label>
+                    <input type="number" id="feeA_2" class="form-input" value="2" step="0.01" oninput="calculate()">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">应上架比例（万/元）</label>
+                    <input type="number" id="ratioA_2" class="form-input" readonly style="font-size: 18px; font-weight: 600; color: #3498db;">
+                </div>
+            </div>
+        </div>
+
+        <button class="calculate-btn" onclick="calculate()">重新计算</button>
+
+        <div class="result-section">
+            <div class="result-item">
+                <span class="result-label">有手续费平台实际到手</span>
+                <span class="result-value" id="incomeWithFee">¥98.00</span>
+            </div>
+
+            <div class="result-item">
+                <span class="result-label">无手续费平台实际到手</span>
+                <span class="result-value" id="incomeNoFee">¥98.00</span>
+            </div>
+
+            <div class="result-item">
+                <span class="result-label">有手续费平台总价</span>
+                <span class="result-value" id="totalPriceWithFee">¥100.00</span>
+            </div>
+
+            <div class="result-item">
+                <span class="result-label">无手续费平台总价</span>
+                <span class="result-value" id="totalPriceNoFee">¥98.00</span>
+            </div>
+
+            <div class="result-item">
+                <span class="result-label">给买家游戏币数量</span>
+                <span class="result-value" id="totalCoins">5600.00万</span>
+            </div>
+
+            <div class="result-item">
+                <span class="result-label">价格差异</span>
+                <span class="result-highlight" id="advantage">便宜2.00%</span>
+            </div>
+        </div>
+
+        <div class="formula-box">
+            <strong id="formulaTitle">计算逻辑：</strong>
+            <div id="formulaContent">
+                1. 平台A：1元=56万，卖100元给买家5600万，扣2元手续费，到手¥98<br>
+                2. 平台B：没有手续费，要到手也是¥98，所以标价¥98<br>
+                3. 平台B给买家同样5600万，所以比例 = 5600 ÷ 98 = 57.14万/元<br>
+                4. 结论：平台B应该挂 <strong>1比57.14</strong>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'A_to_B';
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (mode === 'A_to_B') {
+                document.getElementById('mode_A_to_B').classList.remove('hidden');
+                document.getElementById('mode_B_to_A').classList.add('hidden');
+            } else {
+                document.getElementById('mode_A_to_B').classList.add('hidden');
+                document.getElementById('mode_B_to_A').classList.remove('hidden');
+            }
+
+            calculate();
+        }
+
+        function calculate() {
+            if (currentMode === 'A_to_B') {
+                calculate_A_to_B();
+            } else {
+                calculate_B_to_A();
+            }
+        }
+
+        function calculate_A_to_B() {
+            const priceA = parseFloat(document.getElementById('priceA_1').value) || 0;
+            const feeA = parseFloat(document.getElementById('feeA_1').value) || 0;
+            const ratioA = parseFloat(document.getElementById('ratioA_1').value) || 0;
+
+            // 计算平台A的实际到手金额
+            const incomeA = priceA - feeA;
+
+            // 平台A给买家的游戏币总数
+            const totalCoinsA = ratioA * priceA;
+
+            // 平台B没有手续费，要到手金额相同，标价应该等于到手金额
+            const priceB = incomeA;
+            const incomeB = priceB;
+
+            // 平台B给买家同样的游戏币数量
+            const totalCoinsB = totalCoinsA;
+
+            // 计算平台B的比例（万/元）
+            const ratioB = totalCoinsB / priceB;
+
+            // 计算优惠幅度
+            const discount = ((priceA - priceB) / priceA * 100);
+
+            // 更新显示
+            document.getElementById('incomeWithFee').textContent = '¥' + incomeA.toFixed(2);
+            document.getElementById('incomeNoFee').textContent = '¥' + incomeB.toFixed(2);
+            document.getElementById('totalPriceWithFee').textContent = '¥' + priceA.toFixed(2);
+            document.getElementById('totalPriceNoFee').textContent = '¥' + priceB.toFixed(2);
+            document.getElementById('totalCoins').textContent = totalCoinsA.toFixed(2) + '万';
+            document.getElementById('ratioB_1').value = ratioB.toFixed(2);
+            document.getElementById('advantage').textContent = '无手续费平台便宜' + discount.toFixed(2) + '%';
+
+            // 更新公式说明
+            document.getElementById('formulaTitle').textContent = '计算逻辑（有手续费 → 无手续费）：';
+            document.getElementById('formulaContent').innerHTML = `
+                1. 平台A：1元=${ratioA.toFixed(2)}万，卖${priceA}元给买家${totalCoinsA.toFixed(2)}万，扣${feeA}元手续费，到手¥${incomeA.toFixed(2)}<br>
+                2. 平台B：没有手续费，要到手也是¥${incomeA.toFixed(2)}，所以标价¥${priceB.toFixed(2)}<br>
+                3. 平台B给买家同样${totalCoinsB.toFixed(2)}万，所以比例 = ${totalCoinsB.toFixed(2)} ÷ ${priceB.toFixed(2)} = ${ratioB.toFixed(2)}万/元<br>
+                4. 结论：平台B应该挂 <strong>1比${ratioB.toFixed(2)}</strong>，这样两个平台到手金额相同
+            `;
+        }
+
+        function calculate_B_to_A() {
+            const priceB = parseFloat(document.getElementById('priceB_2').value) || 0;
+            const ratioB = parseFloat(document.getElementById('ratioB_2').value) || 0;
+            const feeA = parseFloat(document.getElementById('feeA_2').value) || 0;
+
+            // 平台B没有手续费，实际到手就是售价
+            const incomeB = priceB;
+
+            // 平台B给买家的游戏币总数
+            const totalCoinsB = ratioB * priceB;
+
+            // 平台A有手续费，要到手金额相同，标价应该是到手金额+手续费
+            const priceA = incomeB + feeA;
+            const incomeA = priceA - feeA;
+
+            // 平台A给买家同样的游戏币数量
+            const totalCoinsA = totalCoinsB;
+
+            // 计算平台A的比例（万/元）
+            const ratioA = totalCoinsA / priceA;
+
+            // 计算劣势幅度
+            const premium = ((priceA - priceB) / priceB * 100);
+
+            // 更新显示
+            document.getElementById('incomeWithFee').textContent = '¥' + incomeA.toFixed(2);
+            document.getElementById('incomeNoFee').textContent = '¥' + incomeB.toFixed(2);
+            document.getElementById('totalPriceWithFee').textContent = '¥' + priceA.toFixed(2);
+            document.getElementById('totalPriceNoFee').textContent = '¥' + priceB.toFixed(2);
+            document.getElementById('totalCoins').textContent = totalCoinsA.toFixed(2) + '万';
+            document.getElementById('ratioA_2').value = ratioA.toFixed(2);
+            document.getElementById('advantage').textContent = '有手续费平台贵' + premium.toFixed(2) + '%';
+
+            // 更新公式说明
+            document.getElementById('formulaTitle').textContent = '计算逻辑（无手续费 → 有手续费）：';
+            document.getElementById('formulaContent').innerHTML = `
+                1. 平台B：1元=${ratioB.toFixed(2)}万，卖${priceB}元给买家${totalCoinsB.toFixed(2)}万，没有手续费，到手¥${incomeB.toFixed(2)}<br>
+                2. 平台A：有${feeA}元手续费，要到手也是¥${incomeB.toFixed(2)}，所以标价 = ${incomeB.toFixed(2)} + ${feeA} = ¥${priceA.toFixed(2)}<br>
+                3. 平台A给买家同样${totalCoinsA.toFixed(2)}万，所以比例 = ${totalCoinsA.toFixed(2)} ÷ ${priceA.toFixed(2)} = ${ratioA.toFixed(2)}万/元<br>
+                4. 结论：平台A应该挂 <strong>1比${ratioA.toFixed(2)}</strong>，这样两个平台到手金额相同
+            `;
+        }
+
+        // 初始化计算
+        calculate();
+    </script>
+</body>
+</html>
