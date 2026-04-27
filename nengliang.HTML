@@ -433,18 +433,32 @@
         return baseTime.getTime();
     }
     
-    // 精确计算能量：基于游戏恢复周期
+    // 精确计算能量：基于游戏恢复周期（离散恢复，不是连续恢复）
     function calculateCurrentEnergy(account, maxEnergy, recPerHour) {
         const now = Date.now();
         const recordTime = account.recordTime || now;
+        const recoverPer3Hours = parseFloat(document.getElementById('recoverPer3Hours').value) || 15;
         
         // 计算从记录时间到现在经过的毫秒数
         const elapsedMs = now - recordTime;
         if (elapsedMs <= 0) return account.current;
         
-        // 计算经过的小时数（精确到毫秒）
-        const elapsedHours = elapsedMs / 3600000;
-        const recovered = elapsedHours * recPerHour;
+        // 获取游戏恢复基准时间
+        const baseTime = getGameRecoveryBaseTime();
+        const RECOVERY_INTERVAL = 3 * 60 * 60 * 1000; // 3小时的毫秒数
+        
+        // 计算从基准时间到现在，经过了多少个恢复周期
+        const cyclesFromBaseToNow = Math.floor((now - baseTime) / RECOVERY_INTERVAL);
+        const lastRecoveryTime = baseTime + cyclesFromBaseToNow * RECOVERY_INTERVAL;
+        
+        // 计算从基准时间到记录时间，经过了多少个恢复周期
+        const cyclesFromBaseToRecord = Math.floor((recordTime - baseTime) / RECOVERY_INTERVAL);
+        
+        // 在记录时间之后，又经过了多少个恢复周期
+        const cyclesAfterRecord = cyclesFromBaseToNow - cyclesFromBaseToRecord;
+        
+        // 恢复的能量 = 经过的完整周期数 × 每周期恢复量
+        const recovered = Math.max(0, cyclesAfterRecord) * recoverPer3Hours;
         
         // 当前能量 = 记录时的能量 + 恢复的能量，不超过上限
         let calculated = account.current + recovered;
