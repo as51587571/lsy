@@ -930,8 +930,16 @@
     <div class="container">
         <header>
             <h1>🎮 制作成本计算器</h1>
-            <p>魔族制作管理</p>
-            <div style="position: absolute; top: 20px; right: 20px; display: flex; gap: 10px;">
+            <p id="currentRaceDisplay">魔族制作管理</p>
+            <div style="position: absolute; top: 15px; right: 20px; display: flex; gap: 10px; align-items: center;">
+                <!-- 种族选择器 -->
+                <div style="display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.3); padding: 5px 12px; border-radius: 8px; border: 1px solid #4a9eff;">
+                    <span style="color: #4a9eff; font-size: 0.85em; font-weight: bold;">🌍 种族:</span>
+                    <select id="raceSelector" style="background: rgba(0,0,0,0.5); border: 1px solid #4a9eff; color: #4a9eff; padding: 4px 10px; border-radius: 5px; font-size: 0.85em; cursor: pointer;">
+                        <option value="魔族" selected>魔族</option>
+                        <option value="天族">天族</option>
+                    </select>
+                </div>
                 <button class="btn btn-success" onclick="testSave()" style="font-size: 0.8em; padding: 5px 10px;">🧪 测试保存</button>
                 <button class="btn btn-warning" onclick="testLoad()" style="font-size: 0.8em; padding: 5px 10px;">🧪 测试加载</button>
                 <button class="btn btn-info" onclick="exportData()" style="font-size: 0.8em; padding: 5px 10px;">📤 导出数据</button>
@@ -995,7 +1003,10 @@
 
             <div class="panel" id="detailsPanel" style="display:flex; flex-direction:column; overflow:hidden; overflow-y:hidden;">
                 <div class="item-details" style="display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden;">
-                    <h2 style="margin-bottom:3px; font-size:0.95em;">物品详情</h2>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+                        <h2 style="margin: 0; font-size: 0.95em;">物品详情</h2>
+                        <button id="clearSelectionBtn" onclick="clearSelection()" style="display: none; background: rgba(255, 107, 107, 0.2); border: 1px solid #ff6b6b; color: #ff6b6b; padding: 3px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8em; transition: all 0.2s;" onmouseover="this.style.background='rgba(255, 107, 107, 0.4)'" onmouseout="this.style.background='rgba(255, 107, 107, 0.2)'">✖ 取消选择</button>
+                    </div>
                     <div class="item-name" id="itemName" contenteditable="true" style="cursor:pointer; border-bottom:1px dashed #4a9eff; padding:2px; margin-bottom:3px; flex-shrink:0; flex-grow:0;">未选择物品</div>
                     <div class="item-level" id="itemLevel" style="margin-bottom:0; flex-shrink:0;"></div>
                     <div id="itemCategoryRow" style="display:none; margin-bottom:4px; font-size:0.85em;">
@@ -1105,6 +1116,34 @@
                 [{ name: "魔法药水", price: 400 }, { name: "木材", price: 50 }, { name: "高级木材", price: 300 }],
             ];
         }
+        
+        // 默认物品数据生成函数
+        function getDefaultRecipes() {
+            return {
+                "铁匠": [
+                    { name: "奥里哈康长剑", category: "长剑", level: 35, craftQuantity: 1, materials: { "奥里哈康铸块": 8, "秘银铸块": 4, "魔法粉末": 2 } },
+                    { name: "奥里哈康巨剑", category: "巨剑", level: 40, craftQuantity: 1, materials: { "奥里哈康铸块": 12, "秘银铸块": 6, "魔法粉末": 3 } },
+                    { name: "奥里哈康短剑", category: "短剑", level: 30, craftQuantity: 1, materials: { "奥里哈康铸块": 4, "秘银铸块": 2, "魔法粉末": 1 } },
+                    { name: "奥里哈康钉锤", category: "钉锤", level: 38, craftQuantity: 1, materials: { "奥里哈康铸块": 10, "秘银铸块": 5, "魔法粉末": 2 } },
+                    { name: "奥里哈康臂甲", category: "臂甲", level: 32, craftQuantity: 1, materials: { "奥里哈康铸块": 6, "高级皮革": 4, "魔法粉末": 2 } },
+                    { name: "铁长剑", category: "长剑", level: 10, craftQuantity: 1, materials: { "铁铸块": 5, "皮革": 2 } },
+                    { name: "铁巨剑", category: "巨剑", level: 15, craftQuantity: 1, materials: { "铁铸块": 8, "皮革": 3 } },
+                    { name: "秘银长剑", category: "长剑", level: 25, craftQuantity: 1, materials: { "秘银铸块": 6, "铁铸块": 2, "魔法粉末": 1 } }
+                ],
+                "手工": [
+                    { name: "皮甲", level: 12, craftQuantity: 1, materials: { "皮革": 8, "布料": 4 } },
+                    { name: "丝绸长袍", level: 20, craftQuantity: 1, materials: { "丝绸": 10, "高级皮革": 3 } }
+                ],
+                "炼金": [
+                    { name: "生命药剂", level: 5, craftQuantity: 3, materials: { "魔法粉末": 2, "生命药水": 1 } },
+                    { name: "魔法药剂", level: 8, craftQuantity: 3, materials: { "魔法粉末": 3, "魔法药水": 1 } }
+                ],
+                "料理": [
+                    { name: "烤肉", level: 3, craftQuantity: 5, materials: { "皮革": 1, "魔法药水": 1 } },
+                    { name: "面包", level: 1, craftQuantity: 10, materials: { "布料": 2, "生命药水": 1 } }
+                ]
+            };
+        }
 
         function buildMaterialMap(grid) {
             const map = {};
@@ -1118,9 +1157,6 @@
                 professionMaterials[professionName] = { grid: grid, map: buildMaterialMap(grid) };
             }
         }
-
-        // 初始化4个默认职业的材料库
-        ["铁匠", "手工", "炼金", "料理"].forEach(p => initProfessionMaterials(p));
 
         // 当前职业材料库访问器（始终反映 currentProfession）
         function getMaterialGrid() { return professionMaterials[currentProfession].grid; }
@@ -1140,38 +1176,9 @@
             configurable: true
         });
 
-        let recipes = {
-            "铁匠": [
-                { name: "奥里哈康长剑", category: "长剑", level: 35, craftQuantity: 1, materials: { "奥里哈康铸块": 8, "秘銀铸块": 4, "魔法粉末": 2 } },
-                { name: "奥里哈康巨剑", category: "巨剑", level: 40, craftQuantity: 1, materials: { "奥里哈康铸块": 12, "秘銀铸块": 6, "魔法粉末": 3 } },
-                { name: "奥里哈康短剑", category: "短剑", level: 30, craftQuantity: 1, materials: { "奥里哈康铸块": 4, "秘銀铸块": 2, "魔法粉末": 1 } },
-                { name: "奥里哈康钉锤", category: "钉锤", level: 38, craftQuantity: 1, materials: { "奥里哈康铸块": 10, "秘銀铸块": 5, "魔法粉末": 2 } },
-                { name: "奥里哈康臂甲", category: "臂甲", level: 32, craftQuantity: 1, materials: { "奥里哈康铸块": 6, "高级皮革": 4, "魔法粉末": 2 } },
-                { name: "铁长剑", category: "长剑", level: 10, craftQuantity: 1, materials: { "铁铸块": 5, "皮革": 2 } },
-                { name: "铁巨剑", category: "巨剑", level: 15, craftQuantity: 1, materials: { "铁铸块": 8, "皮革": 3 } },
-                { name: "秘銀长剑", category: "长剑", level: 25, craftQuantity: 1, materials: { "秘銀铸块": 6, "铁铸块": 2, "魔法粉末": 1 } }
-            ],
-            "手工": [
-                { name: "皮甲", level: 12, craftQuantity: 1, materials: { "皮革": 8, "布料": 4 } },
-                { name: "丝绸长袍", level: 20, craftQuantity: 1, materials: { "丝绸": 10, "高级皮革": 3 } }
-            ],
-            "炼金": [
-                { name: "生命药剂", level: 5, craftQuantity: 3, materials: { "魔法粉末": 2, "生命药水": 1 } },
-                { name: "魔法药剂", level: 8, craftQuantity: 3, materials: { "魔法粉末": 3, "魔法药水": 1 } }
-            ],
-            "料理": [
-                { name: "烤肉", level: 3, craftQuantity: 5, materials: { "皮革": 1, "魔法药水": 1 } },
-                { name: "面包", level: 1, craftQuantity: 10, materials: { "布料": 2, "生命药水": 1 } }
-            ]
-        };
-
-        let currentProfession = "铁匠";
         let selectedItem = null;
         let selectedItemIndex = -1; // 保存当前选中物品的索引
         let selectedMaterial = null;
-        
-        // 维护职业显示顺序的数组
-        let professionOrder = ["铁匠", "手工", "炼金", "料理"];
 
         function testSave() {
             console.log('=== 测试保存功能 ===');
@@ -1209,7 +1216,7 @@
         
         function updateLocalStorageStatus() {
             const statusDiv = document.getElementById('localStorageStatus');
-            const savedData = localStorage.getItem('calculatorData');
+            const savedData = localStorage.getItem(getStorageKey());
             if (savedData) {
                 try {
                     const data = JSON.parse(savedData);
@@ -1242,55 +1249,90 @@
                 currentProfession: currentProfession,
                 timestamp: new Date().toISOString()
             };
-            localStorage.setItem('calculatorData', JSON.stringify(data));
+            localStorage.setItem(getStorageKey(), JSON.stringify(data));
             updateLocalStorageStatus();
+            console.log('✅ 已保存' + currentRace + '数据到: ' + getStorageKey());
         }
         
         function autoLoad() {
-            const savedData = localStorage.getItem('calculatorData');
+            // 先初始化当前种族的数据结构
+            initCurrentRaceData();
+            
+            const savedData = localStorage.getItem(getStorageKey());
             if (savedData) {
                 try {
                     const data = JSON.parse(savedData);
-                    if (data.recipes) recipes = data.recipes;
+                    // 使用深拷贝确保数据独立
+                    if (data.recipes) recipes = JSON.parse(JSON.stringify(data.recipes));
                     if (data.professionMaterials) {
-                        professionMaterials = data.professionMaterials;
+                        professionMaterials = JSON.parse(JSON.stringify(data.professionMaterials));
                         Object.keys(recipes).forEach(p => initProfessionMaterials(p));
                     } else {
                         Object.keys(recipes).forEach(p => initProfessionMaterials(p));
                     }
-                    if (data.professionOrder) professionOrder = data.professionOrder;
-                    if (data.professionCategories) professionCategories = data.professionCategories;
+                    if (data.professionOrder) professionOrder = JSON.parse(JSON.stringify(data.professionOrder));
+                    if (data.professionCategories) professionCategories = JSON.parse(JSON.stringify(data.professionCategories));
                     if (data.currentProfession) currentProfession = data.currentProfession;
                     updateLocalStorageStatus();
+                    console.log('✅ 已加载' + currentRace + '数据');
                     return true;
                 } catch (error) {
+                    console.error('加载数据失败:', error);
                     return false;
                 }
             }
+            // 没有保存数据，使用默认数据的深拷贝
+            console.log('✨ ' + currentRace + '没有保存数据，使用默认数据');
+            recipes = JSON.parse(JSON.stringify(getDefaultRecipes()));
+            professionMaterials = {};
+            professionCategories = {};
+            professionOrder = ["铁匠", "手工", "炼金", "料理"];
+            currentProfession = "铁匠";
+            
+            // 初始化材料库
+            professionOrder.forEach(p => initProfessionMaterials(p));
             return false;
         }
         
         function exportData() {
-            const data = {
-                recipes: recipes,
-                professionMaterials: professionMaterials,
-                professionCategories: professionCategories,
-                professionOrder: professionOrder,
-                currentProfession: currentProfession,
+            // 导出所有种族的数据
+            const allData = {
                 exportTime: new Date().toISOString(),
-                version: '2.1'
+                version: '2.2',
+                races: {}
             };
-            const dataStr = JSON.stringify(data, null, 2);
+            
+            // 导出魔族数据
+            const demonData = localStorage.getItem('副职业数据_魔族');
+            if (demonData) {
+                try {
+                    allData.races['魔族'] = JSON.parse(demonData);
+                } catch(e) {
+                    console.error('导出魔族数据失败:', e);
+                }
+            }
+            
+            // 导出天族数据
+            const angelData = localStorage.getItem('副职业数据_天族');
+            if (angelData) {
+                try {
+                    allData.races['天族'] = JSON.parse(angelData);
+                } catch(e) {
+                    console.error('导出天族数据失败:', e);
+                }
+            }
+            
+            const dataStr = JSON.stringify(allData, null, 2);
             const dataBlob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(dataBlob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `calculator_data_${new Date().toISOString().slice(0, 10)}.json`;
+            link.download = `副职业数据_全种族_${new Date().toISOString().slice(0, 10)}.json`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
-            showNotification('数据已导出', 'success');
+            showNotification('✅ 所有种族数据已导出', 'success');
         }
         
         function importData(event) {
@@ -1300,7 +1342,33 @@
             reader.onload = function(e) {
                 try {
                     const data = JSON.parse(e.target.result);
-                    if (data.recipes && (data.professionMaterials || data.materials)) {
+                    
+                    // 检查是否是全种族数据格式
+                    if (data.races && typeof data.races === 'object') {
+                        let importedCount = 0;
+                        
+                        // 导入每个种族的数据
+                        Object.keys(data.races).forEach(race => {
+                            const raceData = data.races[race];
+                            if (raceData && raceData.recipes) {
+                                const raceStorageKey = '副职业数据_' + race;
+                                localStorage.setItem(raceStorageKey, JSON.stringify(raceData));
+                                importedCount++;
+                                console.log(`已导入${race}数据`);
+                            }
+                        });
+                        
+                        if (importedCount > 0) {
+                            // 重新加载当前种族的数据
+                            loadRaceData();
+                            showNotification(`✅ 成功导入 ${importedCount} 个种族的数据`, 'success');
+                        } else {
+                            showNotification('❌ 导入文件中没有有效的种族数据', 'error');
+                        }
+                    } else if (data.recipes && (data.professionMaterials || data.materials)) {
+                        // 兼容旧格式（只导入当前种族）
+                        if (!confirm('这是旧格式数据，只导入到当前种族（' + currentRace + '），是否继续？')) return;
+                        
                         recipes = data.recipes;
                         currentProfession = data.currentProfession || Object.keys(recipes)[0] || '铁匠';
                         if (data.professionOrder) professionOrder = data.professionOrder;
@@ -1314,13 +1382,16 @@
                         if (data.professionCategories) professionCategories = data.professionCategories;
                         else professionCategories = {};
                         currentItemCategory = '';
+                        
+                        // 保存到当前种族
+                        autoSave();
+                        
                         loadProfessionList();
                         setupProfessionEventListeners();
                         renderCategoryTabs();
                         loadProfessionItems();
                         loadMaterialsTable();
-                        autoSave();
-                        showNotification('数据导入成功', 'success');
+                        showNotification('✅ 数据已导入到' + currentRace, 'success');
                     } else {
                         showNotification('数据格式不正确', 'error');
                     }
@@ -1331,8 +1402,136 @@
             reader.readAsText(file);
             event.target.value = '';
         }
+        
+        // 当前种族（用于数据隔离）
+        let currentRace = '魔族';
+        let currentProfession = "铁匠";
+        
+        // 初始化当前种族的数据结构
+        function initCurrentRaceData() {
+            recipes = {};
+            professionMaterials = {};
+            professionCategories = {};
+            professionOrder = [];
+            currentProfession = "铁匠";
+        }
+        
+        // 获取当前种族的localStorage键
+        function getStorageKey() {
+            return '副职业数据_' + currentRace;
+        }
+        
+        // 切换种族
+        function switchRace(race) {
+            if (race === currentRace) return;
+            
+            console.log('=== 开始切换种族 ===');
+            console.log('从:', currentRace, '切换到:', race);
+            console.log('切换前recipes引用:', recipes);
+            
+            // 保存当前种族的数据
+            autoSave();
+            
+            // 清除选中状态
+            clearSelection();
+            
+            // 切换种族
+            currentRace = race;
+            
+            // 更新显示
+            document.getElementById('currentRaceDisplay').textContent = race + '制作管理';
+            document.getElementById('raceSelector').value = race;
+            
+            console.log('切换后currentRace:', currentRace);
+            console.log('即将加载种族数据...');
+            
+            // 加载新种族的数据
+            loadRaceData();
+            
+            console.log('=== 种族切换完成 ===');
+            showNotification(`✅ 已切换到${race}`, 'success');
+        }
+        
+        // 清空选中状态
+        function clearSelection() {
+            selectedItem = null;
+            selectedItemIndex = -1;
+            selectedMaterial = null;
+            
+            // 清空物品详情显示
+            document.getElementById("itemName").textContent = "未选择物品";
+            document.getElementById("itemLevel").textContent = "";
+            document.getElementById("materialsList").innerHTML = '<p style="color: #aaa; font-size: 0.9em;">请选择一个物品查看材料需求</p>';
+            
+            // 隐藏分类输入框
+            document.getElementById("itemCategoryRow").style.display = "none";
+            
+            // 隐藏取消选择按钮
+            document.getElementById("clearSelectionBtn").style.display = "none";
+            
+            // 取消材料库高亮
+            highlightRequiredMaterials(null);
+        }
+        
+        // 加载指定种族的数据
+        function loadRaceData() {
+            // 先初始化数据结构，避免引用旧数据
+            initCurrentRaceData();
+            
+            const savedData = localStorage.getItem(getStorageKey());
+            if (savedData) {
+                try {
+                    const data = JSON.parse(savedData);
+                    // 使用深拷贝，确保数据完全独立
+                    if (data.recipes) recipes = JSON.parse(JSON.stringify(data.recipes));
+                    if (data.professionMaterials) professionMaterials = JSON.parse(JSON.stringify(data.professionMaterials));
+                    if (data.professionCategories) professionCategories = JSON.parse(JSON.stringify(data.professionCategories));
+                    if (data.professionOrder) professionOrder = JSON.parse(JSON.stringify(data.professionOrder));
+                    if (data.currentProfession) currentProfession = data.currentProfession;
+                    
+                    // 确保所有职业的材料库都已初始化
+                    professionOrder.forEach(p => initProfessionMaterials(p));
+                    
+                    // 刷新界面
+                    loadProfessionList();
+                    loadProfessionItems();
+                    setupProfessionEventListeners();
+                    renderCategoryTabs();
+                    loadMaterialsTable();
+                    updateLocalStorageStatus();
+                } catch (error) {
+                    console.error('加载' + currentRace + '数据失败:', error);
+                    showNotification('加载' + currentRace + '数据失败: ' + error.message, 'error');
+                }
+            } else {
+                // 新种族没有数据，使用默认数据的深拷贝
+                showNotification(`✨ ${currentRace}是新种族，使用默认数据`, 'info');
+                // 重置为默认数据（深拷贝）
+                recipes = JSON.parse(JSON.stringify(getDefaultRecipes()));
+                professionMaterials = {};
+                professionCategories = {};
+                professionOrder = ["铁匠", "手工", "炼金", "料理"];
+                currentProfession = "铁匠";
+                
+                // 初始化材料库
+                professionOrder.forEach(p => initProfessionMaterials(p));
+                
+                // 刷新界面
+                loadProfessionList();
+                loadProfessionItems();
+                setupProfessionEventListeners();
+                renderCategoryTabs();
+                loadMaterialsTable();
+                updateLocalStorageStatus();
+            }
+        }
 
         document.addEventListener("DOMContentLoaded", function() {
+            console.log('=== DOMContentLoaded ===');
+            
+            const raceSelector = document.getElementById('raceSelector');
+            console.log('raceSelector元素:', raceSelector);
+            
             autoLoad();
             loadProfessionList();
             renderCategoryTabs();
@@ -1340,7 +1539,18 @@
             loadMaterialsTable();
             setupProfessionEventListeners();
             updateLocalStorageStatus();
-            setupItemNameEditing();
+            // setupItemNameEditing(); // 这个函数不存在，注释掉
+            
+            // 监听种族选择器变化
+            if (raceSelector) {
+                console.log('绑定种族选择器事件');
+                raceSelector.addEventListener('change', function() {
+                    console.log('种族选择器变化，当前值:', this.value);
+                    switchRace(this.value);
+                });
+            } else {
+                console.error('❌ 找不到raceSelector元素！');
+            }
         });
 
         function setupProfessionEventListeners() {
@@ -2194,6 +2404,9 @@
             selectedItemIndex = recipes[currentProfession].indexOf(item);
             displayItemDetails(item);
             highlightRequiredMaterials(item);
+            
+            // 显示取消选择按钮
+            document.getElementById("clearSelectionBtn").style.display = "inline-block";
         }
 
         function highlightRequiredMaterials(item) {
@@ -2640,13 +2853,9 @@
             recipes[currentProfession].splice(itemIndex, 1);
             renderCategoryTabs();
             loadProfessionItems();
-            selectedItem = null;
-            document.getElementById("itemName").textContent = "未选择物品";
-            document.getElementById("itemLevel").textContent = "";
-            document.getElementById("materialsList").innerHTML = '<p style="color: #aaa; font-size: 0.9em;">请选择一个物品查看材料需求</p>';
-            highlightRequiredMaterials(null);
-            showNotification(`物品已删除`, 'success');
+            clearSelection(); // 使用统一的清空函数
             autoSave();
+            showNotification('物品已删除', 'success');
         }
 
         function resetMaterials() {
