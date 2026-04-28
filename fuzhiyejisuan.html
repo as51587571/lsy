@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>副职业成本收益计算器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 15px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        h1 {
+            font-size: 1.6em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 5px;
+        }
+        
+        .subtitle {
+            color: #aaa;
+            font-size: 0.85em;
+        }
+        
+        .calculator-card {
+            background: rgba(42, 42, 42, 0.9);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(74, 126, 255, 0.2);
+        }
+        
+        .input-section {
+            margin-bottom: 15px;
+        }
+        
+        .section-title {
+            color: #4a9eff;
+            font-size: 1em;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid rgba(74, 126, 255, 0.3);
+        }
+        
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .input-group {
+            margin-bottom: 10px;
+        }
+        
+        .input-label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 0.9em;
+            color: #ccc;
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid rgba(74, 126, 255, 0.5);
+            border-radius: 6px;
+            background: rgba(20, 20, 40, 0.7);
+            color: white;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: #4a9eff;
+            box-shadow: 0 0 8px rgba(74, 126, 255, 0.3);
+        }
+        
+        .input-field::placeholder {
+            color: #666;
+        }
+        
+        .info-text {
+            color: #888;
+            font-size: 0.75em;
+            margin-top: 3px;
+            font-style: italic;
+        }
+        
+        /* 输入框全选效果 */
+        .input-field.select-all {
+            background: rgba(74, 126, 255, 0.15);
+        }
+        
+        .fee-selector {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        
+        .fee-option {
+            flex: 1;
+            padding: 8px;
+            border: 2px solid rgba(74, 126, 255, 0.3);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(20, 20, 40, 0.5);
+            text-align: center;
+            font-size: 1em;
+            font-weight: bold;
+        }
+        
+        .fee-option:hover {
+            border-color: #4a9eff;
+            background: rgba(74, 126, 255, 0.1);
+        }
+        
+        .fee-option.active {
+            background: rgba(74, 126, 255, 0.3);
+            border-color: #4a9eff;
+            box-shadow: 0 0 15px rgba(74, 126, 255, 0.4);
+        }
+        
+        .calculate-btn {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #4a9eff, #2a5298);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+        }
+        
+        .calculate-btn:hover {
+            background: linear-gradient(135deg, #5aaeff, #3a62a8);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(74, 126, 255, 0.4);
+        }
+        
+        .calculate-btn:active {
+            transform: translateY(0);
+        }
+        
+        .result-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 2px solid rgba(74, 126, 255, 0.3);
+        }
+        
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+        }
+        
+        .result-item {
+            background: rgba(20, 20, 40, 0.7);
+            border-radius: 8px;
+            padding: 10px;
+            border: 1px solid rgba(74, 126, 255, 0.3);
+        }
+        
+        .result-label {
+            font-size: 0.8em;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+        
+        .result-value {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        
+        .profit-positive {
+            color: #4aff7c;
+        }
+        
+        .profit-negative {
+            color: #ff6b6b;
+        }
+        
+        .info-text {
+            color: #888;
+            font-size: 0.85em;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        
+        /* 左上角通知样式 */
+        .notification {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            background: rgba(30, 30, 50, 0.95);
+            border: 2px solid #4a9eff;
+            border-radius: 8px;
+            padding: 12px 15px;
+            z-index: 1000;
+            transform: translateX(-150%);
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            max-width: 300px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+        }
+        
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        .notification.success {
+            border-color: #4aff7c;
+        }
+        
+        .notification.error {
+            border-color: #ff6b6b;
+        }
+        
+        .notification.warning {
+            border-color: #ffa500;
+        }
+        
+        .notification-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 1em;
+        }
+        
+        .notification.success .notification-title {
+            color: #4aff7c;
+        }
+        
+        .notification.error .notification-title {
+            color: #ff6b6b;
+        }
+        
+        .notification.warning .notification-title {
+            color: #ffa500;
+        }
+        
+        .notification-content {
+            font-size: 0.9em;
+            color: #ddd;
+            line-height: 1.4;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .calculator-card {
+                padding: 15px;
+            }
+            
+            h1 {
+                font-size: 1.3em;
+            }
+            
+            .result-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎮 副职业成本收益计算器</h1>
+            <p class="subtitle">精确计算制作成本与期望收益</p>
+        </header>
+        
+        <div class="calculator-card">
+            <!-- 成本输入 -->
+            <div class="input-section">
+                <div class="section-title">💰 成本信息</div>
+                
+                <div class="input-row">
+                    <div class="input-group">
+                        <label class="input-label">单次材料成本</label>
+                        <input type="number" id="materialCost" class="input-field" placeholder="输入制作一次的材料成本" min="0" step="0.01">
+                        <p class="info-text">制作一次所需的全部材料费用</p>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label class="input-label">计划制作次数</label>
+                        <input type="number" id="craftCount" class="input-field" placeholder="输入你计划制作的总次数" min="1" value="100">
+                        <p class="info-text">你打算总共制作多少次</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 售价信息 -->
+            <div class="input-section">
+                <div class="section-title">💵 售价信息</div>
+                
+                <div class="input-row">
+                    <div class="input-group">
+                        <label class="input-label">物品售价</label>
+                        <input type="number" id="normalPrice" class="input-field" placeholder="输入物品的售价" min="0" step="0.01">
+                        <p class="info-text">普通物品和暴击物品价格相同</p>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label class="input-label">暴击物品售价</label>
+                        <input type="number" id="critPrice" class="input-field" placeholder="暴击物品售价（同普通物品可留空）" min="0" step="0.01">
+                        <p class="info-text">暴击出的物品价格（与普通相同则留空）</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 概率设置 -->
+            <div class="input-section">
+                <div class="section-title">🎲 概率设置</div>
+                
+                <div class="input-row">
+                    <div class="input-group">
+                        <label class="input-label">制作成功率 (%)</label>
+                        <input type="number" id="successRate" class="input-field" value="90" min="0" max="100" step="0.1">
+                        <p class="info-text">制作成功的概率，失败则损失材料</p>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label class="input-label">暴击率 (%)</label>
+                        <input type="number" id="critRate" class="input-field" value="10" min="0" max="100" step="0.1">
+                        <p class="info-text">成功制作时出现暴击的概率，暴击获得高品质物品</p>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">暴击物品数量</label>
+                    <input type="number" id="critQuantity" class="input-field" value="1" min="1" max="10" step="1">
+                    <p class="info-text">暴击时获得的物品数量（如COMBO暴击固定2个相同物品）</p>
+                </div>
+            </div>
+            
+            <!-- 预期目标 -->
+            <div class="input-section">
+                <div class="section-title"> 预期目标</div>
+                
+                <div class="input-group">
+                    <label class="input-label">期望最低利润</label>
+                    <input type="number" id="targetProfit" class="input-field" value="0" min="0" step="0.01">
+                    <p class="info-text">你希望至少获得多少利润（0表示只求回本）</p>
+                </div>
+            </div>
+            
+            <!-- 手续费选择 -->
+            <div class="input-section">
+                <div class="section-title">🏪 手续费设置</div>
+                
+                <div class="input-group">
+                    <label class="input-label">选择手续费比例</label>
+                    <div class="fee-selector">
+                        <div class="fee-option active" data-fee="10">10%</div>
+                        <div class="fee-option" data-fee="20">20%</div>
+                    </div>
+                    <p class="info-text">卖出物品时需要支付的手续费比例</p>
+                </div>
+            </div>
+            
+            <!-- 计算按钮 -->
+            <button class="calculate-btn" onclick="calculateProfit()">
+                📊 计算收益
+            </button>
+            
+            <!-- 结果显示 -->
+            <div class="result-section" id="resultSection" style="display: none;">
+                <div class="section-title">📈 计算结果</div>
+                
+                <div class="result-grid">
+                    <div class="result-item">
+                        <div class="result-label">总成本</div>
+                        <div class="result-value" id="totalCost">-</div>
+                    </div>
+                    
+                    <div class="result-item">
+                        <div class="result-label">预期成功</div>
+                        <div class="result-value" id="expectedSuccess">-</div>
+                    </div>
+                    
+                    <div class="result-item">
+                        <div class="result-label">预期普通物品</div>
+                        <div class="result-value" id="expectedNormal">-</div>
+                    </div>
+                    
+                    <div class="result-item">
+                        <div class="result-label">预期暴击物品</div>
+                        <div class="result-value" id="expectedCrit">-</div>
+                    </div>
+                </div>
+                
+                <div class="result-grid" style="margin-top: 10px;">
+                    <div class="result-item">
+                        <div class="result-label">赚钱需普通</div>
+                        <div class="result-value profit-positive" id="profitNormal">-</div>
+                    </div>
+                    
+                    <div class="result-item">
+                        <div class="result-label">赚钱需暴击</div>
+                        <div class="result-value profit-positive" id="profitCrit">-</div>
+                    </div>
+                    
+                    <div class="result-item">
+                        <div class="result-label">预期总收入</div>
+                        <div class="result-value" id="expectedIncome">-</div>
+                    </div>
+                    
+                    <div class="result-item">
+                        <div class="result-label">预期总利润</div>
+                        <div class="result-value" id="expectedProfit">-</div>
+                    </div>
+                </div>
+                
+                <div class="result-item" style="margin-top: 12px;">
+                    <div class="result-label">详细分析</div>
+                    <div id="detailedAnalysis" style="color: #ccc; line-height: 1.6; margin-top: 8px; font-size: 0.9em;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 左上角通知 -->
+    <div class="notification" id="notification">
+        <div class="notification-title" id="notificationTitle">提示</div>
+        <div class="notification-content" id="notificationContent"></div>
+    </div>
+
+    <script>
+        // 手续费选择功能
+        document.querySelectorAll('.fee-option').forEach(option => {
+            option.addEventListener('click', function() {
+                document.querySelectorAll('.fee-option').forEach(opt => {
+                    opt.classList.remove('active');
+                });
+                this.classList.add('active');
+            });
+        });
+        
+        // 显示通知函数
+        function showNotification(title, message, type = 'success') {
+            const notification = document.getElementById('notification');
+            const titleEl = document.getElementById('notificationTitle');
+            const contentEl = document.getElementById('notificationContent');
+            
+            titleEl.textContent = title;
+            contentEl.textContent = message;
+            
+            // 移除所有类型类
+            notification.classList.remove('success', 'error', 'warning');
+            // 添加对应类型
+            notification.classList.add(type);
+            notification.classList.add('show');
+            
+            // 3秒后自动隐藏
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+        
+        // 计算收益函数
+        function calculateProfit() {
+            try {
+                // 获取输入值
+                const materialCost = parseFloat(document.getElementById('materialCost').value);
+                const craftCount = parseInt(document.getElementById('craftCount').value);
+                const normalPrice = parseFloat(document.getElementById('normalPrice').value);
+                let critPrice = parseFloat(document.getElementById('critPrice').value);
+                const successRate = parseFloat(document.getElementById('successRate').value);
+                const critRate = parseFloat(document.getElementById('critRate').value);
+                const critQuantity = parseInt(document.getElementById('critQuantity').value) || 1;
+                const targetProfit = parseFloat(document.getElementById('targetProfit').value) || 0;
+                
+                // 如果暴击价格未填写，默认与普通价格相同
+                if (isNaN(critPrice) || critPrice <= 0) {
+                    critPrice = normalPrice;
+                }
+                
+                // 验证输入
+                if (isNaN(materialCost) || materialCost <= 0) {
+                    showNotification('输入错误', '请输入有效的单次材料成本（必须大于0）', 'error');
+                    return;
+                }
+                
+                if (isNaN(craftCount) || craftCount <= 0) {
+                    showNotification('输入错误', '请输入有效的制作次数（必须大于0）', 'error');
+                    return;
+                }
+                
+                if (isNaN(normalPrice) || normalPrice <= 0) {
+                    showNotification('输入错误', '请输入有效的物品售价（必须大于0）', 'error');
+                    return;
+                }
+                
+                if (isNaN(critPrice) || critPrice <= 0) {
+                    showNotification('输入错误', '请输入有效的暴击物品售价（必须大于0）', 'error');
+                    return;
+                }
+                
+                if (isNaN(successRate) || successRate < 0 || successRate > 100) {
+                    showNotification('输入错误', '成功率必须在 0-100 之间', 'error');
+                    return;
+                }
+                
+                if (isNaN(critRate) || critRate < 0 || critRate > 100) {
+                    showNotification('输入错误', '暴击率必须在 0-100 之间', 'error');
+                    return;
+                }
+                
+                // 获取选中的手续费
+                const feeOption = document.querySelector('.fee-option.active');
+                const feePercent = feeOption ? parseInt(feeOption.dataset.fee) : 10;
+                
+                // 转换概率为小数
+                const successProb = successRate / 100;
+                const failProb = 1 - successProb;
+                const critProb = critRate / 100;
+                const normalProb = 1 - critProb;
+                
+                // 计算总成本
+                const totalCost = materialCost * craftCount;
+                
+                // 计算预期成功次数和失败次数
+                const expectedSuccessCount = Math.round(craftCount * successProb);
+                const expectedFailCount = craftCount - expectedSuccessCount;
+                
+                // 在成功的次数中，预期暴击和普通物品的数量
+                // 暴击时获得 critQuantity 个物品
+                const expectedCritCount = Math.round(expectedSuccessCount * critProb);
+                const expectedNormalCount = expectedSuccessCount - expectedCritCount;
+                const expectedTotalCritItems = expectedCritCount * critQuantity; // 暴击物品总数
+                
+                // 计算扣除手续费后的实际售价
+                const actualNormalPrice = normalPrice * (1 - feePercent / 100);
+                const actualCritPrice = critPrice * (1 - feePercent / 100);
+                
+                // 计算预期总收入
+                const expectedIncome = (expectedNormalCount * actualNormalPrice) + (expectedTotalCritItems * actualCritPrice);
+                
+                // 计算预期总利润
+                const expectedProfit = expectedIncome - totalCost;
+                
+                // 计算赚钱需要的普通物品和暴击物品数量组合
+                // 设普通物品数量为 n，暴击物品数量为 c
+                // n * actualNormalPrice + c * actualCritPrice > totalCost + targetProfit
+                // 根据预期的暴击率，c = (n + c) * critProb
+                // 简化：总收入 = n * actualNormalPrice + c * actualCritPrice
+                // 我们需要找到满足条件的最小 n 和 c
+                
+                let profitNormal = 0;
+                let profitCrit = 0;
+                
+                // 遍历可能的成功次数，找到能赚钱的组合
+                for (let success = 1; success <= craftCount; success++) {
+                    // 按暴击率分配暴击和普通物品
+                    const crit = Math.ceil(success * critProb);
+                    const normal = success - crit;
+                    const totalCritItems = crit * critQuantity; // 暴击物品总数
+                    
+                    const income = (normal * actualNormalPrice) + (totalCritItems * actualCritPrice);
+                    const profit = income - totalCost;
+                    
+                    if (profit >= targetProfit) {
+                        profitNormal = normal;
+                        profitCrit = totalCritItems; // 返回的是物品总数
+                        break;
+                    }
+                }
+                
+                // 更新结果显示
+                document.getElementById('totalCost').textContent = totalCost.toFixed(2);
+                document.getElementById('expectedSuccess').textContent = expectedSuccessCount + ' 次';
+                document.getElementById('expectedNormal').textContent = expectedNormalCount + ' 个';
+                document.getElementById('expectedCrit').textContent = expectedTotalCritItems + ' 个';
+                document.getElementById('profitNormal').textContent = profitNormal + ' 个';
+                document.getElementById('profitCrit').textContent = profitCrit + ' 个';
+                document.getElementById('expectedIncome').textContent = expectedIncome.toFixed(2);
+                
+                const expectedProfitEl = document.getElementById('expectedProfit');
+                expectedProfitEl.textContent = expectedProfit.toFixed(2);
+                
+                // 根据利润正负设置颜色
+                if (expectedProfit >= 0) {
+                    expectedProfitEl.className = 'result-value profit-positive';
+                } else {
+                    expectedProfitEl.className = 'result-value profit-negative';
+                }
+                
+                // 生成详细分析
+                const samePrice = critPrice === normalPrice ? '（暴击物品价格与普通相同）' : '';
+                const analysis = `
+                    <strong>制作计划：</strong>计划制作 ${craftCount} 次，单次成本 ${materialCost.toFixed(2)}<br>
+                    <strong>总成本：</strong>${totalCost.toFixed(2)}<br>
+                    <strong>预期结果：</strong>成功 ${expectedSuccessCount} 次（普通 ${expectedNormalCount} 个，暴击 ${expectedCritCount} 次×${critQuantity}=${expectedTotalCritItems} 个物品），失败 ${expectedFailCount} 次${samePrice}<br>
+                    <strong>手续费：</strong>${feePercent}%（普通物品实得 ${actualNormalPrice.toFixed(2)}，暴击物品实得 ${actualCritPrice.toFixed(2)}）<br>
+                    <br>
+                    <strong> 关键指标：</strong><br>
+                    • 预期收入：<span style="color: #4a9eff; font-weight: bold;">${expectedIncome.toFixed(2)}</span><br>
+                    • 预期利润：<span style="color: ${expectedProfit >= 0 ? '#4aff7c' : '#ff6b6b'}; font-weight: bold;">${expectedProfit.toFixed(2)}</span><br>
+                    • <strong>赚钱需要：</strong><span style="color: #4aff7c; font-weight: bold;">${profitNormal} 个普通物品 + ${profitCrit} 个暴击物品</span><br>
+                    <br>
+                    <strong> 建议：</strong>${expectedProfit >= 0 ? '✅ 预期能赚钱，可以制作' : '❌ 预期会亏损，建议提高售价或降低成本'}
+                `;
+                
+                document.getElementById('detailedAnalysis').innerHTML = analysis;
+                
+                // 显示结果区域
+                document.getElementById('resultSection').style.display = 'block';
+                
+                // 显示成功通知
+                const profitType = expectedProfit >= 0 ? '盈利' : '亏损';
+                const comboHint = critQuantity > 1 ? ` | COMBO×${critQuantity}` : '';
+                showNotification(
+                    '计算完成', 
+                    `预期${profitType}: ${Math.abs(expectedProfit).toFixed(2)} | 需${profitNormal}普通+${profitCrit}暴击${comboHint}`,
+                    expectedProfit >= 0 ? 'success' : 'warning'
+                );
+                
+                // 滚动到结果区域
+                document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                
+            } catch (error) {
+                showNotification('计算错误', '发生未知错误：' + error.message, 'error');
+                console.error(error);
+            }
+        }
+        
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 为所有输入框添加单击全选功能
+            document.querySelectorAll('.input-field').forEach(input => {
+                input.addEventListener('click', function() {
+                    this.select();
+                    this.classList.add('select-all');
+                });
+                
+                input.addEventListener('blur', function() {
+                    this.classList.remove('select-all');
+                });
+            });
+            
+            console.log('副职业成本收益计算器已加载');
+        });
+    </script>
+</body>
+</html>
