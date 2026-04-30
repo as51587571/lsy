@@ -10,10 +10,10 @@
         }
         body {
             font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-            margin: 12px 16px;
+            margin: 8px 12px;
             background: #f0f2f5;
             height: 100vh;
-            overflow-y: auto;
+            overflow: hidden;
         }
         h1 {
             font-size: 1.5rem;
@@ -30,14 +30,14 @@
         .zones-container {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: 12px;
+            gap: 8px;
+            margin-bottom: 8px;
         }
         .zone-card {
             background: white;
-            border-radius: 12px;
+            border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            padding: 12px 14px;
+            padding: 8px 10px;
             border: 1px solid #e2e8f0;
             transition: all 0.1s;
         }
@@ -45,15 +45,15 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             border-bottom: 1px solid #eef2f8;
-            padding-bottom: 8px;
+            padding-bottom: 6px;
         }
         .zone-title {
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 700;
             background: #f8fafd;
-            padding: 3px 12px;
+            padding: 2px 10px;
             border-radius: 30px;
             margin: 0;
             color: #1f3b4c;
@@ -66,9 +66,9 @@
             color: white;
             border: none;
             border-radius: 30px;
-            padding: 5px 14px;
+            padding: 4px 12px;
             cursor: pointer;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
             transition: 0.2s;
         }
@@ -78,34 +78,34 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.85rem;
-            border-radius: 12px;
+            font-size: 0.8rem;
+            border-radius: 10px;
             overflow: hidden;
         }
         th {
             background: #eef3fc;
-            padding: 6px 3px;
+            padding: 5px 2px;
             font-weight: 600;
             color: #1e4663;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
         }
         td, th {
             border-bottom: 1px solid #e2e8f0;
-            padding: 6px 3px;
+            padding: 5px 2px;
             text-align: center;
             vertical-align: middle;
         }
         input[type="number"], input[type="text"] {
             text-align: center;
-            padding: 4px 3px;
-            border-radius: 12px;
+            padding: 3px 2px;
+            border-radius: 10px;
             border: 1px solid #cbd5e1;
             font-weight: 500;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             transition: 0.1s;
         }
         input[type="text"] {
-            width: 120px;
+            width: 100px;
         }
         input:focus {
             border-color: #3b82f6;
@@ -115,23 +115,23 @@
         .btn-group {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 14px;
+            gap: 6px;
+            margin-bottom: 8px;
             background: white;
-            padding: 10px 16px;
+            padding: 8px 12px;
             border-radius: 50px;
             align-items: center;
             box-shadow: 0 1px 5px rgba(0,0,0,0.05);
         }
         .btn {
-            padding: 5px 14px;
+            padding: 4px 10px;
             background: #2c6e9e;
             border: none;
             border-radius: 40px;
             color: white;
             font-weight: 600;
             cursor: pointer;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             transition: 0.2s;
         }
         .btn:hover { opacity: 0.85; transform: translateY(-1px);}
@@ -140,18 +140,18 @@
         .btn-warning { background: #e67e22; color: white; }
         .btn-info { background: #3b82f6; }
         .param-input {
-            width: 70px;
+            width: 60px;
             text-align: center;
-            padding: 4px;
+            padding: 3px;
             border-radius: 30px;
             border: 1px solid #bdc3c7;
             font-weight: 600;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
         }
         .tip {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: #5a6e85;
-            margin-left: 8px;
+            margin-left: 6px;
         }
         #importFile {
             display: none;
@@ -209,17 +209,17 @@
             }
         }
         footer {
-            margin-top: 10px;
-            font-size: 0.7rem;
+            margin-top: 6px;
+            font-size: 0.65rem;
             text-align: center;
             color: #6c7a8e;
-            padding-bottom: 8px;
+            padding-bottom: 6px;
         }
         .add-row-container {
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         .small-notice {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: #e67e22;
             margin-left: 5px;
         }
@@ -293,9 +293,6 @@
     </style>
 </head>
 <body>
-<h1>⚡ 能量倒计时 · 全局TOP5高亮 ⚡</h1>
-<div class="sub">✨ 智能恢复频率 | 账号可上下移动顺序 | 支持小数显示开关 ✨</div>
-
 <div class="btn-group">
     <button class="btn" onclick="forceFullRender()">🔄 强制刷新</button>
     <button class="btn btn-success" onclick="addNewZone()">➕ 添加分区</button>
