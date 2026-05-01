@@ -913,19 +913,18 @@
             const roleSelect = document.createElement('select');
             roleSelect.id = `role-${server.id}`;
             
-            // 添加"全部角色"选项
+            // 添加"全部角色"选项（默认选中）
             const allOption = document.createElement('option');
             allOption.value = '__all__';
             allOption.textContent = '全部角色';
+            allOption.selected = true; // 默认选中全部角色
             roleSelect.appendChild(allOption);
             
             server.roles.forEach(role => {
                 const option = document.createElement('option');
                 option.value = role;
                 option.textContent = role;
-                if (role === currentRoles[server.id]) {
-                    option.selected = true;
-                }
+                // 移除这里的默认选中逻辑，让"全部角色"始终为默认
                 roleSelect.appendChild(option);
             });
             
