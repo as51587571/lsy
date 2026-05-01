@@ -104,6 +104,15 @@
             font-size: 0.7rem;
             transition: 0.1s;
         }
+        /* 隐藏数字输入框的上下箭头 */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
         input[type="text"] {
             width: 100px;
         }
@@ -675,9 +684,12 @@
                 nameInput.value = acc.name;
                 nameInput.style.width = '120px';
                 nameInput.style.flex = '1';
-                // 点击输入框时全选文本
-                nameInput.addEventListener('focus', function() {
-                    this.select();
+                // 按回车失去焦点
+                nameInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.blur();
+                    }
                 });
                 nameInput.addEventListener('change', ((z, idx2) => (e) => updateNameInZone(z, idx2, e.target.value))(zone.key, idx));
                 
@@ -714,9 +726,12 @@
                 energyInput.step = showDecimal ? '0.1' : '1';
                 energyInput.value = displayCur;
                 energyInput.style.width = '88px';
-                // 点击能量输入框时全选文本
-                energyInput.addEventListener('focus', function() {
-                    this.select();
+                // 按回车失去焦点
+                energyInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.blur();
+                    }
                 });
                 // 根据排名添加高亮样式
                 if (rank && rank >= 1 && rank <= 5) {
@@ -746,8 +761,12 @@
                 suppInput.value = acc.supplement || 0;
                 suppInput.style.width = '80px';
                 suppInput.placeholder = '补充';
-                suppInput.addEventListener('focus', function() {
-                    this.select();
+                // 按回车失去焦点
+                suppInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.blur();
+                    }
                 });
                 suppInput.addEventListener('blur', ((accountRef) => (e) => {
                     let val = parseInt(e.target.value);
@@ -766,8 +785,12 @@
                 powerInput.value = acc.power || 0;
                 powerInput.style.width = '80px';
                 powerInput.placeholder = '战力';
-                powerInput.addEventListener('focus', function() {
-                    this.select();
+                // 按回车失去焦点
+                powerInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.blur();
+                    }
                 });
                 powerInput.addEventListener('blur', ((accountRef) => (e) => {
                     let val = parseInt(e.target.value);
