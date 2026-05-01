@@ -900,7 +900,13 @@
             repeatSelect.innerHTML = `
                 <option value="none">一次性</option>
                 <option value="daily">每日</option>
-                <option value="weekly">每周</option>
+                <option value="weekly-1">每周一</option>
+                <option value="weekly-2">每周二</option>
+                <option value="weekly-3">每周三</option>
+                <option value="weekly-4">每周四</option>
+                <option value="weekly-5">每周五</option>
+                <option value="weekly-6">每周六</option>
+                <option value="weekly-0">每周日</option>
             `;
             
             // 角色选择下拉框
@@ -1279,10 +1285,20 @@
                     const tomorrow = new Date();
                     tomorrow.setDate(tomorrow.getDate() + 1);
                     task.nextDate = tomorrow.toISOString();
-                } else if (task.repeat === 'weekly') {
-                    const nextWeek = new Date();
-                    nextWeek.setDate(nextWeek.getDate() + 7);
-                    task.nextDate = nextWeek.toISOString();
+                } else if (task.repeat && task.repeat.startsWith('weekly-')) {
+                    // 自定义每周重置日
+                    const resetDay = parseInt(task.repeat.split('-')[1]);
+                    const nextReset = new Date();
+                    const currentDay = nextReset.getDay();
+                    
+                    // 计算距离下一个重置日还有几天
+                    let daysUntilReset = (resetDay - currentDay + 7) % 7;
+                    if (daysUntilReset === 0) {
+                        daysUntilReset = 7; // 如果是同一天，就设置为7天后
+                    }
+                    
+                    nextReset.setDate(nextReset.getDate() + daysUntilReset);
+                    task.nextDate = nextReset.toISOString();
                 }
             }
             
@@ -1475,8 +1491,11 @@
             
             if (task.repeat === 'daily') {
                 dateBadge.textContent = '每日';
-            } else if (task.repeat === 'weekly') {
-                dateBadge.textContent = '每周';
+            } else if (task.repeat && task.repeat.startsWith('weekly-')) {
+                // 显示自定义的每周重置日
+                const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+                const resetDay = parseInt(task.repeat.split('-')[1]);
+                dateBadge.textContent = '每' + dayNames[resetDay];
             } else {
                 // 一次性任务，显示具体日期和时间
                 const month = nextDate.getMonth() + 1;
@@ -1605,6 +1624,7 @@
         // 检查重复任务并重置（每天执行）
         function checkAndResetRecurringTasks() {
             const today = new Date().toDateString();
+            const todayDay = new Date().getDay(); // 今天是星期几
             const lastCheck = localStorage.getItem('lastRecurringCheck');
             
             // 如果上次检查不是今天，则重置重复任务
@@ -1624,16 +1644,15 @@
                                 task.nextDate = tomorrow.toISOString();
                                 changed = true;
                             }
-                            // 对于每周重复任务，检查是否过了一周
-                            else if (task.repeat === 'weekly' && task.lastCompleted) {
-                                const lastCompletedDate = new Date(task.lastCompleted);
-                                const currentDate = new Date();
-                                const daysDiff = (currentDate - lastCompletedDate) / (1000 * 60 * 60 * 24);
+                            // 对于自定义每周重复任务，检查今天是否是重置日
+                            else if (task.repeat && task.repeat.startsWith('weekly-')) {
+                                const resetDay = parseInt(task.repeat.split('-')[1]);
                                 
-                                if (daysDiff >= 7) {
+                                // 如果今天是重置日，则重置任务
+                                if (todayDay === resetDay) {
                                     task.completed = false;
                                     task.lastCompleted = null;
-                                    // 更新下次日期为7天后
+                                    // 更新下次日期为下周的同一天
                                     const nextWeek = new Date();
                                     nextWeek.setDate(nextWeek.getDate() + 7);
                                     task.nextDate = nextWeek.toISOString();
