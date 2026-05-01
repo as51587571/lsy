@@ -361,30 +361,34 @@
                     if(typeof acc.power === 'undefined' || acc.power === null) acc.power = 0;
                     // 确保有排除排名字段
                     if(typeof acc.excludeFromRank === 'undefined') acc.excludeFromRank = false;
+                    // 确保有补充能量字段
+                    if(typeof acc.supplement === 'undefined' || acc.supplement === null) acc.supplement = 0;
+                    if(typeof acc.supplementMax === 'undefined' || acc.supplementMax === null) acc.supplementMax = 2000;
+                    if(!acc.supplementRecordTime) acc.supplementRecordTime = now;
                 }
             } else {
                 accounts = [
-                    { name: "北疯[奈薩]", current: 80, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "MISSS[奈薩]", current: 630, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "阿林LSY[奈薩]", current: 525, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "热巴在上钟[奈薩]", current: 615, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "莽超[奈薩]", current: 600, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "绯闻男友[塔哈]", current: 315, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "阿林[塔哈]", current: 55, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "挤不出了[塔哈]", current: 54, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "南街刘德华[塔哈]", current: 0, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "西街刘德华[塔哈]", current: 50, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "misslin[廬德]", current: 60, power: 0, excludeFromRank: false, zone: "廬德", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "南疯[廬德]", current: 90, power: 0, excludeFromRank: false, zone: "廬德", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "阿林[廬德]", current: 115, power: 0, excludeFromRank: false, zone: "廬德", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "蠢人灵机一动[廬德]", current: 180, power: 0, excludeFromRank: false, zone: "廬德", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "红灯星[廬德]", current: 195, power: 0, excludeFromRank: false, zone: "廬德", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "魔三XXXX[崔妮]", current: 60, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "海王开凿[崔妮]", current: 60, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "黄金奶[崔妮]", current: 102, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "杰西卡的奶[崔妮]", current: 54, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "流川夕的奶[崔妮]", current: 52, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "八卦海的奶[崔妮]", current: 50, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), lastEnergySync: Date.now() }
+                    { name: "北疯[奈薩]", current: 80, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "MISSS[奈薩]", current: 630, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "阿林LSY[奈薩]", current: 525, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "热巴在上钟[奈薩]", current: 615, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "莽超[奈薩]", current: 600, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "绯闻男友[塔哈]", current: 315, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "阿林[塔哈]", current: 55, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "挤不出了[塔哈]", current: 54, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "南街刘德华[塔哈]", current: 0, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "西街刘德华[塔哈]", current: 50, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "misslin[廬德]", current: 60, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "南疯[廬德]", current: 90, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "廬德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "阿林[廬德]", current: 115, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "廬德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "蠢人灵机一动[德]", current: 180, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "廬德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "红灯星[廬德]", current: 195, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "廬德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "魔三XXXX[崔妮]", current: 60, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "海王开凿[崔妮]", current: 60, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "黄金奶[崔妮]", current: 102, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "杰西卡的奶[崔妮]", current: 54, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "流川夕的奶[崔妮]", current: 52, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "八卦海的奶[崔妮]", current: 50, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() }
                 ];
             }
             
@@ -640,7 +644,7 @@
                     <button class="zone-del-btn" onclick="delZone('${zone.key}')">删除分区</button>
                 </div>
                 <table>
-                    <thead><tr><th>账号</th><th>当前能量</th><th>战斗力</th><th>排名</th><th>还差</th><th>回满时间</th><th>剩余时间</th><th>操作</th></tr></thead>
+                    <thead><tr><th>账号</th><th>基本能量</th><th>补充能量</th><th>战斗力</th><th>排名</th><th>还差</th><th>回满时间</th><th>剩余时间</th><th>操作</th></tr></thead>
                     <tbody id="tbody-${zone.key}"></tbody>
                 </table>
             `;
@@ -734,6 +738,27 @@
                 })(zone.key, idx, acc));
                 tdEnergy.appendChild(energyInput);
                 
+                // 补充能量输入框
+                const tdSupplement = document.createElement('td');
+                const suppInput = document.createElement('input');
+                suppInput.type = 'number';
+                suppInput.step = '1';
+                suppInput.value = acc.supplement || 0;
+                suppInput.style.width = '80px';
+                suppInput.placeholder = '补充';
+                suppInput.addEventListener('focus', function() {
+                    this.select();
+                });
+                suppInput.addEventListener('blur', ((accountRef) => (e) => {
+                    let val = parseInt(e.target.value);
+                    if (isNaN(val)) val = 0;
+                    const maxSupp = accountRef.supplementMax || 2000;
+                    accountRef.supplement = Math.min(maxSupp, Math.max(0, val));
+                    accountRef.supplementRecordTime = Date.now();
+                    saveData();
+                })(acc));
+                tdSupplement.appendChild(suppInput);
+                
                 // 战斗力输入框
                 const tdPower = document.createElement('td');
                 const powerInput = document.createElement('input');
@@ -825,6 +850,7 @@
                 
                 tr.appendChild(tdName);
                 tr.appendChild(tdEnergy);
+                tr.appendChild(tdSupplement);
                 tr.appendChild(tdPower);
                 tr.appendChild(tdRank);
                 tr.appendChild(tdNeed);
@@ -859,15 +885,15 @@
                 const uniqueKey = `${zone.key}|${acc.name}`;
                 const rank = rankMap.get(uniqueKey);
                 
-                const needCell = row.children[4];
+                const needCell = row.children[5];
                 if(needCell) needCell.innerText = Math.ceil(need);
-                const fullCell = row.children[5];
+                const fullCell = row.children[6];
                 if(fullCell) fullCell.innerText = fullObj.toLocaleString().slice(5, -3);
-                const cdCell = row.children[6];
+                const cdCell = row.children[7];
                 if(cdCell && cdCell.innerText !== remainStr) cdCell.innerText = remainStr;
                 
                 // 更新排名列
-                const rankCell = row.children[3];
+                const rankCell = row.children[4];
                 if(rankCell) {
                     rankCell.innerHTML = '';
                     if(rank && rank >= 1 && rank <= 5) {
@@ -905,8 +931,17 @@
                     energyInput.step = showDecimal ? '0.1' : '1';
                 }
                 
+                // 更新补充能量输入框
+                const suppInput = row.children[2]?.querySelector('input');
+                if(suppInput && document.activeElement !== suppInput) {
+                    const accIdx = accounts.findIndex(a => a === zoneAccounts[i]);
+                    if(accIdx !== -1 && accounts[accIdx].supplement !== undefined) {
+                        suppInput.value = accounts[accIdx].supplement;
+                    }
+                }
+                
                 // 更新战斗力输入框
-                const powerInput = row.children[2]?.querySelector('input');
+                const powerInput = row.children[3]?.querySelector('input');
                 if(powerInput && document.activeElement !== powerInput) {
                     const accIdx = accounts.findIndex(a => a === zoneAccounts[i]);
                     if(accIdx !== -1 && accounts[accIdx].power !== undefined) {
@@ -915,7 +950,7 @@
                 }
                 
                 // 更新排除排名按钮状态
-                const excludeBtn = row.children[7]?.querySelector('.exclude-rank-btn');
+                const excludeBtn = row.children[8]?.querySelector('.exclude-rank-btn');
                 if(excludeBtn) {
                     const accIdx = accounts.findIndex(a => a === zoneAccounts[i]);
                     if(accIdx !== -1) {
@@ -972,7 +1007,7 @@
     function addNewZone() { let name = prompt("分区名称"); if(!name?.trim()) return; let key = name.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g,'')||"zone"+Date.now(); if(zonesConfig.some(z=>z.key===key)){showToast("分区标识重复！", "error");return;} zonesConfig.push({name:name.trim(),key}); renderAll(); saveData(); showToast("分区添加成功！", "success"); }
     function renameZone(zoneKey, newName) { if(!newName?.trim()) return; let z = zonesConfig.find(z=>z.key===zoneKey); if(z) z.name = newName.trim(); renderAll(); saveData(); }
     function delZone(zoneKey) { if(!confirm("删除分区及其所有账号?")) return; zonesConfig = zonesConfig.filter(z=>z.key!==zoneKey); accounts = accounts.filter(a=>a.zone!==zoneKey); renderAll(); saveData(); }
-    function addRow() { if(!zonesConfig.length){showToast("请先添加分区！", "error");return;} let zk = prompt("分区key:"+zonesConfig.map(z=>z.key).join(',')); if(!zk||!zonesConfig.some(z=>z.key===zk)){showToast("分区不存在！", "error");return;} accounts.push({name:`新成员[${zk}]`,current:0,power:0,excludeFromRank:false,zone:zk,recordTime:Date.now(),lastEnergySync:Date.now()}); renderAll(); saveData(); showToast("账号添加成功！", "success"); }
+    function addRow() { if(!zonesConfig.length){showToast("请先添加分区！", "error");return;} let zk = prompt("分区key:"+zonesConfig.map(z=>z.key).join(',')); if(!zk||!zonesConfig.some(z=>z.key===zk)){showToast("分区不存在！", "error");return;} accounts.push({name:`新成员[${zk}]`,current:0,supplement:0,supplementMax:2000,power:0,excludeFromRank:false,zone:zk,recordTime:Date.now(),supplementRecordTime:Date.now(),lastEnergySync:Date.now()}); renderAll(); saveData(); showToast("账号添加成功！", "success"); }
     function updateNameInZone(zoneKey, idx, newName) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) arr[idx].name = newName; renderAll(); saveData(); }
     function delRowInZone(zoneKey, idx) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) { accounts = accounts.filter(a=> a !== arr[idx]); renderAll(); saveData(); } }
     function clearAllData() { if(!confirm("彻底清空所有数据？将恢复默认值")) return; localStorage.clear(); loadData(); calibrateEnergyOnLoadOrOpen(); }
