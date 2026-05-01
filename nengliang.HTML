@@ -684,6 +684,10 @@
                 nameInput.value = acc.name;
                 nameInput.style.width = '120px';
                 nameInput.style.flex = '1';
+                // 点击输入框时自动全选
+                nameInput.addEventListener('focus', function() {
+                    this.select();
+                });
                 // 按回车失去焦点
                 nameInput.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') {
@@ -726,6 +730,10 @@
                 energyInput.step = showDecimal ? '0.1' : '1';
                 energyInput.value = displayCur;
                 energyInput.style.width = '88px';
+                // 点击输入框时自动全选
+                energyInput.addEventListener('focus', function() {
+                    this.select();
+                });
                 // 按回车失去焦点
                 energyInput.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') {
@@ -761,6 +769,10 @@
                 suppInput.value = acc.supplement || 0;
                 suppInput.style.width = '80px';
                 suppInput.placeholder = '补充';
+                // 点击输入框时自动全选
+                suppInput.addEventListener('focus', function() {
+                    this.select();
+                });
                 // 按回车失去焦点
                 suppInput.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') {
@@ -785,6 +797,10 @@
                 powerInput.value = acc.power || 0;
                 powerInput.style.width = '80px';
                 powerInput.placeholder = '战力';
+                // 点击输入框时自动全选
+                powerInput.addEventListener('focus', function() {
+                    this.select();
+                });
                 // 按回车失去焦点
                 powerInput.addEventListener('keydown', function(e) {
                     if (e.key === 'Enter') {
