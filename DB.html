@@ -1299,6 +1299,17 @@
                     
                     nextReset.setDate(nextReset.getDate() + daysUntilReset);
                     task.nextDate = nextReset.toISOString();
+                } else if (task.repeat === 'none') {
+                    // 一次性任务完成后自动删除
+                    const taskIndex = server.tasks.findIndex(t => t.id === taskId);
+                    if (taskIndex !== -1) {
+                        server.tasks.splice(taskIndex, 1);
+                        showToast('任务已完成并删除', 'info');
+                        saveServers();
+                        renderTasks();
+                        updateDate();
+                        return;
+                    }
                 }
             }
             
@@ -1384,6 +1395,11 @@
                 // 渲染每个任务组
                 Object.keys(taskGroups).forEach(taskName => {
                     const group = taskGroups[taskName];
+                    
+                    // 如果组内没有任务，跳过（自动删除空分组）
+                    if (group.length === 0) {
+                        return;
+                    }
                     
                     // 如果组内有多个任务（批量添加的），创建组容器
                     if (group.length > 1) {
