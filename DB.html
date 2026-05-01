@@ -19,19 +19,51 @@
             display: flex;
             flex-direction: column;
         }
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+        }
         h1 {
             color: #333;
             text-align: center;
-            margin: 5px 0;
+            margin: 0;
             font-size: 20px;
+            flex: 1;
         }
         .global-controls {
-            background-color: white;
-            border-radius: 6px;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.1);
-            padding: 8px;
-            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
             flex-shrink: 0;
+            flex-wrap: nowrap;
+        }
+        .sound-control {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+        .sound-control button {
+            padding: 2px 6px;
+            font-size: 10px;
+        }
+        .date-info {
+            color: #666;
+            font-size: 9px;
+            white-space: nowrap;
+        }
+        .data-controls {
+            display: flex;
+            gap: 3px;
+        }
+        .data-controls button {
+            padding: 2px 6px;
+            font-size: 10px;
+            white-space: nowrap;
         }
         .servers-grid {
             display: grid;
@@ -71,6 +103,7 @@
             padding: 8px;
             flex: 1;
             overflow-y: auto;
+            overflow-x: visible; /* 允许横向溢出，确保下拉框不被裁剪 */
             display: flex;
             flex-direction: column;
         }
@@ -172,6 +205,7 @@
             margin-top: 5px;
             flex-shrink: 0;
             flex-wrap: wrap;
+            overflow: visible; /* 确保下拉框不被裁剪 */
         }
         .add-task-row {
             display: contents;
@@ -179,6 +213,62 @@
         .add-task-row input[type="text"] {
             flex: 1;
             min-width: 200px;
+        }
+        /* 任务历史记录下拉框 */
+        .task-history-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 1000;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 2px;
+        }
+        .history-item {
+            padding: 6px 10px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .history-item:hover {
+            background-color: #f5f5f5;
+        }
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        .history-delete-btn {
+            padding: 2px 6px;
+            font-size: 10px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 2px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+        .history-delete-btn:hover {
+            background-color: #d32f2f;
+        }
+        .history-clear-all {
+            padding: 6px 10px;
+            text-align: center;
+            color: #666;
+            cursor: pointer;
+            font-size: 11px;
+            border-top: 1px solid #e0e0e0;
+            background-color: #fafafa;
+        }
+        .history-clear-all:hover {
+            background-color: #f0f0f0;
+            color: #f44336;
         }
         input[type="text"], select, input[type="date"], input[type="datetime-local"] {
             padding: 4px;
@@ -238,15 +328,19 @@
         .sound-control {
             display: flex;
             align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-            font-size: 12px;
+            gap: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+        .sound-control button {
+            padding: 2px 6px;
+            font-size: 10px;
         }
         .date-info {
-            text-align: right;
             color: #666;
-            font-size: 10px;
-            margin-top: 5px;
+            font-size: 9px;
+            margin-left: auto; /* 推到右边 */
+            white-space: nowrap;
         }
         .delete-btn {
             background-color: #f44336;
@@ -258,9 +352,13 @@
         }
         .data-controls {
             display: flex;
-            gap: 5px;
-            flex-wrap: wrap;
-            margin-top: 5px;
+            gap: 3px;
+            flex-wrap: nowrap;
+        }
+        .data-controls button {
+            padding: 2px 6px;
+            font-size: 10px;
+            white-space: nowrap;
         }
         .export-btn {
             background-color: #2196F3;
@@ -437,29 +535,32 @@
 </head>
 <body>
     <div class="container">
-        <h1>游戏待办事项列表</h1>
-        
-        <!-- 全局控制区 -->
-        <div class="global-controls">
-            <div class="sound-control">
-                <label>
-                    <input type="checkbox" id="sound-toggle" checked>
-                    启用声音提示
-                </label>
-                <button onclick="testSound()">测试声音</button>
-                <button onclick="showSoundSettings()">声音设置</button>
-            </div>
+        <!-- 标题和控制栏在同一行 -->
+        <div class="header-row">
+            <h1>游戏待办事项列表</h1>
             
-            <div class="data-controls">
-                <button class="export-btn" onclick="exportData()">导出</button>
-                <button class="import-btn" onclick="document.getElementById('import-file').click()">导入</button>
-                <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(this)">
-                <button class="clear-btn" onclick="clearAllData()">清空</button>
-                <button class="add-server-btn" onclick="addNewServer()">+ 添加大区</button>
-            </div>
-            
-            <div class="date-info">
-                最后更新: <span id="last-updated"></span>
+            <!-- 全局控制区 -->
+            <div class="global-controls">
+                <div class="sound-control">
+                    <label>
+                        <input type="checkbox" id="sound-toggle" checked>
+                        启用声音提示
+                    </label>
+                    <button onclick="testSound()">测试声音</button>
+                    <button onclick="showSoundSettings()">声音设置</button>
+                </div>
+                
+                <div class="data-controls">
+                    <button class="export-btn" onclick="exportData()">导出</button>
+                    <button class="import-btn" onclick="document.getElementById('import-file').click()">导入</button>
+                    <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(this)">
+                    <button class="clear-btn" onclick="clearAllData()">清空</button>
+                    <button class="add-server-btn" onclick="addNewServer()">+ 添加大区</button>
+                </div>
+                
+                <div class="date-info">
+                    最后更新: <span id="last-updated"></span>
+                </div>
             </div>
         </div>
         
@@ -862,21 +963,50 @@
             const addTaskDiv = document.createElement('div');
             addTaskDiv.className = 'add-task';
             
-            // 第一行：任务输入框
+            // 第一行：任务输入框（使用flex布局，添加overflow: visible确保下拉框不被裁剪）
             const row1 = document.createElement('div');
             row1.className = 'add-task-row';
+            row1.style.position = 'relative';
+            row1.style.display = 'flex';
+            row1.style.gap = '5px';
+            row1.style.alignItems = 'center';
+            row1.style.overflow = 'visible';
+            
+            // 历史记录下拉框（先定义，避免后面使用时未定义）
+            const historyDropdown = document.createElement('div');
+            historyDropdown.className = 'task-history-dropdown';
+            historyDropdown.id = `history-${server.id}`;
+            historyDropdown.style.display = 'none';
             
             const taskInput = document.createElement('input');
             taskInput.type = 'text';
             taskInput.placeholder = '输入任务...';
             taskInput.id = `input-${server.id}`;
+            taskInput.autocomplete = 'off';
             taskInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     addTaskToServer(server.id);
                 }
             });
             
+            // 输入框事件：显示历史记录
+            taskInput.addEventListener('input', () => {
+                showTaskHistory(server.id);
+            });
+            
+            taskInput.addEventListener('focus', () => {
+                showTaskHistory(server.id);
+            });
+            
+            // 点击其他地方关闭历史记录
+            document.addEventListener('click', (e) => {
+                if (!taskInput.contains(e.target) && !historyDropdown.contains(e.target)) {
+                    historyDropdown.style.display = 'none';
+                }
+            });
+            
             row1.appendChild(taskInput);
+            row1.appendChild(historyDropdown);
             addTaskDiv.appendChild(row1);
             
             // 第二行：日期、重复、角色、添加按钮
@@ -1178,6 +1308,9 @@
             console.log('添加任务:', taskText, '大区ID:', serverId);
             
             if (taskText) {
+                // 保存到历史记录
+                addToTaskHistory(taskText);
+                
                 const server = servers.find(s => s.id === serverId);
                 if (server) {
                     console.log('当前任务数量:', server.tasks.length);
@@ -1544,6 +1677,152 @@
         // 保存大区数据到localStorage
         function saveServers() {
             localStorage.setItem('gameTodoServers', JSON.stringify(servers));
+        }
+        
+        // 获取任务历史记录
+        function getTaskHistory() {
+            const history = localStorage.getItem('taskInputHistory');
+            return history ? JSON.parse(history) : [];
+        }
+        
+        // 保存任务历史记录
+        function saveTaskHistory(history) {
+            localStorage.setItem('taskInputHistory', JSON.stringify(history));
+        }
+        
+        // 添加任务到历史记录
+        function addToTaskHistory(taskText) {
+            if (!taskText || !taskText.trim()) return;
+            
+            console.log('保存任务到历史记录:', taskText);
+            
+            let history = getTaskHistory();
+            console.log('当前历史记录数量:', history.length);
+            
+            // 如果已存在，先移除
+            history = history.filter(item => item !== taskText.trim());
+            
+            // 添加到开头
+            history.unshift(taskText.trim());
+            
+            // 只保留最近20条
+            if (history.length > 20) {
+                history = history.slice(0, 20);
+            }
+            
+            saveTaskHistory(history);
+            console.log('保存后历史记录数量:', history.length);
+        }
+        
+        // 显示任务历史记录
+        function showTaskHistory(serverId) {
+            const dropdown = document.getElementById(`history-${serverId}`);
+            if (!dropdown) {
+                console.log('未找到下拉框元素:', `history-${serverId}`);
+                return;
+            }
+            
+            const history = getTaskHistory();
+            console.log('显示历史记录，数量:', history.length);
+            
+            if (history.length === 0) {
+                console.log('历史记录为空，隐藏下拉框');
+                dropdown.style.display = 'none';
+                return;
+            }
+            
+            dropdown.innerHTML = '';
+            
+            // 添加历史记录项
+            history.forEach(taskText => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                
+                const textSpan = document.createElement('span');
+                textSpan.textContent = taskText;
+                textSpan.style.flex = '1';
+                textSpan.onclick = () => {
+                    const input = document.getElementById(`input-${serverId}`);
+                    if (input) {
+                        input.value = taskText;
+                        dropdown.style.display = 'none';
+                    }
+                };
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'history-delete-btn';
+                deleteBtn.textContent = '删除';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteTaskHistoryItem(taskText);
+                    showTaskHistory(serverId);
+                };
+                
+                item.appendChild(textSpan);
+                item.appendChild(deleteBtn);
+                dropdown.appendChild(item);
+            });
+            
+            // 添加清空全部按钮
+            const clearAll = document.createElement('div');
+            clearAll.className = 'history-clear-all';
+            clearAll.textContent = '清空全部记录';
+            clearAll.onclick = () => {
+                clearAllTaskHistory();
+                dropdown.style.display = 'none';
+            };
+            dropdown.appendChild(clearAll);
+            
+            // 使用fixed定位，相对于视口，不受父容器overflow影响
+            const input = document.getElementById(`input-${serverId}`);
+            if (input) {
+                const rect = input.getBoundingClientRect();
+                const viewportHeight = window.innerHeight;
+                const dropdownHeight = 200; // 预估下拉框高度
+                
+                dropdown.style.display = 'block';
+                dropdown.style.position = 'fixed';
+                dropdown.style.left = rect.left + 'px';
+                dropdown.style.width = rect.width + 'px';
+                dropdown.style.zIndex = '99999';
+                
+                // 判断下拉框应该显示在输入框上方还是下方
+                const spaceBelow = viewportHeight - rect.bottom;
+                const spaceAbove = rect.top;
+                
+                if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+                    // 下方空间不足，上方空间足够，显示在上方
+                    dropdown.style.top = (rect.top - dropdownHeight - 2) + 'px';
+                    dropdown.style.bottom = 'auto';
+                    console.log('下拉框显示在输入框上方');
+                } else {
+                    // 默认显示在下方
+                    dropdown.style.top = (rect.bottom + 2) + 'px';
+                    dropdown.style.bottom = 'auto';
+                    console.log('下拉框显示在输入框下方');
+                }
+                
+                console.log('下拉框定位:', {
+                    top: dropdown.style.top,
+                    left: dropdown.style.left,
+                    width: dropdown.style.width,
+                    spaceBelow: spaceBelow,
+                    spaceAbove: spaceAbove
+                });
+            }
+        }
+        
+        // 删除单条历史记录
+        function deleteTaskHistoryItem(taskText) {
+            let history = getTaskHistory();
+            history = history.filter(item => item !== taskText);
+            saveTaskHistory(history);
+        }
+        
+        // 清空全部历史记录
+        function clearAllTaskHistory() {
+            saveTaskHistory([]);
+            showToast('历史记录已清空', 'info');
         }
         
         // 导出数据功能
