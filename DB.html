@@ -168,18 +168,17 @@
         }
         .add-task {
             display: flex;
-            flex-direction: column;
             gap: 5px;
             margin-top: 5px;
             flex-shrink: 0;
+            flex-wrap: wrap;
         }
         .add-task-row {
-            display: flex;
-            gap: 5px;
-            align-items: center;
+            display: contents;
         }
         .add-task-row input[type="text"] {
             flex: 1;
+            min-width: 200px;
         }
         input[type="text"], select, input[type="date"], input[type="datetime-local"] {
             padding: 4px;
