@@ -1148,6 +1148,7 @@
                 gap: 3px;
                 align-items: center;
             `;
+            colorPickerWrapper.dataset.selectedColor = '#9C27B0'; // 存储选中的颜色
             
             // 预设颜色列表
             const presetColors = [
@@ -1162,8 +1163,6 @@
                 '#795548', // 棕色
                 '#607D8B', // 灰蓝
             ];
-            
-            let selectedColor = '#9C27B0'; // 默认紫色
             
             presetColors.forEach(color => {
                 const colorOption = document.createElement('div');
@@ -1182,7 +1181,8 @@
                 }
                 colorOption.onclick = (e) => {
                     e.stopPropagation();
-                    selectedColor = color;
+                    // 更新选中的颜色到 wrapper 的 dataset
+                    colorPickerWrapper.dataset.selectedColor = color;
                     // 更新所有颜色方块的选中状态
                     colorPickerWrapper.querySelectorAll('div').forEach(opt => {
                         opt.style.borderColor = 'transparent';
@@ -1455,16 +1455,13 @@
                     // 从日期输入框获取日期
                     const selectedDate = dateInput.value ? new Date(dateInput.value) : new Date();
                                     
-                    // 获取选择的颜色（从选中的颜色方块获取）
+                    // 获取选择的颜色（从颜色选择器的 dataset 获取）
                     const addTaskRow = dateInput.closest('.add-task-row');
                     let taskColor = '#9C27B0';
                     if (addTaskRow) {
-                        const colorWrapper = addTaskRow.querySelector('div[style*="display: flex"]');
-                        if (colorWrapper) {
-                            const selectedOption = colorWrapper.querySelector('div[style*="border-color: rgb(51, 51, 51)"]');
-                            if (selectedOption) {
-                                taskColor = selectedOption.style.backgroundColor;
-                            }
+                        const colorWrapper = addTaskRow.querySelector('div[data-selected-color]');
+                        if (colorWrapper && colorWrapper.dataset.selectedColor) {
+                            taskColor = colorWrapper.dataset.selectedColor;
                         }
                     }
                                     
