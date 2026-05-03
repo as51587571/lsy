@@ -1584,11 +1584,25 @@
                     nextReset.setDate(nextReset.getDate() + daysUntilReset);
                     task.nextDate = nextReset.toISOString();
                 } else if (task.repeat === 'none') {
-                    // 一次性任务完成后自动删除
-                    const taskIndex = server.tasks.findIndex(t => t.id === taskId);
-                    if (taskIndex !== -1) {
-                        server.tasks.splice(taskIndex, 1);
-                        showToast('任务已完成并删除', 'info');
+                    // 一次性任务：检查同组的所有一次性任务是否都完成了
+                    const sameGroupTasks = server.tasks.filter(t => 
+                        t.text === task.text && 
+                        t.repeat === 'none'
+                    );
+                    
+                    const allCompleted = sameGroupTasks.every(t => 
+                        t.completed && t.lastCompleted === today
+                    );
+                    
+                    if (allCompleted && sameGroupTasks.length > 0) {
+                        // 同组的所有一次性任务都完成了，删除整个分组
+                        sameGroupTasks.forEach(t => {
+                            const index = server.tasks.findIndex(task => task.id === t.id);
+                            if (index !== -1) {
+                                server.tasks.splice(index, 1);
+                            }
+                        });
+                        showToast('所有一次性任务已完成，分组已删除', 'info');
                         saveServers();
                         renderTasks();
                         updateDate();
