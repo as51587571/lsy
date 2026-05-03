@@ -955,6 +955,31 @@
         </div>
     </div>
     
+    <!-- 导出设置弹窗 -->
+    <div class="modal-overlay" id="exportSettingsModal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeExportSettingsModal()">&times;</span>
+            <div class="modal-title">⚙️ 导出设置</div>
+            <div style="padding: 20px;">
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; color: #4a9eff; font-weight: bold;">📝 导出文件名前缀：</label>
+                    <input type="text" id="exportPrefixInput" placeholder="例如：游戏待办备份" 
+                           style="width: 100%; padding: 10px; border: 1px solid #4a9eff; border-radius: 6px; 
+                                  background: rgba(0,0,0,0.5); color: white; font-size: 1em;"
+                           value="游戏待办备份">
+                    <p style="margin-top: 8px; font-size: 0.85em; color: #aaa;">
+                        💡 提示：导出文件名将按照 [前缀]_[序号]_[日期].json 格式生成
+                    </p>
+                </div>
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="btn btn-success" onclick="saveExportSettings()" style="padding: 10px 30px; font-size: 1em;">
+                        ✅ 保存设置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div class="container">
         <header>
             <h1>🎮 制作成本计算器</h1>
@@ -971,6 +996,7 @@
                 <button class="btn btn-success" onclick="testSave()" style="font-size: 0.8em; padding: 5px 10px;">🧪 测试保存</button>
                 <button class="btn btn-warning" onclick="testLoad()" style="font-size: 0.8em; padding: 5px 10px;">🧪 测试加载</button>
                 <button class="btn btn-info" onclick="exportData()" style="font-size: 0.8em; padding: 5px 10px;">📤 导出数据</button>
+                <button class="btn btn-primary" onclick="openExportSettings()" style="font-size: 0.8em; padding: 5px 10px;">⚙️ 导出设置</button>
                 <label class="btn btn-warning" style="font-size: 0.8em; padding: 5px 10px; cursor: pointer;">
                     📥 导入数据
                     <input type="file" accept=".json" onchange="importData(event)" style="display: none;">
@@ -1326,6 +1352,20 @@
             return false;
         }
         
+        // 获取导出前缀设置
+        function getExportPrefix() {
+            const prefix = localStorage.getItem('exportPrefix');
+            return prefix || '游戏待办备份';
+        }
+        
+        // 获取并递增导出序号
+        function getNextExportNumber() {
+            let counter = parseInt(localStorage.getItem('exportCounter') || '0');
+            counter++;
+            localStorage.setItem('exportCounter', counter.toString());
+            return counter.toString().padStart(3, '0');
+        }
+        
         function exportData() {
             // 导出所有种族的数据
             const allData = {
@@ -1359,12 +1399,18 @@
             const url = URL.createObjectURL(dataBlob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `副职业数据_全种族_${new Date().toISOString().slice(0, 10)}.json`;
+            
+            // 使用自定义前缀和序号生成文件名
+            const prefix = getExportPrefix();
+            const counter = getNextExportNumber();
+            const date = new Date().toISOString().slice(0, 10);
+            link.download = `${prefix}_${counter}_${date}.json`;
+            
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
-            showNotification('✅ 所有种族数据已导出', 'success');
+            showNotification(`✅ 数据已导出为: ${prefix}_${counter}_${date}.json`, 'success');
         }
         
         function importData(event) {
@@ -2705,6 +2751,46 @@
             const modal = document.getElementById('resultModal');
             modal.classList.remove('active');
         }
+        
+        // 打开导出设置弹窗
+        function openExportSettings() {
+            const modal = document.getElementById('exportSettingsModal');
+            const prefixInput = document.getElementById('exportPrefixInput');
+            // 加载当前保存的前缀
+            const currentPrefix = getExportPrefix();
+            prefixInput.value = currentPrefix;
+            modal.classList.add('active');
+        }
+        
+        // 关闭导出设置弹窗
+        function closeExportSettingsModal() {
+            const modal = document.getElementById('exportSettingsModal');
+            modal.classList.remove('active');
+        }
+        
+        // 保存导出设置
+        function saveExportSettings() {
+            const prefixInput = document.getElementById('exportPrefixInput');
+            const prefix = prefixInput.value.trim();
+            
+            if (!prefix) {
+                showNotification('⚠️ 请输入导出文件名前缀', 'warning');
+                return;
+            }
+            
+            // 保存到localStorage
+            localStorage.setItem('exportPrefix', prefix);
+            showNotification(`✅ 导出前缀已保存为: ${prefix}`, 'success');
+            closeExportSettingsModal();
+        }
+        
+        // 点击导出设置弹窗外部关闭
+        document.addEventListener('click', function(e) {
+            const exportModal = document.getElementById('exportSettingsModal');
+            if (e.target === exportModal) {
+                closeExportSettingsModal();
+            }
+        });
         
         // 点击弹窗外部关闭
         document.addEventListener('click', function(e) {
