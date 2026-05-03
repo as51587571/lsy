@@ -596,6 +596,7 @@
                 
                 <div class="data-controls">
                     <button class="export-btn" onclick="exportData()">导出</button>
+                    <button class="export-btn" onclick="setExportFileNamePrefix()" style="background-color: #2196F3;">导出设置</button>
                     <button class="import-btn" onclick="document.getElementById('import-file').click()">导入</button>
                     <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(this)">
                     <button class="clear-btn" onclick="clearAllData()">清空</button>
@@ -2081,16 +2082,47 @@
             const dataStr = JSON.stringify(data, null, 2);
             const dataBlob = new Blob([dataStr], {type: 'application/json'});
             
+            // 获取或初始化导出计数
+            let exportCount = parseInt(localStorage.getItem('exportCount') || '0');
+            exportCount++;
+            localStorage.setItem('exportCount', exportCount.toString());
+            
+            // 获取自定义文件名前缀（如果没有设置则使用默认值）
+            let fileNamePrefix = localStorage.getItem('exportFileNamePrefix') || '游戏待办备份';
+            
+            // 构建文件名：前缀_序号_日期.json
+            const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+            const fileName = `${fileNamePrefix}_${String(exportCount).padStart(3, '0')}_${dateStr}.json`;
+            
             const url = URL.createObjectURL(dataBlob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `game-todo-backup-${new Date().toISOString().split('T')[0]}.json`;
+            link.download = fileName;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
             
-            showToast('数据已成功导出！', 'success');
+            showToast(`数据已导出：${fileName}`, 'success');
+        }
+        
+        // 设置导出文件名前缀
+        function setExportFileNamePrefix() {
+            const currentPrefix = localStorage.getItem('exportFileNamePrefix') || '游戏待办备份';
+            const newPrefix = prompt('设置导出文件名前缀（默认为“游戏待办备份”）：\n\n文件名格式：前缀_序号_日期.json', currentPrefix);
+            
+            if (newPrefix !== null && newPrefix.trim() !== '') {
+                localStorage.setItem('exportFileNamePrefix', newPrefix.trim());
+                showToast(`已设置文件名前缀：${newPrefix.trim()}`, 'success');
+            }
+        }
+        
+        // 重置导出计数
+        function resetExportCount() {
+            if (confirm('确定要重置导出计数吗？\n\n当前计数：' + (localStorage.getItem('exportCount') || '0'))) {
+                localStorage.setItem('exportCount', '0');
+                showToast('导出计数已重置', 'info');
+            }
         }
         
         // 导入数据功能
@@ -2146,6 +2178,12 @@
                     
                     saveServers();
                     renderServers();
+                    
+                    // 确保DOM创建后再渲染任务
+                    setTimeout(() => {
+                        renderTasks();
+                    }, 0);
+                    
                     updateDate();
                     
                     const totalTasks = servers.reduce((sum, server) => sum + server.tasks.length, 0);
