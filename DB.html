@@ -130,7 +130,6 @@
             border-radius: 3px;
             background-color: #f9f9f9;
             border: 1px solid #e0e0e0;
-            border-left: 4px solid #4CAF50; /* 默认绿色，会被JS动态修改 */
             transition: all 0.2s;
             font-size: 11px;
             height: 24px;
@@ -188,8 +187,6 @@
             flex: 1;
             font-size: 11px;
             min-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
             white-space: nowrap;
         }
         .task-controls {
@@ -361,6 +358,38 @@
         }
         .delete-btn:hover {
             background-color: #d32f2f;
+        }
+        /* 颜色选择器下拉列表 */
+        .color-picker-dropdown {
+            position: absolute;
+            bottom: 100%; /* 向上弹出 */
+            left: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 99999; /* 提高z-index确保在最上层 */
+            padding: 8px;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+            margin-bottom: 5px;
+        }
+        .color-option {
+            width: 24px;
+            height: 24px;
+            border: 2px solid transparent;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .color-option:hover {
+            border-color: #333;
+            transform: scale(1.1);
+        }
+        .color-option.selected {
+            border-color: #333;
+            box-shadow: 0 0 0 2px white, 0 0 0 4px #333;
         }
         .data-controls {
             display: flex;
@@ -609,11 +638,9 @@
                 <input type="text" id="global-task-name" placeholder="输入任务名称..." style="width: 100%; padding: 8px;">
             </div>
             <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: bold;">任务颜色：</label>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <input type="color" id="global-task-color" value="#4CAF50" style="width: 60px; height: 40px; cursor: pointer;">
-                    <span style="font-size: 12px; color: #666;">选择任务边框颜色</span>
-                </div>
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">标签颜色：</label>
+                <div id="global-color-picker" style="display: flex; gap: 5px; flex-wrap: wrap;"></div>
+                <span style="font-size: 12px; color: #666; display: block; margin-top: 5px;">点击选择角色和日期标签的颜色</span>
             </div>
             <div style="margin-bottom: 15px;">
                 <label style="display: block; margin-bottom: 5px; font-weight: bold;">重复类型：</label>
@@ -856,13 +883,10 @@
                 server.roles = ['全部'];
             }
             
-            // 为旧任务添加role字段和color字段
+            // 为旧任务添加role字段
             server.tasks.forEach(task => {
                 if (!task.role) {
                     task.role = '全部';
-                }
-                if (!task.color) {
-                    task.color = '#4CAF50'; // 默认绿色
                 }
             });
         });
@@ -1064,10 +1088,10 @@
             row1.appendChild(historyDropdown);
             addTaskDiv.appendChild(row1);
             
-            // 第二行：日期、重复、角色、添加按钮
+            // 第二行：日期、重复、角色、颜色、添加按钮
             const row2 = document.createElement('div');
             row2.className = 'add-task-row';
-            
+                        
             const dateInput = document.createElement('input');
             dateInput.type = 'datetime-local';
             dateInput.id = `date-${server.id}`;
@@ -1079,7 +1103,7 @@
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
             dateInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
-            
+                        
             const repeatSelect = document.createElement('select');
             repeatSelect.id = `repeat-${server.id}`;
             repeatSelect.innerHTML = `
@@ -1093,34 +1117,88 @@
                 <option value="weekly-6">每周六</option>
                 <option value="weekly-0">每周日</option>
             `;
-            
+                        
             // 角色选择下拉框
             const roleSelect = document.createElement('select');
             roleSelect.id = `role-${server.id}`;
-            
-            // 添加"全部角色"选项（默认选中）
+                        
+            // 添加“全部角色”选项（默认选中）
             const allOption = document.createElement('option');
             allOption.value = '__all__';
             allOption.textContent = '全部角色';
             allOption.selected = true; // 默认选中全部角色
             roleSelect.appendChild(allOption);
-            
+                        
             server.roles.forEach(role => {
                 const option = document.createElement('option');
                 option.value = role;
                 option.textContent = role;
-                // 移除这里的默认选中逻辑，让"全部角色"始终为默认
+                // 移除这里的默认选中逻辑，让“全部角色”始终为默认
                 roleSelect.appendChild(option);
             });
             
+            // 颜色选择器（直接显示一排小颜色方块）
+            const colorPickerWrapper = document.createElement('div');
+            colorPickerWrapper.style.cssText = `
+                display: flex;
+                gap: 3px;
+                align-items: center;
+            `;
+            
+            // 预设颜色列表
+            const presetColors = [
+                '#9C27B0', // 紫色
+                '#F44336', // 红色
+                '#2196F3', // 蓝色
+                '#4CAF50', // 绿色
+                '#FF9800', // 橙色
+                '#E91E63', // 粉红
+                '#00BCD4', // 青色
+                '#FFEB3B', // 黄色
+                '#795548', // 棕色
+                '#607D8B', // 灰蓝
+            ];
+            
+            let selectedColor = '#9C27B0'; // 默认紫色
+            
+            presetColors.forEach(color => {
+                const colorOption = document.createElement('div');
+                colorOption.style.cssText = `
+                    width: 20px;
+                    height: 20px;
+                    background-color: ${color};
+                    border: 2px solid transparent;
+                    border-radius: 3px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                `;
+                if (color === '#9C27B0') {
+                    colorOption.style.borderColor = '#333';
+                    colorOption.style.boxShadow = '0 0 0 1px white, 0 0 0 2px #333';
+                }
+                colorOption.onclick = (e) => {
+                    e.stopPropagation();
+                    selectedColor = color;
+                    // 更新所有颜色方块的选中状态
+                    colorPickerWrapper.querySelectorAll('div').forEach(opt => {
+                        opt.style.borderColor = 'transparent';
+                        opt.style.boxShadow = 'none';
+                    });
+                    colorOption.style.borderColor = '#333';
+                    colorOption.style.boxShadow = '0 0 0 1px white, 0 0 0 2px #333';
+                };
+                colorPickerWrapper.appendChild(colorOption);
+            });
+                        
             const addBtn = document.createElement('button');
             addBtn.textContent = '添加';
             addBtn.onclick = () => addTaskToServer(server.id);
             addBtn.style.whiteSpace = 'nowrap';
-            
+                        
             row2.appendChild(dateInput);
             row2.appendChild(repeatSelect);
             row2.appendChild(roleSelect);
+            row2.appendChild(colorPickerWrapper);
             row2.appendChild(addBtn);
             addTaskDiv.appendChild(row2);
             
@@ -1353,39 +1431,52 @@
                 return;
             }
             isAddingTask = true;
-            
+                            
             const taskInput = document.getElementById(`input-${serverId}`);
             const dateInput = document.getElementById(`date-${serverId}`);
             const repeatSelect = document.getElementById(`repeat-${serverId}`);
             const roleSelect = document.getElementById(`role-${serverId}`);
             const taskText = taskInput.value.trim();
-            
+                            
             console.log('添加任务:', taskText, '大区ID:', serverId);
-            
+                            
             if (taskText) {
                 // 保存到历史记录
                 addToTaskHistory(taskText);
-                
+                                
                 const server = servers.find(s => s.id === serverId);
                 if (server) {
                     console.log('当前任务数量:', server.tasks.length);
-                    
+                                    
                     // 从日期输入框获取日期
                     const selectedDate = dateInput.value ? new Date(dateInput.value) : new Date();
-                    
-                    // 检查是否选择"全部角色"
+                                    
+                    // 获取选择的颜色（从选中的颜色方块获取）
+                    const addTaskRow = dateInput.closest('.add-task-row');
+                    let taskColor = '#9C27B0';
+                    if (addTaskRow) {
+                        const colorWrapper = addTaskRow.querySelector('div[style*="display: flex"]');
+                        if (colorWrapper) {
+                            const selectedOption = colorWrapper.querySelector('div[style*="border-color: rgb(51, 51, 51)"]');
+                            if (selectedOption) {
+                                taskColor = selectedOption.style.backgroundColor;
+                            }
+                        }
+                    }
+                                    
+                    // 检查是否选择“全部角色”
                     const selectedRole = roleSelect.value;
-                    
+                                    
                     if (selectedRole === '__all__') {
                         // 为每个角色创建任务副本（除了“全部”）
                         const rolesToAdd = server.roles.filter(role => role !== '全部');
-                                            
+                                                            
                         if (rolesToAdd.length === 0) {
                             showToast('没有可添加的角色', 'warning');
                             isAddingTask = false;
                             return;
                         }
-                                            
+                                                            
                         let addedCount = 0;
                         rolesToAdd.forEach(role => {
                             const newTask = {
@@ -1393,7 +1484,7 @@
                                 text: taskText,
                                 repeat: repeatSelect.value,
                                 role: role,
-                                color: '#4CAF50', // 默认绿色
+                                color: taskColor,
                                 completed: false,
                                 lastCompleted: null,
                                 created: new Date().toISOString(),
@@ -1402,7 +1493,7 @@
                             server.tasks.push(newTask);
                             addedCount++;
                         });
-                                            
+                                                            
                         console.log(`已为${addedCount}个角色添加任务`);
                         showToast(`已为${addedCount}个角色添加任务`, 'success');
                     } else {
@@ -1412,7 +1503,7 @@
                             text: taskText,
                             repeat: repeatSelect.value,
                             role: selectedRole,
-                            color: '#4CAF50', // 默认绿色
+                            color: taskColor,
                             completed: false,
                             lastCompleted: null,
                             created: new Date().toISOString(),
@@ -1678,17 +1769,12 @@
         function createTaskElement(serverId, task) {
             const div = document.createElement('div');
             div.className = 'task-item';
-            
-            // 应用自定义颜色（如果有）
-            if (task.color) {
-                div.style.borderLeftColor = task.color;
-            }
-            
+                            
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.checked = task.completed && task.lastCompleted === new Date().toDateString();
             checkbox.addEventListener('change', () => toggleTaskCompletion(serverId, task.id));
-            
+                            
             const span = document.createElement('span');
             span.className = 'task-content';
             if (task.completed && task.lastCompleted === new Date().toDateString()) {
@@ -1703,56 +1789,44 @@
                     span.blur();
                 }
             });
-            
+                            
             const controls = document.createElement('div');
             controls.className = 'task-controls';
-            
-            // 颜色选择器
-            const colorPicker = document.createElement('input');
-            colorPicker.type = 'color';
-            colorPicker.value = task.color || '#4CAF50';
-            colorPicker.style.cssText = `
-                width: 24px;
-                height: 24px;
-                border: none;
-                cursor: pointer;
-                padding: 0;
-                background: none;
-            `;
-            colorPicker.title = '点击更改任务颜色';
-            colorPicker.addEventListener('change', (e) => {
-                updateTaskColor(serverId, task.id, e.target.value);
-            });
-            controls.appendChild(colorPicker);
-            
+                            
             // 角色标签（如果不是“全部”）
             if (task.role && task.role !== '全部') {
                 const roleBadge = document.createElement('span');
                 roleBadge.className = 'repeat-badge';
-                roleBadge.style.backgroundColor = '#e1bee7';
-                roleBadge.style.color = '#6a1b9a';
+                // 使用任务的自定义颜色
+                const roleColor = task.color || '#9C27B0';
+                roleBadge.style.backgroundColor = roleColor;
+                roleBadge.style.color = '#fff'; // 白色文字
                 roleBadge.textContent = task.role;
                 controls.appendChild(roleBadge);
             }
-            
+                            
             // 日期显示
             const dateBadge = document.createElement('span');
             dateBadge.className = 'repeat-badge';
-            dateBadge.style.backgroundColor = '#fff9c4';
-            dateBadge.style.color = '#f57f17';
-            
+                            
             const nextDate = new Date(task.nextDate);
             const today = new Date();
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            
+                            
             if (task.repeat === 'daily') {
                 dateBadge.textContent = '每日';
+                // 使用任务的自定义颜色
+                const dateColor = task.color || '#9C27B0';
+                dateBadge.style.backgroundColor = dateColor;
+                dateBadge.style.color = '#fff';
             } else if (task.repeat && task.repeat.startsWith('weekly-')) {
                 // 显示自定义的每周重置日
                 const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
                 const resetDay = parseInt(task.repeat.split('-')[1]);
                 dateBadge.textContent = '每' + dayNames[resetDay];
+                // 使用任务的自定义颜色
+                const dateColor = task.color || '#9C27B0';
+                dateBadge.style.backgroundColor = dateColor;
+                dateBadge.style.color = '#fff';
             } else {
                 // 一次性任务，显示具体日期和时间
                 const month = nextDate.getMonth() + 1;
@@ -1760,26 +1834,30 @@
                 const hours = String(nextDate.getHours()).padStart(2, '0');
                 const minutes = String(nextDate.getMinutes()).padStart(2, '0');
                 dateBadge.textContent = `${month}/${day} ${hours}:${minutes}`;
-                
+                // 使用任务的自定义颜色
+                const dateColor = task.color || '#9C27B0';
+                dateBadge.style.backgroundColor = dateColor;
+                dateBadge.style.color = '#fff';
+                        
                 // 如果是一次性任务且已过期，显示红色
                 if (nextDate < today && !task.completed) {
-                    dateBadge.style.backgroundColor = '#ffcdd2';
+                    dateBadge.style.backgroundColor = '#ffcdd2'; // 红色
                     dateBadge.style.color = '#c62828';
                 }
             }
             controls.appendChild(dateBadge);
-            
+                            
             // 删除按钮
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-btn';
             deleteBtn.textContent = '×';
             deleteBtn.addEventListener('click', () => deleteTask(serverId, task.id));
             controls.appendChild(deleteBtn);
-            
+                            
             div.appendChild(checkbox);
             div.appendChild(span);
             div.appendChild(controls);
-            
+                            
             return div;
         }
         
@@ -1993,21 +2071,6 @@
                     
                     servers = importedData.servers;
                     
-                    // 数据迁移：为没有 color 字段的任务添加默认颜色
-                    let migratedCount = 0;
-                    servers.forEach(server => {
-                        server.tasks.forEach(task => {
-                            if (!task.color) {
-                                task.color = '#4CAF50'; // 默认绿色
-                                migratedCount++;
-                            }
-                        });
-                    });
-                    
-                    if (migratedCount > 0) {
-                        console.log(`已为${migratedCount}个任务添加默认颜色`);
-                    }
-                    
                     // 导入声音设置（如果存在）
                     if (importedData.soundEnabled !== undefined) {
                         soundEnabled = importedData.soundEnabled;
@@ -2139,7 +2202,64 @@
                 if (dateInput) {
                     dateInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
                 }
+                
+                // 初始化全局颜色选择器
+                initGlobalColorPicker();
             }
+        }
+        
+        // 初始化全局颜色选择器
+        function initGlobalColorPicker() {
+            const container = document.getElementById('global-color-picker');
+            if (!container || container.children.length > 0) return;
+            
+            const presetColors = [
+                '#9C27B0', // 紫色
+                '#F44336', // 红色
+                '#2196F3', // 蓝色
+                '#4CAF50', // 绿色
+                '#FF9800', // 橙色
+                '#E91E63', // 粉红
+                '#00BCD4', // 青色
+                '#FFEB3B', // 黄色
+                '#795548', // 棕色
+                '#607D8B', // 灰蓝
+            ];
+            
+            let selectedColor = '#9C27B0'; // 默认紫色
+            
+            presetColors.forEach(color => {
+                const colorOption = document.createElement('div');
+                colorOption.style.cssText = `
+                    width: 24px;
+                    height: 24px;
+                    background-color: ${color};
+                    border: 2px solid transparent;
+                    border-radius: 3px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                `;
+                if (color === '#9C27B0') {
+                    colorOption.style.borderColor = '#333';
+                    colorOption.style.boxShadow = '0 0 0 1px white, 0 0 0 2px #333';
+                }
+                colorOption.onclick = () => {
+                    selectedColor = color;
+                    // 保存选中的颜色到容器上
+                    container.dataset.selectedColor = color;
+                    // 更新所有颜色方块的选中状态
+                    container.querySelectorAll('div').forEach(opt => {
+                        opt.style.borderColor = 'transparent';
+                        opt.style.boxShadow = 'none';
+                    });
+                    colorOption.style.borderColor = '#333';
+                    colorOption.style.boxShadow = '0 0 0 1px white, 0 0 0 2px #333';
+                };
+                container.appendChild(colorOption);
+            });
+            
+            // 保存选中的颜色到容器上，方便后续获取
+            container.dataset.selectedColor = selectedColor;
         }
         
         // 隐藏全局添加任务弹窗
@@ -2156,7 +2276,7 @@
         // 执行全局添加任务
         function executeGlobalAddTask() {
             const taskNameInput = document.getElementById('global-task-name');
-            const colorInput = document.getElementById('global-task-color');
+            const colorContainer = document.getElementById('global-color-picker');
             const repeatSelect = document.getElementById('global-task-repeat');
             const dateInput = document.getElementById('global-task-date');
             
@@ -2167,7 +2287,7 @@
             }
             
             const selectedDate = dateInput.value ? new Date(dateInput.value) : new Date();
-            const taskColor = colorInput.value;
+            const taskColor = colorContainer ? colorContainer.dataset.selectedColor || '#9C27B0' : '#9C27B0';
             const taskRepeat = repeatSelect.value;
             
             let totalAdded = 0;
@@ -2210,19 +2330,6 @@
             
             // 清空输入框
             taskNameInput.value = '';
-        }
-        
-        // 更新任务颜色
-        function updateTaskColor(serverId, taskId, color) {
-            const server = servers.find(s => s.id === serverId);
-            if (server) {
-                const task = server.tasks.find(t => t.id === taskId);
-                if (task) {
-                    task.color = color;
-                    saveServers();
-                    renderTasks();
-                }
-            }
         }
         
         // 页面加载时初始化
