@@ -426,8 +426,12 @@
             background-color: #7B1FA2;
         }
         .completed-task {
-            text-decoration: line-through;
-            color: #999;
+            text-decoration: line-through !important;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            color: #fff !important;
+            padding: 2px 6px !important;
+            border-radius: 3px;
+            display: inline-block;
         }
         /* 提示信息样式 */
         .toast {
@@ -1793,7 +1797,7 @@
             const controls = document.createElement('div');
             controls.className = 'task-controls';
                             
-            // 角色标签（如果不是“全部”）
+            // 角色标签（如果不是"全部"）
             if (task.role && task.role !== '全部') {
                 const roleBadge = document.createElement('span');
                 roleBadge.className = 'repeat-badge';
@@ -1802,16 +1806,20 @@
                 roleBadge.style.backgroundColor = roleColor;
                 roleBadge.style.color = '#fff'; // 白色文字
                 roleBadge.textContent = task.role;
+                // 如果任务完成，添加删除线
+                if (task.completed && task.lastCompleted === new Date().toDateString()) {
+                    roleBadge.classList.add('completed-task');
+                }
                 controls.appendChild(roleBadge);
             }
-                            
+                                        
             // 日期显示
             const dateBadge = document.createElement('span');
             dateBadge.className = 'repeat-badge';
-                            
+                                        
             const nextDate = new Date(task.nextDate);
             const today = new Date();
-                            
+                                        
             if (task.repeat === 'daily') {
                 dateBadge.textContent = '每日';
                 // 使用任务的自定义颜色
@@ -1838,12 +1846,16 @@
                 const dateColor = task.color || '#9C27B0';
                 dateBadge.style.backgroundColor = dateColor;
                 dateBadge.style.color = '#fff';
-                        
+                                    
                 // 如果是一次性任务且已过期，显示红色
                 if (nextDate < today && !task.completed) {
                     dateBadge.style.backgroundColor = '#ffcdd2'; // 红色
                     dateBadge.style.color = '#c62828';
                 }
+            }
+            // 如果任务完成，添加删除线
+            if (task.completed && task.lastCompleted === new Date().toDateString()) {
+                dateBadge.classList.add('completed-task');
             }
             controls.appendChild(dateBadge);
                             
