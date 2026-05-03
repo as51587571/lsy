@@ -149,20 +149,19 @@
             color: #fff;
             margin-bottom: 6px;
             padding: 5px 10px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* 渐变色标题栏 */
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.15);
+            position: relative;
+            overflow: hidden;
         }
         .task-group-header .group-title {
             display: flex;
             align-items: center;
             gap: 6px;
-        }
-        .task-group-header .group-icon {
-            font-size: 14px;
         }
         .task-group-grid {
             display: grid;
@@ -1701,34 +1700,22 @@
                         const groupContainer = document.createElement('div');
                         groupContainer.className = 'task-group';
                         
-                        // 组标题（带删除按钮）
+                        // 组标题（带删除按钮和颜色选择器）
                         const groupHeader = document.createElement('div');
                         groupHeader.className = 'task-group-header';
                         
-                        // 标题文字部分（带图标）
+                        // 标题文字部分
                         const titleDiv = document.createElement('div');
                         titleDiv.className = 'group-title';
                         
-                        // 根据任务名添加不同的图标
-                        const icon = document.createElement('span');
-                        icon.className = 'group-icon';
-                        if (taskName.includes('深渊') || taskName.includes('boss')) {
-                            icon.textContent = '👾';
-                        } else if (taskName.includes('日常') || taskName.includes('每日')) {
-                            icon.textContent = '📅';
-                        } else if (taskName.includes('周') || taskName.includes('weekly')) {
-                            icon.textContent = '📆';
-                        } else if (taskName.includes('活动')) {
-                            icon.textContent = '🎉';
-                        } else {
-                            icon.textContent = '📌';
-                        }
+                        // 从任务组获取颜色（使用第一个任务的颜色）
+                        let groupColor = group[0].color || '#667eea';
+                        groupHeader.style.background = `linear-gradient(135deg, ${groupColor} 0%, ${groupColor}dd 100%)`;
                         
                         const headerText = document.createElement('span');
                         headerText.textContent = taskName;
                         headerText.style.fontWeight = 'bold';
                         
-                        titleDiv.appendChild(icon);
                         titleDiv.appendChild(headerText);
                         
                         const deleteGroupBtn = document.createElement('button');
@@ -1755,6 +1742,67 @@
                             deleteTaskGroup(server.id, taskName);
                         };
                         
+                        // 颜色选择器（小色块）
+                        const colorPicker = document.createElement('div');
+                        colorPicker.style.cssText = `
+                            display: flex;
+                            gap: 3px;
+                            margin-left: 8px;
+                        `;
+                        
+                        const presetColors = [
+                            '#667eea', // 蓝紫（柔和）
+                            '#e57373', // 红色（柔和）
+                            '#81c784', // 绿色（柔和）
+                            '#ffb74d', // 橙色（柔和）
+                            '#f06292', // 粉红（柔和）
+                            '#ba68c8', // 紫色（柔和）
+                            '#64b5f6', // 蓝色（柔和）
+                            '#4dd0e1', // 青色（柔和）
+                        ];
+                        
+                        presetColors.forEach(color => {
+                            const colorDot = document.createElement('div');
+                            colorDot.style.cssText = `
+                                width: 14px;
+                                height: 14px;
+                                background-color: ${color};
+                                border: 2px solid ${color === groupColor ? '#fff' : 'transparent'};
+                                border-radius: 3px;
+                                cursor: pointer;
+                                transition: all 0.2s;
+                            `;
+                            colorDot.onmouseover = () => {
+                                if (color !== groupColor) {
+                                    colorDot.style.transform = 'scale(1.2)';
+                                    colorDot.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+                                }
+                            };
+                            colorDot.onmouseout = () => {
+                                if (color !== groupColor) {
+                                    colorDot.style.transform = 'scale(1)';
+                                    colorDot.style.boxShadow = 'none';
+                                }
+                            };
+                            colorDot.onclick = (e) => {
+                                e.stopPropagation();
+                                // 更新所有同组任务的颜色
+                                group.forEach(task => {
+                                    task.color = color;
+                                });
+                                saveServers();
+                                // 更新标题背景
+                                groupHeader.style.background = `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`;
+                                // 更新选中状态
+                                colorPicker.querySelectorAll('div').forEach(dot => {
+                                    dot.style.borderColor = 'transparent';
+                                });
+                                colorDot.style.borderColor = '#fff';
+                            };
+                            colorPicker.appendChild(colorDot);
+                        });
+                        
+                        titleDiv.appendChild(colorPicker);
                         groupHeader.appendChild(titleDiv);
                         groupHeader.appendChild(deleteGroupBtn);
                         groupContainer.appendChild(groupHeader);
@@ -1790,23 +1838,9 @@
             checkbox.checked = task.completed && task.lastCompleted === new Date().toDateString();
             checkbox.addEventListener('change', () => toggleTaskCompletion(serverId, task.id));
                             
-            const span = document.createElement('span');
-            span.className = 'task-content';
-            if (task.completed && task.lastCompleted === new Date().toDateString()) {
-                span.classList.add('completed-task');
-            }
-            span.textContent = task.text;
-            span.contentEditable = true;
-            span.addEventListener('blur', () => updateTaskText(serverId, task.id, span.textContent));
-            span.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    span.blur();
-                }
-            });
-                            
             const controls = document.createElement('div');
             controls.className = 'task-controls';
+            controls.style.flex = '1'; // 让 controls 占据剩余空间
                             
             // 角色标签（如果不是"全部"）
             if (task.role && task.role !== '全部') {
@@ -1878,7 +1912,6 @@
             controls.appendChild(deleteBtn);
                             
             div.appendChild(checkbox);
-            div.appendChild(span);
             div.appendChild(controls);
                             
             return div;
