@@ -130,38 +130,50 @@
             border-radius: 3px;
             background-color: #f9f9f9;
             border: 1px solid #e0e0e0;
+            border-left: 4px solid #4CAF50; /* 默认绿色，会被JS动态修改 */
             transition: all 0.2s;
             font-size: 11px;
             height: 24px;
         }
-        /* 任务分组样式 */
+        /* 任务分组样式 - 增强视觉区分度 */
         .task-group {
-            margin-bottom: 10px;
-            background-color: #fafafa;
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
-            padding: 6px;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%); /* 渐变背景 */
+            border: 2px solid #667eea; /* 更明显的边框 */
+            border-radius: 6px;
+            padding: 8px;
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.15); /* 轻微阴影 */
         }
         .task-group-header {
             font-weight: bold;
-            font-size: 12px;
-            color: #667eea;
-            margin-bottom: 5px;
-            padding: 3px 6px;
-            background-color: #f0f0ff;
-            border-radius: 3px;
+            font-size: 13px;
+            color: #fff;
+            margin-bottom: 6px;
+            padding: 5px 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); /* 渐变色标题栏 */
+            border-radius: 4px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .task-group-header .group-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .task-group-header .group-icon {
+            font-size: 14px;
         }
         .task-group-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 5px;
+            gap: 6px;
         }
         .grouped-task {
             background-color: white;
             border: 1px solid #d0d0d0;
+            border-left: 3px solid #667eea; /* 左侧彩色边框 */
         }
         ul {
             list-style-type: none;
@@ -556,6 +568,7 @@
                     <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(this)">
                     <button class="clear-btn" onclick="clearAllData()">清空</button>
                     <button class="add-server-btn" onclick="addNewServer()">+ 添加大区</button>
+                    <button class="global-add-btn" onclick="showGlobalAddTask()" style="background-color: #9C27B0;">全局添加任务</button>
                 </div>
                 
                 <div class="date-info">
@@ -585,6 +598,45 @@
             
             <button onclick="testCustomSound()">测试当前声音</button>
             <button class="close-settings" onclick="hideSoundSettings()">关闭</button>
+        </div>
+        
+        <!-- 全局添加任务弹窗 -->
+        <div class="sound-settings-overlay" id="global-add-overlay" onclick="hideGlobalAddTask()"></div>
+        <div class="sound-settings" id="global-add-dialog" style="max-width: 500px;">
+            <h3>全局添加任务（所有大区）</h3>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">任务名称：</label>
+                <input type="text" id="global-task-name" placeholder="输入任务名称..." style="width: 100%; padding: 8px;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">任务颜色：</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="color" id="global-task-color" value="#4CAF50" style="width: 60px; height: 40px; cursor: pointer;">
+                    <span style="font-size: 12px; color: #666;">选择任务边框颜色</span>
+                </div>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">重复类型：</label>
+                <select id="global-task-repeat" style="width: 100%; padding: 8px;">
+                    <option value="none">一次性</option>
+                    <option value="daily">每日</option>
+                    <option value="weekly-1">每周一</option>
+                    <option value="weekly-2">每周二</option>
+                    <option value="weekly-3">每周三</option>
+                    <option value="weekly-4">每周四</option>
+                    <option value="weekly-5">每周五</option>
+                    <option value="weekly-6">每周六</option>
+                    <option value="weekly-0">每周日</option>
+                </select>
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">任务日期：</label>
+                <input type="datetime-local" id="global-task-date" style="width: 100%; padding: 8px;">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button onclick="hideGlobalAddTask()" style="background-color: #9E9E9E;">取消</button>
+                <button onclick="executeGlobalAddTask()" style="background-color: #9C27B0;">确认添加</button>
+            </div>
         </div>
         
         <!-- 通用输入框弹窗 -->
@@ -804,10 +856,13 @@
                 server.roles = ['全部'];
             }
             
-            // 为旧任务添加role字段
+            // 为旧任务添加role字段和color字段
             server.tasks.forEach(task => {
                 if (!task.role) {
                     task.role = '全部';
+                }
+                if (!task.color) {
+                    task.color = '#4CAF50'; // 默认绿色
                 }
             });
         });
@@ -1322,15 +1377,15 @@
                     const selectedRole = roleSelect.value;
                     
                     if (selectedRole === '__all__') {
-                        // 为每个角色创建任务副本（除了"全部"）
+                        // 为每个角色创建任务副本（除了“全部”）
                         const rolesToAdd = server.roles.filter(role => role !== '全部');
-                        
+                                            
                         if (rolesToAdd.length === 0) {
                             showToast('没有可添加的角色', 'warning');
                             isAddingTask = false;
                             return;
                         }
-                        
+                                            
                         let addedCount = 0;
                         rolesToAdd.forEach(role => {
                             const newTask = {
@@ -1338,6 +1393,7 @@
                                 text: taskText,
                                 repeat: repeatSelect.value,
                                 role: role,
+                                color: '#4CAF50', // 默认绿色
                                 completed: false,
                                 lastCompleted: null,
                                 created: new Date().toISOString(),
@@ -1346,7 +1402,7 @@
                             server.tasks.push(newTask);
                             addedCount++;
                         });
-                        
+                                            
                         console.log(`已为${addedCount}个角色添加任务`);
                         showToast(`已为${addedCount}个角色添加任务`, 'success');
                     } else {
@@ -1356,6 +1412,7 @@
                             text: taskText,
                             repeat: repeatSelect.value,
                             role: selectedRole,
+                            color: '#4CAF50', // 默认绿色
                             completed: false,
                             lastCompleted: null,
                             created: new Date().toISOString(),
@@ -1542,28 +1599,57 @@
                         const groupHeader = document.createElement('div');
                         groupHeader.className = 'task-group-header';
                         
+                        // 标题文字部分（带图标）
+                        const titleDiv = document.createElement('div');
+                        titleDiv.className = 'group-title';
+                        
+                        // 根据任务名添加不同的图标
+                        const icon = document.createElement('span');
+                        icon.className = 'group-icon';
+                        if (taskName.includes('深渊') || taskName.includes('boss')) {
+                            icon.textContent = '👾';
+                        } else if (taskName.includes('日常') || taskName.includes('每日')) {
+                            icon.textContent = '📅';
+                        } else if (taskName.includes('周') || taskName.includes('weekly')) {
+                            icon.textContent = '📆';
+                        } else if (taskName.includes('活动')) {
+                            icon.textContent = '🎉';
+                        } else {
+                            icon.textContent = '📌';
+                        }
+                        
                         const headerText = document.createElement('span');
                         headerText.textContent = taskName;
-                        headerText.style.flex = '1';
+                        headerText.style.fontWeight = 'bold';
+                        
+                        titleDiv.appendChild(icon);
+                        titleDiv.appendChild(headerText);
                         
                         const deleteGroupBtn = document.createElement('button');
                         deleteGroupBtn.textContent = '删除全部';
                         deleteGroupBtn.style.cssText = `
-                            padding: 2px 8px;
+                            padding: 3px 10px;
                             font-size: 10px;
-                            background-color: #f44336;
+                            background-color: rgba(255,255,255,0.2);
                             color: white;
-                            border: none;
+                            border: 1px solid rgba(255,255,255,0.5);
                             border-radius: 3px;
                             cursor: pointer;
                             margin-left: 10px;
+                            transition: all 0.2s;
                         `;
+                        deleteGroupBtn.onmouseover = () => {
+                            deleteGroupBtn.style.backgroundColor = 'rgba(255,255,255,0.3)';
+                        };
+                        deleteGroupBtn.onmouseout = () => {
+                            deleteGroupBtn.style.backgroundColor = 'rgba(255,255,255,0.2)';
+                        };
                         deleteGroupBtn.onclick = (e) => {
                             e.stopPropagation();
                             deleteTaskGroup(server.id, taskName);
                         };
                         
-                        groupHeader.appendChild(headerText);
+                        groupHeader.appendChild(titleDiv);
                         groupHeader.appendChild(deleteGroupBtn);
                         groupContainer.appendChild(groupHeader);
                         
@@ -1593,6 +1679,11 @@
             const div = document.createElement('div');
             div.className = 'task-item';
             
+            // 应用自定义颜色（如果有）
+            if (task.color) {
+                div.style.borderLeftColor = task.color;
+            }
+            
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             checkbox.checked = task.completed && task.lastCompleted === new Date().toDateString();
@@ -1615,6 +1706,24 @@
             
             const controls = document.createElement('div');
             controls.className = 'task-controls';
+            
+            // 颜色选择器
+            const colorPicker = document.createElement('input');
+            colorPicker.type = 'color';
+            colorPicker.value = task.color || '#4CAF50';
+            colorPicker.style.cssText = `
+                width: 24px;
+                height: 24px;
+                border: none;
+                cursor: pointer;
+                padding: 0;
+                background: none;
+            `;
+            colorPicker.title = '点击更改任务颜色';
+            colorPicker.addEventListener('change', (e) => {
+                updateTaskColor(serverId, task.id, e.target.value);
+            });
+            controls.appendChild(colorPicker);
             
             // 角色标签（如果不是“全部”）
             if (task.role && task.role !== '全部') {
@@ -1853,19 +1962,51 @@
         // 导入数据功能
         function importData(inputElement) {
             const file = inputElement.files[0];
-            if (!file) return;
+            if (!file) {
+                showToast('请选择要导入的文件', 'warning');
+                return;
+            }
+            
+            console.log('导入文件:', file.name, '大小:', file.size, 'bytes');
             
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const importedData = JSON.parse(e.target.result);
+                    const fileContent = e.target.result;
+                    console.log('文件内容长度:', fileContent.length);
+                    console.log('文件内容预览:', fileContent.substring(0, 200));
+                    
+                    const importedData = JSON.parse(fileContent);
+                    console.log('解析后的数据:', importedData);
                     
                     // 验证数据格式
                     if (!importedData.servers || !Array.isArray(importedData.servers)) {
-                        throw new Error('无效的数据格式');
+                        console.error('数据格式错误:', importedData);
+                        throw new Error('无效的数据格式，必须包含 servers 数组');
                     }
                     
+                    if (importedData.servers.length === 0) {
+                        throw new Error('数据为空，没有大区数据');
+                    }
+                    
+                    console.log('导入的大区数量:', importedData.servers.length);
+                    
                     servers = importedData.servers;
+                    
+                    // 数据迁移：为没有 color 字段的任务添加默认颜色
+                    let migratedCount = 0;
+                    servers.forEach(server => {
+                        server.tasks.forEach(task => {
+                            if (!task.color) {
+                                task.color = '#4CAF50'; // 默认绿色
+                                migratedCount++;
+                            }
+                        });
+                    });
+                    
+                    if (migratedCount > 0) {
+                        console.log(`已为${migratedCount}个任务添加默认颜色`);
+                    }
                     
                     // 导入声音设置（如果存在）
                     if (importedData.soundEnabled !== undefined) {
@@ -1877,8 +2018,10 @@
                     // 导入声音时长设置（如果存在）
                     if (importedData.soundDuration !== undefined) {
                         soundDuration = importedData.soundDuration;
-                        document.getElementById('sound-duration').value = soundDuration;
-                        document.getElementById('duration-value').textContent = soundDuration.toFixed(1) + '秒';
+                        const durationInput = document.getElementById('sound-duration');
+                        const durationValue = document.getElementById('duration-value');
+                        if (durationInput) durationInput.value = soundDuration;
+                        if (durationValue) durationValue.textContent = soundDuration.toFixed(1) + '秒';
                         localStorage.setItem('todoSoundDuration', soundDuration);
                     }
                     
@@ -1886,11 +2029,20 @@
                     renderServers();
                     updateDate();
                     
-                    showToast('数据导入成功！', 'success');
+                    const totalTasks = servers.reduce((sum, server) => sum + server.tasks.length, 0);
+                    showToast(`数据导入成功！${servers.length}个大区，${totalTasks}个任务`, 'success');
+                    console.log('导入完成，当前大区数量:', servers.length);
                 } catch (error) {
+                    console.error('导入失败:', error);
                     showToast('导入失败：' + error.message, 'error');
                 }
             };
+            
+            reader.onerror = function(e) {
+                console.error('文件读取失败:', e);
+                showToast('文件读取失败', 'error');
+            };
+            
             reader.readAsText(file);
             
             // 重置文件输入框，以便可以重复导入同一文件
@@ -1964,6 +2116,112 @@
                 
                 // 更新最后检查日期
                 localStorage.setItem('lastRecurringCheck', today);
+            }
+        }
+        
+        // 显示全局添加任务弹窗
+        function showGlobalAddTask() {
+            const overlay = document.getElementById('global-add-overlay');
+            const dialog = document.getElementById('global-add-dialog');
+            
+            if (overlay && dialog) {
+                overlay.style.display = 'block';
+                dialog.style.display = 'block';
+                
+                // 设置默认日期为当前时间
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const dateInput = document.getElementById('global-task-date');
+                if (dateInput) {
+                    dateInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+                }
+            }
+        }
+        
+        // 隐藏全局添加任务弹窗
+        function hideGlobalAddTask() {
+            const overlay = document.getElementById('global-add-overlay');
+            const dialog = document.getElementById('global-add-dialog');
+            
+            if (overlay && dialog) {
+                overlay.style.display = 'none';
+                dialog.style.display = 'none';
+            }
+        }
+        
+        // 执行全局添加任务
+        function executeGlobalAddTask() {
+            const taskNameInput = document.getElementById('global-task-name');
+            const colorInput = document.getElementById('global-task-color');
+            const repeatSelect = document.getElementById('global-task-repeat');
+            const dateInput = document.getElementById('global-task-date');
+            
+            const taskName = taskNameInput.value.trim();
+            if (!taskName) {
+                showToast('请输入任务名称', 'warning');
+                return;
+            }
+            
+            const selectedDate = dateInput.value ? new Date(dateInput.value) : new Date();
+            const taskColor = colorInput.value;
+            const taskRepeat = repeatSelect.value;
+            
+            let totalAdded = 0;
+            let serverCount = 0;
+            
+            // 遍历所有大区
+            servers.forEach(server => {
+                const rolesToAdd = server.roles.filter(role => role !== '全部');
+                
+                if (rolesToAdd.length === 0) {
+                    return;
+                }
+                
+                // 为每个角色创建任务
+                rolesToAdd.forEach(role => {
+                    const newTask = {
+                        id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        text: taskName,
+                        repeat: taskRepeat,
+                        role: role,
+                        color: taskColor,
+                        completed: false,
+                        lastCompleted: null,
+                        created: new Date().toISOString(),
+                        nextDate: selectedDate.toISOString()
+                    };
+                    server.tasks.push(newTask);
+                    totalAdded++;
+                });
+                
+                serverCount++;
+            });
+            
+            saveServers();
+            renderTasks();
+            updateDate();
+            
+            hideGlobalAddTask();
+            showToast(`已为${serverCount}个大区的${totalAdded}个角色添加任务`, 'success');
+            
+            // 清空输入框
+            taskNameInput.value = '';
+        }
+        
+        // 更新任务颜色
+        function updateTaskColor(serverId, taskId, color) {
+            const server = servers.find(s => s.id === serverId);
+            if (server) {
+                const task = server.tasks.find(t => t.id === taskId);
+                if (task) {
+                    task.color = color;
+                    saveServers();
+                    renderTasks();
+                }
             }
         }
         
