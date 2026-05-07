@@ -1313,7 +1313,10 @@
         }
         
         function autoLoad() {
-            // 先初始化当前种族的数据结构
+            // 先恢复上次的种族选择
+            restoreLastRace();
+            
+            // 再初始化当前种族的数据结构
             initCurrentRaceData();
             
             const savedData = localStorage.getItem(getStorageKey());
@@ -1494,6 +1497,25 @@
             currentProfession = "铁匠";
         }
         
+        // 恢复上次的种族选择
+        function restoreLastRace() {
+            const lastRace = localStorage.getItem('lastSelectedRace');
+            if (lastRace && (lastRace === '魔族' || lastRace === '天族')) {
+                currentRace = lastRace;
+                console.log('✅ 恢复上次种族:', currentRace);
+            } else {
+                currentRace = '魔族';
+                console.log('✨ 使用默认种族: 魔族');
+            }
+            
+            // 更新UI显示
+            document.getElementById('currentRaceDisplay').textContent = currentRace + '制作管理';
+            const raceSelector = document.getElementById('raceSelector');
+            if (raceSelector) {
+                raceSelector.value = currentRace;
+            }
+        }
+        
         // 获取当前种族的localStorage键
         function getStorageKey() {
             return '副职业数据_' + currentRace;
@@ -1515,6 +1537,9 @@
             
             // 切换种族
             currentRace = race;
+            
+            // 保存种族选择到localStorage
+            localStorage.setItem('lastSelectedRace', currentRace);
             
             // 更新显示
             document.getElementById('currentRaceDisplay').textContent = race + '制作管理';
