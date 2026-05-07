@@ -249,6 +249,30 @@
             opacity: 0.6;
             font-style: italic;
         }
+        /* 钥匙按钮样式 */
+        .key-btn {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+        .key-btn:hover {
+            background: #e2e8f0 !important;
+            color: #1e4663 !important;
+            transform: scale(1.1);
+        }
+        .key-btn:active {
+            transform: scale(0.95);
+        }
+        /* 钥匙输入框样式 - 隐藏箭头 */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
         /* Toast通知样式 */
         #toastContainer {
             position: fixed;
@@ -745,6 +769,28 @@
         }, 1000);
     }
     
+    // ======================== 钥匙加减功能 ========================
+    function changeKeyCount(zoneKey, delta) {
+        const zone = zonesConfig.find(z => z.key === zoneKey);
+        if(!zone) return;
+        
+        const newVal = zone.keyCount + delta;
+        // 确保在0到keyMax之间
+        const capped = Math.min(zone.keyMax, Math.max(0, newVal));
+        
+        if(capped !== zone.keyCount) {
+            zone.keyCount = capped;
+            zone.keyRecordTime = Date.now();
+            saveData();
+            
+            // 更新输入框显示
+            const keyInput = document.getElementById(`key-input-${zoneKey}`);
+            if(keyInput) {
+                keyInput.value = capped;
+            }
+        }
+    }
+    
     // ======================== 账号移动功能 (同一分区内上下移动) ========================
     // 移动账号: 根据分区和索引，direction: 'up' 向上移动(减小索引) 或 'down' 向下移动(增大索引)
     function moveAccount(zoneKey, currentIdx, direction) {
@@ -849,9 +895,11 @@
             card.innerHTML = `
                 <div class="zone-header">
                     <h3 class="zone-title" contenteditable="true" onblur="renameZone('${zone.key}', this.innerText)">${escapeHtml(zone.name)}</h3>
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <span style="font-size:0.8rem;color:#4a627a;font-weight:600;">🔑 钥匙:</span>
-                        <input type="number" id="key-${zone.key}" value="${currentKeyCount}" step="1" style="width:60px;text-align:center;padding:3px;border-radius:10px;border:1px solid #cbd5e1;font-weight:600;font-size:0.8rem;" title="${currentKeyCount}/${zone.keyMax}" placeholder="钥匙">
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <span style="font-size:0.8rem;color:#4a627a;font-weight:600;"> 钥匙:</span>
+                        <button class="key-btn" onclick="changeKeyCount('${zone.key}', -1)" style="width:28px;height:28px;border-radius:50%;border:1px solid #cbd5e1;background:#f8fafd;cursor:pointer;font-size:1rem;font-weight:bold;color:#4a627a;display:flex;align-items:center;justify-content:center;transition:0.2s;">−</button>
+                        <input type="number" id="key-input-${zone.key}" value="${currentKeyCount}" step="1" style="width:55px;text-align:center;padding:4px;border-radius:10px;border:1px solid #cbd5e1;font-weight:700;font-size:1rem;color:#1e4663;" title="${currentKeyCount}/${zone.keyMax}" placeholder="钥匙">
+                        <button class="key-btn" onclick="changeKeyCount('${zone.key}', 1)" style="width:28px;height:28px;border-radius:50%;border:1px solid #cbd5e1;background:#f8fafd;cursor:pointer;font-size:1rem;font-weight:bold;color:#4a627a;display:flex;align-items:center;justify-content:center;transition:0.2s;">+</button>
                         <span style="font-size:0.75rem;color:#6c7a8e;">/${zone.keyMax}</span>
                         <button class="zone-del-btn" onclick="delZone('${zone.key}')">删除分区</button>
                     </div>
@@ -864,7 +912,7 @@
             container.appendChild(card);
             
             // 为钥匙输入框添加事件监听
-            const keyInput = document.getElementById(`key-${zone.key}`);
+            const keyInput = document.getElementById(`key-input-${zone.key}`);
             if(keyInput) {
                 // 点击输入框时自动全选
                 keyInput.addEventListener('focus', function() {
@@ -881,13 +929,14 @@
                     let val = parseInt(e.target.value);
                     if (isNaN(val)) val = 0;
                     const maxKey = zoneRef.keyMax || 14;
-                    if (val !== zoneRef.keyCount) {
-                        setAccountKeyAndResetTimer(zoneRef, val);
-                        renderAll();
-                    } else {
-                        if (parseInt(keyInput.value) !== zoneRef.keyCount)
-                            keyInput.value = zoneRef.keyCount;
+                    const capped = Math.min(maxKey, Math.max(0, val));
+                    if (capped !== zoneRef.keyCount) {
+                        zoneRef.keyCount = capped;
+                        zoneRef.keyRecordTime = Date.now();
+                        saveData();
                     }
+                    // 确保显示正确的值
+                    keyInput.value = zoneRef.keyCount;
                 })(zone));
             }
             
@@ -1143,12 +1192,10 @@
         
         // 更新所有分区的钥匙显示
         for(let zone of zonesConfig) {
-            const keyInput = document.getElementById(`key-${zone.key}`);
+            const keyInput = document.getElementById(`key-input-${zone.key}`);
             if(keyInput && document.activeElement !== keyInput) {
-                // 钥匙不每秒重新计算，直接显示存储值
-                // 只在页面加载时校准，避免用户输入后被覆盖
+                // 钥匙直接显示存储值，不每秒重新计算
                 keyInput.value = zone.keyCount;
-                keyInput.title = `${zone.keyCount}/${zone.keyMax}`;
             }
         }
         
