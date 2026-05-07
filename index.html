@@ -980,6 +980,38 @@
         </div>
     </div>
     
+    <!-- 批量修改名称弹窗 -->
+    <div class="modal-overlay" id="batchRenameModal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeBatchRenameModal()">&times;</span>
+            <div class="modal-title"> 批量修改名称</div>
+            <div style="padding: 20px;">
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; color: #4a9eff; font-weight: bold;"> 查找文本：</label>
+                    <input type="text" id="findText" placeholder="例如：上衣" 
+                           style="width: 100%; padding: 10px; border: 1px solid #4a9eff; border-radius: 6px; 
+                                  background: rgba(0,0,0,0.5); color: white; font-size: 1em;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; color: #4a9eff; font-weight: bold;"> 替换为：</label>
+                    <input type="text" id="replaceText" placeholder="例如：下装" 
+                           style="width: 100%; padding: 10px; border: 1px solid #4a9eff; border-radius: 6px; 
+                                  background: rgba(0,0,0,0.5); color: white; font-size: 1em;">
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <p style="font-size: 0.85em; color: #aaa;">
+                        💡 提示：直接修改选中物品的名称，把"头盔"替换为"裤子"即可
+                    </p>
+                </div>
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="btn btn-success" onclick="executeBatchRename()" style="padding: 10px 30px; font-size: 1em;">
+                        ✅ 执行批量修改
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div class="container">
         <header>
             <h1>🎮 制作成本计算器</h1>
@@ -1051,6 +1083,9 @@
 
                 <div class="button-group" style="flex-shrink:0; margin-top:8px; padding-top:8px; border-top:1px solid rgba(74,126,255,0.2);">
                     <button class="btn btn-success" onclick="addItem()">添加物品</button>
+                    <button class="btn btn-primary" onclick="copySelectedItem()" id="copyItemBtn">复制物品</button>
+                    <button class="btn btn-warning" onclick="openBatchRenameModal()" id="batchRenameBtn">批量修改名称</button>
+                    <button class="btn btn-info" onclick="openBatchImportModal()" id="batchImportBtn">批量导入</button>
                     <button class="btn btn-info" onclick="toggleSelectAll()" id="selectAllBtn" style="display:none;">全选</button>
                     <button class="btn btn-danger" onclick="batchDeleteItems()" id="batchDeleteBtn" style="display:none;">批量删除 (<span id="selectedCount">0</span>)</button>
                     <button class="btn btn-secondary" onclick="toggleBatchMode()" id="batchModeBtn">批量模式</button>
@@ -1843,16 +1878,43 @@
             menu.className = 'cat-context-menu';
             menu.style.left = x + 'px';
             menu.style.top = y + 'px';
+            
+            // 复制分类选项
+            const copyItem = document.createElement('div');
+            copyItem.className = 'cat-context-menu-item';
+            copyItem.textContent = '📋 批量复制此分类';
+            copyItem.addEventListener('click', e => { 
+                e.stopPropagation(); 
+                closeCatContextMenu(); 
+                copyCategoryItems(cat); 
+            });
+            menu.appendChild(copyItem);
+            
+            // 粘贴分类选项（仅当剪贴板有内容时显示）
+            if (clipboardCategory && clipboardCategoryItems.length > 0 && cat !== clipboardCategory) {
+                const pasteItem = document.createElement('div');
+                pasteItem.className = 'cat-context-menu-item';
+                pasteItem.textContent = `📌 批量粘贴到此分类 (${clipboardCategoryItems.length}个)`;
+                pasteItem.addEventListener('click', e => { 
+                    e.stopPropagation(); 
+                    closeCatContextMenu(); 
+                    pasteCategoryItems(cat); 
+                });
+                menu.appendChild(pasteItem);
+            }
+            
             const renameItem = document.createElement('div');
             renameItem.className = 'cat-context-menu-item';
-            renameItem.textContent = '✏️ 重命名分类';
+            renameItem.textContent = '️ 重命名分类';
             renameItem.addEventListener('click', e => { e.stopPropagation(); closeCatContextMenu(); startRenameCategory(cat); });
             menu.appendChild(renameItem);
+            
             const deleteItem = document.createElement('div');
             deleteItem.className = 'cat-context-menu-item danger';
             deleteItem.textContent = '🗑️ 删除分类';
             deleteItem.addEventListener('click', e => { e.stopPropagation(); closeCatContextMenu(); deleteCategory(cat); });
             menu.appendChild(deleteItem);
+            
             document.body.appendChild(menu);
             _activeCatMenu = menu;
             const rect = menu.getBoundingClientRect();
@@ -1907,6 +1969,69 @@
             loadProfessionItems();
             autoSave();
             showNotification(`分类「${trimmed}」已添加`, 'success');
+        }
+
+        // 批量复制整个分类的物品
+        let clipboardCategory = null;
+        let clipboardCategoryItems = [];
+        
+        function copyCategoryItems(cat) {
+            const allItems = recipes[currentProfession] || [];
+            const items = allItems.filter(i => (i.category || guessItemCategory(i)) === cat);
+            
+            if (items.length === 0) {
+                showNotification(`⚠️ 分类「${cat}」中没有物品`, 'warning');
+                return;
+            }
+            
+            // 保存分类名称和物品数据（深拷贝）
+            clipboardCategory = cat;
+            clipboardCategoryItems = JSON.parse(JSON.stringify(items));
+            
+            showNotification(`✅ 已复制分类「${cat}」的 ${items.length} 个物品`, 'success');
+        }
+
+        // 粘贴分类物品到当前分类
+        function pasteCategoryItems(targetCategory) {
+            if (!clipboardCategory || clipboardCategoryItems.length === 0) {
+                showNotification('⚠️ 剪贴板为空，请先复制一个分类', 'warning');
+                return;
+            }
+            
+            // 提示用户输入要替换的关键字
+            const findText = prompt(
+                `将从「${clipboardCategory}」粘贴 ${clipboardCategoryItems.length} 个物品到「${targetCategory}」\n\n` +
+                `请输入要替换的关键字（如“头盔”），留空则直接粘贴：`,
+                clipboardCategory
+            );
+            
+            if (findText === null) return; // 用户取消
+            
+            const replaceText = findText.trim();
+            let newCount = 0;
+            
+            clipboardCategoryItems.forEach(item => {
+                const newItem = JSON.parse(JSON.stringify(item));
+                
+                // 如果输入了替换关键字，则修改名称
+                if (replaceText && item.name.includes(clipboardCategory)) {
+                    newItem.name = item.name.replace(new RegExp(clipboardCategory, 'g'), targetCategory);
+                }
+                
+                // 设置新分类
+                newItem.category = targetCategory;
+                
+                // 添加到当前职业
+                recipes[currentProfession].push(newItem);
+                newCount++;
+            });
+            
+            // 自动保存并刷新
+            autoSave();
+            renderCategoryTabs();
+            loadProfessionItems();
+            
+            showNotification(`✅ 已粘贴 ${newCount} 个物品到「${targetCategory}」`, 'success');
         }
 
         function renderCategoryTabs() {
@@ -2074,6 +2199,13 @@
             });
             
             html += `<div class="context-menu-divider"></div>`;
+            html += `<div class="context-menu-item" onclick="copyItemByIndex(${itemIndex})">
+                <span>📋 复制物品</span>
+            </div>`;
+            html += `<div class="context-menu-item" onclick="pasteItem()">
+                <span>📌 粘贴物品</span>
+            </div>`;
+            html += `<div class="context-menu-divider"></div>`;
             html += `<div class="context-menu-item danger" onclick="deleteItemByIndex(${itemIndex})">
                 <span>🗑️ 删除物品</span>
             </div>`;
@@ -2101,6 +2233,41 @@
                 loadProfessionItems();
                 showNotification(`物品颜色已更新`, 'success');
             }
+            hideContextMenu();
+        }
+        
+        // 复制物品到剪贴板
+        let clipboardItem = null;
+        
+        function copyItemByIndex(itemIndex) {
+            if (itemIndex >= 0 && itemIndex < recipes[currentProfession].length) {
+                // 深拷贝物品数据
+                clipboardItem = JSON.parse(JSON.stringify(recipes[currentProfession][itemIndex]));
+                showNotification(`✅ 已复制物品: ${clipboardItem.name}`, 'success');
+            }
+            hideContextMenu();
+        }
+        
+        // 粘贴物品到当前位置
+        function pasteItem() {
+            if (!clipboardItem) {
+                showNotification('⚠️ 剪贴板为空，请先复制一个物品', 'warning');
+                hideContextMenu();
+                return;
+            }
+            
+            // 创建新物品（深拷贝）
+            const newItem = JSON.parse(JSON.stringify(clipboardItem));
+            
+            // 添加到当前职业的物品列表
+            recipes[currentProfession].push(newItem);
+            
+            // 自动保存并刷新
+            autoSave();
+            renderCategoryTabs();
+            loadProfessionItems();
+            
+            showNotification(`✅ 已粘贴物品: ${newItem.name}，请修改名称`, 'success');
             hideContextMenu();
         }
         
@@ -3347,6 +3514,126 @@
             
             showNotification(`已删除 ${sortedIndices.length} 个物品`, 'success');
         }
+
+        // 复制选中的物品
+        function copySelectedItem() {
+            if (!selectedItem) {
+                showNotification('⚠️ 请先选择一个物品', 'warning');
+                return;
+            }
+            
+            // 创建副本
+            const newItem = {
+                name: selectedItem.name + ' (副本)',
+                materials: JSON.parse(JSON.stringify(selectedItem.materials)), // 深拷贝材料数组
+                category: selectedItem.category || ''
+            };
+            
+            // 添加到当前职业的物品列表末尾
+            recipes[currentProfession].push(newItem);
+            
+            // 自动保存并刷新
+            autoSave();
+            renderCategoryTabs();
+            loadProfessionItems();
+            
+            showNotification('✅ 物品已复制，请修改名称', 'success');
+        }
+
+        // 打开批量修改名称弹窗
+        function openBatchRenameModal() {
+            // 批量模式下，修改选中的物品
+            // 非批量模式下，修改当前选中的物品
+            if (batchMode && selectedItems.size === 0) {
+                showNotification('⚠️ 批量模式下请先选择要修改的物品', 'warning');
+                return;
+            }
+                    
+            if (!batchMode && !selectedItem) {
+                showNotification('⚠️ 请先选择一个物品', 'warning');
+                return;
+            }
+                    
+            const modal = document.getElementById('batchRenameModal');
+            const findText = document.getElementById('findText');
+            const replaceText = document.getElementById('replaceText');
+            const countInput = document.getElementById('renameCount');
+                    
+            // 清空输入框
+            findText.value = '';
+            replaceText.value = '';
+                    
+            modal.classList.add('active');
+        }
+        
+        // 关闭批量修改名称弹窗
+        function closeBatchRenameModal() {
+            const modal = document.getElementById('batchRenameModal');
+            modal.classList.remove('active');
+        }
+        
+        // 执行批量修改名称 - 直接修改现有物品
+        function executeBatchRename() {
+            const findText = document.getElementById('findText').value.trim();
+            const replaceText = document.getElementById('replaceText').value.trim();
+                    
+            if (!findText) {
+                showNotification('⚠️ 请输入要查找的文本', 'warning');
+                return;
+            }
+                    
+            let itemsToRename = [];
+                    
+            if (batchMode && selectedItems.size > 0) {
+                // 批量模式：修改选中的物品
+                itemsToRename = Array.from(selectedItems);
+            } else if (selectedItem && selectedItemIndex >= 0) {
+                // 非批量模式：修改当前选中的物品
+                itemsToRename = [selectedItemIndex];
+            } else {
+                showNotification('️ 请先选择要修改的物品', 'warning');
+                return;
+            }
+                    
+            // 检查并修改物品名称
+            let renamedCount = 0;
+            itemsToRename.forEach(index => {
+                if (index >= 0 && index < recipes[currentProfession].length) {
+                    const item = recipes[currentProfession][index];
+                    if (item.name.includes(findText)) {
+                        const oldName = item.name;
+                        item.name = item.name.replace(new RegExp(findText, 'g'), replaceText);
+                        renamedCount++;
+                                
+                        // 如果修改了当前选中的物品，更新选中状态
+                        if (selectedItem && selectedItemIndex === index) {
+                            selectedItem = item;
+                        }
+                    }
+                }
+            });
+                    
+            if (renamedCount === 0) {
+                showNotification(`⚠️ 没有找到包含"${findText}"的物品`, 'warning');
+                return;
+            }
+                    
+            // 自动保存并刷新
+            autoSave();
+            renderCategoryTabs();
+            loadProfessionItems();
+                    
+            closeBatchRenameModal();
+            showNotification(`✅ 已修改 ${renamedCount} 个物品名称`, 'success');
+        }
+
+        // 点击批量修改名称弹窗外部关闭
+        document.addEventListener('click', function(e) {
+            const batchRenameModal = document.getElementById('batchRenameModal');
+            if (e.target === batchRenameModal) {
+                closeBatchRenameModal();
+            }
+        });
 
         // 材料批量选择相关变量
         let materialBatchMode = false;
