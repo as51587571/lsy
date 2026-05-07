@@ -1903,6 +1903,17 @@
                 menu.appendChild(pasteItem);
             }
             
+            // 批量修改分类物品名称选项
+            const batchRenameItem = document.createElement('div');
+            batchRenameItem.className = 'cat-context-menu-item';
+            batchRenameItem.textContent = '✏️ 批量修改此分类物品名称';
+            batchRenameItem.addEventListener('click', e => { 
+                e.stopPropagation(); 
+                closeCatContextMenu(); 
+                batchRenameCategoryItems(cat); 
+            });
+            menu.appendChild(batchRenameItem);
+            
             const renameItem = document.createElement('div');
             renameItem.className = 'cat-context-menu-item';
             renameItem.textContent = '️ 重命名分类';
@@ -1989,6 +2000,64 @@
             clipboardCategoryItems = JSON.parse(JSON.stringify(items));
             
             showNotification(`✅ 已复制分类「${cat}」的 ${items.length} 个物品`, 'success');
+        }
+
+        // 批量修改分类物品名称
+        function batchRenameCategoryItems(cat) {
+            const allItems = recipes[currentProfession] || [];
+            const items = allItems.filter(i => (i.category || guessItemCategory(i)) === cat);
+            
+            if (items.length === 0) {
+                showNotification(`️ 分类「${cat}」中没有物品`, 'warning');
+                return;
+            }
+            
+            // 弹出对话框让用户输入查找和替换文本
+            const findText = prompt(
+                `批量修改「${cat}」分类的物品名称\n\n` +
+                `分类中共有 ${items.length} 个物品\n\n` +
+                `请输入要替换的关键字（如"头盔"）：`,
+                cat
+            );
+            
+            if (findText === null || !findText.trim()) return; // 用户取消
+            
+            const trimmedFind = findText.trim();
+            
+            const replaceText = prompt(
+                `请输入替换为的新文本（如"裤子"）：`,
+                trimmedFind
+            );
+            
+            if (replaceText === null) return; // 用户取消
+            
+            const trimmedReplace = replaceText.trim();
+            
+            if (!trimmedReplace) {
+                showNotification('⚠️ 替换文本不能为空', 'warning');
+                return;
+            }
+            
+            // 执行批量替换
+            let renamedCount = 0;
+            items.forEach(item => {
+                if (item.name.includes(trimmedFind)) {
+                    item.name = item.name.replace(new RegExp(trimmedFind, 'g'), trimmedReplace);
+                    renamedCount++;
+                }
+            });
+            
+            if (renamedCount === 0) {
+                showNotification(`️ 没有找到包含"${trimmedFind}"的物品`, 'warning');
+                return;
+            }
+            
+            // 自动保存并刷新
+            autoSave();
+            renderCategoryTabs();
+            loadProfessionItems();
+            
+            showNotification(`✅ 已将 ${renamedCount} 个物品中的"${trimmedFind}"替换为"${trimmedReplace}"`, 'success');
         }
 
         // 粘贴分类物品到当前分类
