@@ -470,12 +470,21 @@
             const savedLastCalc = localStorage.getItem('energyLastRecalcTime');
             const savedGameRecoveryTime = localStorage.getItem('energyGameRecoveryTime');
 
-            if (savedZones) zonesConfig = JSON.parse(savedZones);
+            if (savedZones) {
+                zonesConfig = JSON.parse(savedZones);
+                const now = Date.now();
+                // 确保每个分区都有钥匙字段
+                for(let zone of zonesConfig) {
+                    if(typeof zone.keyCount === 'undefined' || zone.keyCount === null) zone.keyCount = 0;
+                    if(typeof zone.keyMax === 'undefined' || zone.keyMax === null) zone.keyMax = 14;
+                    if(!zone.keyRecordTime) zone.keyRecordTime = now;
+                }
+            }
             else zonesConfig = [
-                { name: "奈薩区", key: "奈薩" },
-                { name: "塔哈区", key: "塔哈" },
-                { name: "廬德区", key: "廬德" },
-                { name: "崔妮区", key: "崔妮" }
+                { name: "奈薩区", key: "奈薩", keyCount: 0, keyMax: 14, keyRecordTime: Date.now() },
+                { name: "塔哈区", key: "塔哈", keyCount: 0, keyMax: 14, keyRecordTime: Date.now() },
+                { name: "廬德区", key: "廬德", keyCount: 0, keyMax: 14, keyRecordTime: Date.now() },
+                { name: "崔妮区", key: "崔妮", keyCount: 0, keyMax: 14, keyRecordTime: Date.now() }
             ];
 
             if (savedAccounts) {
@@ -507,10 +516,10 @@
                     { name: "南街刘德华[塔哈]", current: 0, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
                     { name: "西街刘德华[塔哈]", current: 50, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
                     { name: "misslin[廬德]", current: 60, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "南疯[廬德]", current: 90, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "廬德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "阿林[廬德]", current: 115, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "廬德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "蠢人灵机一动[德]", current: 180, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "廬德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "红灯星[廬德]", current: 195, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "廬德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "南疯[廬德]", current: 90, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "阿林[廬德]", current: 115, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "蠢人灵机一动[德]", current: 180, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "红灯星[廬德]", current: 195, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
                     { name: "魔三XXXX[崔妮]", current: 60, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
                     { name: "海王开凿[崔妮]", current: 60, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
                     { name: "黄金奶[崔妮]", current: 102, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
@@ -590,6 +599,42 @@
         return baseTime.getTime();
     }
     
+    // 获取钥匙补充基准时间戳（每天凌晨5点）
+    function getKeyRecoveryBaseTime() {
+        const now = new Date();
+        const baseTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 5, 0, 0, 0);
+        // 如果基准时间已过，则用今天的；否则用昨天的
+        if (baseTime > now) {
+            baseTime.setDate(baseTime.getDate() - 1);
+        }
+        return baseTime.getTime();
+    }
+    
+    // 精确计算钥匙数量:基于每天凌晨5点补充2次
+    function calculateCurrentKeyCount(zone) {
+        const now = Date.now();
+        const recordTime = zone.keyRecordTime || now;
+        const KEY_RECOVERY_INTERVAL = 24 * 60 * 60 * 1000; // 24小时的毫秒数
+        const KEY_PER_RECOVERY = 2; // 每次补充2个
+        
+        // 计算从基准时间到记录时间，经过了多少个补充周期
+        const baseTime = getKeyRecoveryBaseTime();
+        const cyclesFromBaseToRecord = Math.floor((recordTime - baseTime) / KEY_RECOVERY_INTERVAL);
+        
+        // 计算从基准时间到现在，经过了多少个补充周期
+        const cyclesFromBaseToNow = Math.floor((now - baseTime) / KEY_RECOVERY_INTERVAL);
+        
+        // 在记录时间之后，又经过了多少个补充周期
+        const cyclesAfterRecord = cyclesFromBaseToNow - cyclesFromBaseToRecord;
+        
+        // 补充的钥匙数量 = 经过的完整周期数 × 每次补充数量
+        const recovered = Math.max(0, cyclesAfterRecord) * KEY_PER_RECOVERY;
+        
+        // 当前钥匙数量 = 记录时的数量 + 补充的数量，不超过上限
+        let calculated = zone.keyCount + recovered;
+        return Math.min(zone.keyMax, calculated);
+    }
+    
     // 精确计算能量:基于游戏恢复周期(离散恢复,不是连续恢复)
     function calculateCurrentEnergy(account, maxEnergy, recPerHour) {
         const now = Date.now();
@@ -650,12 +695,22 @@
         saveData();
     }
     
+    function setAccountKeyAndResetTimer(zone, newVal) {
+        let raw = parseInt(newVal);
+        if (isNaN(raw)) raw = 0;
+        const capped = Math.min(zone.keyMax, Math.max(0, raw));
+        // 存储的是基础钥匙数量，显示时会加上补充的部分
+        zone.keyCount = capped;
+        zone.keyRecordTime = Date.now();
+        saveData();
+    }
+    
     function calibrateEnergyOnLoadOrOpen() {
-        // 在页面加载时,将所有账号的当前能量"吸收"已恢复的部分,并重置recordTime
+        // 在页面加载时,将所有账号的当前能量“吸收”已恢复的部分,并重置recordTime
         const maxEnergy = parseFloat(document.getElementById('maxEnergy').value) || 840;
         const recoverPerHour = getRecoverPerHour();
         const now = Date.now();
-        
+            
         for (let acc of accounts) {
             // 计算当前实际能量(包含所有恢复)
             const actualEnergy = calculateCurrentEnergy(acc, maxEnergy, recoverPerHour);
@@ -665,6 +720,16 @@
             acc.recordTime = now;
         }
         
+        // 校准所有分区的钥匙数量
+        for (let zone of zonesConfig) {
+            // 计算当前实际钥匙数量(包含所有补充)
+            const actualKeyCount = calculateCurrentKeyCount(zone);
+            // 将zone.keyCount更新为实际钥匙数量
+            zone.keyCount = actualKeyCount;
+            // 重置keyRecordTime为当前时间,避免重复计算
+            zone.keyRecordTime = now;
+        }
+            
         // 保存更新后的数据
         saveData();
         // 渲染界面
@@ -777,10 +842,19 @@
             const zoneAccounts = accounts.filter(a => a.zone === zone.key);
             const card = document.createElement('div');
             card.className = 'zone-card';
+            
+            // 计算当前钥匙数量
+            const currentKeyCount = calculateCurrentKeyCount(zone);
+            
             card.innerHTML = `
                 <div class="zone-header">
                     <h3 class="zone-title" contenteditable="true" onblur="renameZone('${zone.key}', this.innerText)">${escapeHtml(zone.name)}</h3>
-                    <button class="zone-del-btn" onclick="delZone('${zone.key}')">删除分区</button>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:0.8rem;color:#4a627a;font-weight:600;">🔑 钥匙:</span>
+                        <input type="number" id="key-${zone.key}" value="${currentKeyCount}" step="1" style="width:60px;text-align:center;padding:3px;border-radius:10px;border:1px solid #cbd5e1;font-weight:600;font-size:0.8rem;" title="${currentKeyCount}/${zone.keyMax}" placeholder="钥匙">
+                        <span style="font-size:0.75rem;color:#6c7a8e;">/${zone.keyMax}</span>
+                        <button class="zone-del-btn" onclick="delZone('${zone.key}')">删除分区</button>
+                    </div>
                 </div>
                 <table>
                     <thead><tr><th>账号</th><th>基本能量</th><th>补充能量</th><th>战斗力</th><th>排名</th><th>还差</th><th>回满时间</th><th>剩余时间</th><th>操作</th></tr></thead>
@@ -788,6 +862,35 @@
                 </table>
             `;
             container.appendChild(card);
+            
+            // 为钥匙输入框添加事件监听
+            const keyInput = document.getElementById(`key-${zone.key}`);
+            if(keyInput) {
+                // 点击输入框时自动全选
+                keyInput.addEventListener('focus', function() {
+                    this.select();
+                });
+                // 按回车失去焦点
+                keyInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.blur();
+                    }
+                });
+                keyInput.addEventListener('blur', ((zoneRef) => (e) => {
+                    let val = parseInt(e.target.value);
+                    if (isNaN(val)) val = 0;
+                    const maxKey = zoneRef.keyMax || 14;
+                    if (val !== zoneRef.keyCount) {
+                        setAccountKeyAndResetTimer(zoneRef, val);
+                        renderAll();
+                    } else {
+                        if (parseInt(keyInput.value) !== zoneRef.keyCount)
+                            keyInput.value = zoneRef.keyCount;
+                    }
+                })(zone));
+            }
+            
             const tbody = document.getElementById(`tbody-${zone.key}`);
             tbody.innerHTML = '';
             
@@ -1038,6 +1141,16 @@
         const recoverPerHour = getRecoverPerHour();
         const rankMap = getTop5EnergyAccountsWithRank();
         
+        // 更新所有分区的钥匙显示
+        for(let zone of zonesConfig) {
+            const keyInput = document.getElementById(`key-${zone.key}`);
+            if(keyInput && document.activeElement !== keyInput) {
+                const currentKeyCount = calculateCurrentKeyCount(zone);
+                keyInput.value = currentKeyCount;
+                keyInput.title = `${currentKeyCount}/${zone.keyMax}`;
+            }
+        }
+        
         for(let zone of zonesConfig) {
             const zoneAccounts = accounts.filter(a => a.zone === zone.key);
             const tbody = document.getElementById(`tbody-${zone.key}`);
@@ -1173,7 +1286,7 @@
     }
     
     function forceFullRender() { batchUpdateEnergyByCycles(); renderAll(); }
-    function addNewZone() { let name = prompt("分区名称"); if(!name?.trim()) return; let key = name.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g,'')||"zone"+Date.now(); if(zonesConfig.some(z=>z.key===key)){showToast("分区标识重复！", "error");return;} zonesConfig.push({name:name.trim(),key}); renderAll(); saveData(); showToast("分区添加成功！", "success"); }
+    function addNewZone() { let name = prompt("分区名称"); if(!name?.trim()) return; let key = name.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g,'')||"zone"+Date.now(); if(zonesConfig.some(z=>z.key===key)){showToast("分区标识重复！", "error");return;} zonesConfig.push({name:name.trim(),key,keyCount:0,keyMax:14,keyRecordTime:Date.now()}); renderAll(); saveData(); showToast("分区添加成功！", "success"); }
     function renameZone(zoneKey, newName) { if(!newName?.trim()) return; let z = zonesConfig.find(z=>z.key===zoneKey); if(z) z.name = newName.trim(); renderAll(); saveData(); }
     function delZone(zoneKey) { if(!confirm("删除分区及其所有账号?")) return; zonesConfig = zonesConfig.filter(z=>z.key!==zoneKey); accounts = accounts.filter(a=>a.zone!==zoneKey); renderAll(); saveData(); }
     function addRow() { if(!zonesConfig.length){showToast("请先添加分区！", "error");return;} let zk = prompt("分区key:"+zonesConfig.map(z=>z.key).join(',')); if(!zk||!zonesConfig.some(z=>z.key===zk)){showToast("分区不存在！", "error");return;} accounts.push({name:`新成员[${zk}]`,current:0,supplement:0,supplementMax:2000,power:0,excludeFromRank:false,zone:zk,recordTime:Date.now(),supplementRecordTime:Date.now(),lastEnergySync:Date.now()}); renderAll(); saveData(); showToast("账号添加成功！", "success"); }
