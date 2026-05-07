@@ -1145,9 +1145,10 @@
         for(let zone of zonesConfig) {
             const keyInput = document.getElementById(`key-${zone.key}`);
             if(keyInput && document.activeElement !== keyInput) {
-                const currentKeyCount = calculateCurrentKeyCount(zone);
-                keyInput.value = currentKeyCount;
-                keyInput.title = `${currentKeyCount}/${zone.keyMax}`;
+                // 钥匙不每秒重新计算，直接显示存储值
+                // 只在页面加载时校准，避免用户输入后被覆盖
+                keyInput.value = zone.keyCount;
+                keyInput.title = `${zone.keyCount}/${zone.keyMax}`;
             }
         }
         
