@@ -2386,6 +2386,7 @@
             
             let totalAdded = 0;
             let serverCount = 0;
+            let skippedCount = 0;
             
             // 遍历所有大区
             servers.forEach(server => {
@@ -2397,6 +2398,19 @@
                 
                 // 为每个角色创建任务
                 rolesToAdd.forEach(role => {
+                    // 检查是否已存在相同名称、相同角色、相同重复类型的任务
+                    const existingTask = server.tasks.find(t => 
+                        t.text === taskName && 
+                        t.role === role && 
+                        t.repeat === taskRepeat
+                    );
+                    
+                    if (existingTask) {
+                        // 如果已存在，跳过
+                        skippedCount++;
+                        return;
+                    }
+                    
                     const newTask = {
                         id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                         text: taskName,
@@ -2420,7 +2434,13 @@
             updateDate();
             
             hideGlobalAddTask();
-            showToast(`已为${serverCount}个大区的${totalAdded}个角色添加任务`, 'success');
+            
+            // 显示详细结果
+            if (skippedCount > 0) {
+                showToast(`已为${serverCount}个大区的${totalAdded}个角色添加任务，跳过${skippedCount}个重复任务`, 'info');
+            } else {
+                showToast(`已为${serverCount}个大区的${totalAdded}个角色添加任务`, 'success');
+            }
             
             // 清空输入框
             taskNameInput.value = '';
