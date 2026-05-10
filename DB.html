@@ -1546,32 +1546,18 @@
         
         // 切换任务完成状态
         function toggleTaskCompletion(serverId, taskId) {
-            console.log('=== 切换任务完成状态 ===');
-            console.log('大区ID:', serverId, '任务ID:', taskId);
-            
             const server = servers.find(s => s.id === serverId);
-            if (!server) {
-                console.error('找不到大区:', serverId);
-                return;
-            }
+            if (!server) return;
             
             const task = server.tasks.find(t => t.id === taskId);
-            if (!task) {
-                console.error('找不到任务:', taskId);
-                return;
-            }
-            
-            console.log('任务信息:', { text: task.text, role: task.role, completed: task.completed, lastCompleted: task.lastCompleted });
+            if (!task) return;
             
             const today = new Date().toDateString();
-            console.log('今天:', today);
             
             if (task.completed && task.lastCompleted === today) {
-                console.log('→ 取消完成状态');
                 task.completed = false;
                 task.lastCompleted = null;
             } else {
-                console.log('→ 设置为完成状态');
                 task.completed = true;
                 task.lastCompleted = today;
                 
@@ -1622,12 +1608,9 @@
                 }
             }
             
-            console.log('保存数据...');
             saveServers();
-            console.log('重新渲染任务列表...');
             renderTasks();
             updateDate();
-            console.log('=== 切换完成 ===');
         }
         
         // 更新任务文本
@@ -1853,7 +1836,45 @@
                             
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
-            checkbox.checked = task.completed && task.lastCompleted === new Date().toDateString();
+            
+            // 判断任务是否应该显示为已完成
+            const today = new Date().toDateString();
+            let shouldShowCompleted = false;
+            
+            if (task.completed && task.lastCompleted) {
+                const lastCompletedDate = new Date(task.lastCompleted);
+                
+                if (task.repeat === 'daily') {
+                    // 每日任务：只在完成当天显示为已完成
+                    shouldShowCompleted = (lastCompletedDate.toDateString() === today);
+                } else if (task.repeat && task.repeat.startsWith('weekly-')) {
+                    // 每周任务：在完成后的这一周内都显示为已完成（直到下一个重置日）
+                    const resetDay = parseInt(task.repeat.split('-')[1]);
+                    const todayDay = new Date().getDay();
+                    const lastCompletedDay = lastCompletedDate.getDay();
+                    
+                    // 如果上次完成是在本周（即距离今天不超过7天，且还没到下一个重置日）
+                    const daysSinceCompleted = Math.floor((new Date(today) - lastCompletedDate) / (1000 * 60 * 60 * 24));
+                    
+                    // 还没到下一次重置日，就显示为已完成
+                    if (daysSinceCompleted < 7) {
+                        // 检查是否已经过了本周的重置日
+                        // 如果上次完成日期在重置日之前，且今天已经过了重置日，说明需要重置
+                        if (todayDay === resetDay && daysSinceCompleted >= 7) {
+                            shouldShowCompleted = false;
+                        } else {
+                            shouldShowCompleted = true;
+                        }
+                    } else {
+                        shouldShowCompleted = false;
+                    }
+                } else if (task.repeat === 'none') {
+                    // 一次性任务：只在完成当天显示为已完成
+                    shouldShowCompleted = (lastCompletedDate.toDateString() === today);
+                }
+            }
+            
+            checkbox.checked = shouldShowCompleted;
             checkbox.addEventListener('change', () => toggleTaskCompletion(serverId, task.id));
                             
             const controls = document.createElement('div');
@@ -1872,7 +1893,7 @@
                 roleBadge.style.cursor = 'pointer'; // 添加指针样式
                 roleBadge.title = '点击切换完成状态'; // 添加提示
                 // 如果任务完成，添加删除线
-                if (task.completed && task.lastCompleted === new Date().toDateString()) {
+                if (shouldShowCompleted) {
                     roleBadge.classList.add('completed-task');
                 }
                 // 点击角色标签也可以切换完成状态
@@ -1890,7 +1911,7 @@
             dateBadge.title = '点击切换完成状态'; // 添加提示
                                         
             const nextDate = new Date(task.nextDate);
-            const today = new Date();
+            const todayDate = new Date();
                                         
             if (task.repeat === 'daily') {
                 dateBadge.textContent = '每日';
@@ -1920,13 +1941,13 @@
                 dateBadge.style.color = '#fff';
                                     
                 // 如果是一次性任务且已过期，显示红色
-                if (nextDate < today && !task.completed) {
+                if (nextDate < todayDate && !task.completed) {
                     dateBadge.style.backgroundColor = '#ffcdd2'; // 红色
                     dateBadge.style.color = '#c62828';
                 }
             }
             // 如果任务完成，添加删除线
-            if (task.completed && task.lastCompleted === new Date().toDateString()) {
+            if (shouldShowCompleted) {
                 dateBadge.classList.add('completed-task');
             }
             // 点击日期标签也可以切换完成状态
@@ -2261,34 +2282,20 @@
             const todayDay = new Date().getDay(); // 今天是星期几
             const lastCheck = localStorage.getItem('lastRecurringCheck');
             
-            console.log('=== 开始检查重复任务 ===');
-            console.log('今天:', today, '星期:', ['日','一','二','三','四','五','六'][todayDay]);
-            console.log('上次检查:', lastCheck);
-            
             // 如果上次检查不是今天，则重置重复任务
             if (lastCheck !== today) {
-                console.log('检测到需要检查重置（上次检查不是今天）');
                 let changed = false;
                 
                 servers.forEach(server => {
-                    console.log(`检查大区: ${server.name}`);
                     server.tasks.forEach(task => {
                         // 只有重复任务且已完成的任务才需要检查重置
                         if (task.repeat !== 'none' && task.completed && task.lastCompleted) {
-                            console.log(`  任务: ${task.text}, 角色: ${task.role}, 重复: ${task.repeat}, 上次完成: ${task.lastCompleted}`);
-                            
                             const lastCompletedDate = new Date(task.lastCompleted);
-                            const lastCompletedDay = lastCompletedDate.getDay();
                             const lastCompletedDateString = lastCompletedDate.toDateString();
-                            
-                            console.log(`    上次完成日期对象:`, lastCompletedDate);
-                            console.log(`    上次完成字符串:`, lastCompletedDateString);
                             
                             // 对于每日重复任务：如果上次完成日期不是今天，则重置
                             if (task.repeat === 'daily') {
-                                console.log(`    每日任务检查: 上次完成(${lastCompletedDateString}) !== 今天(${today})?`, lastCompletedDateString !== today);
                                 if (lastCompletedDateString !== today) {
-                                    console.log(`    → 重置每日任务: ${task.text}`);
                                     task.completed = false;
                                     task.lastCompleted = null;
                                     // 更新下次日期为明天
@@ -2301,21 +2308,14 @@
                             // 对于每周重复任务：检查是否需要重置
                             else if (task.repeat && task.repeat.startsWith('weekly-')) {
                                 const resetDay = parseInt(task.repeat.split('-')[1]);
-                                const resetDayName = ['日','一','二','三','四','五','六'][resetDay];
-                                
-                                console.log(`    每周任务检查: 今天是星期${['日','一','二','三','四','五','六'][todayDay]}, 重置日是星期${resetDayName}`);
-                                console.log(`    今天(${todayDay}) === 重置日(${resetDay})?`, todayDay === resetDay);
                                 
                                 // 如果今天是重置日，且上次完成的不是本周（即上次完成日期到今天已经过了一周以上）
                                 if (todayDay === resetDay) {
                                     // 计算上次完成日期到现在是否已经过了至少一周
                                     const daysSinceCompleted = Math.floor((new Date(today) - lastCompletedDate) / (1000 * 60 * 60 * 24));
                                     
-                                    console.log(`    距今天数:`, daysSinceCompleted);
-                                    
                                     // 如果距离上次完成已经过了至少7天，才重置
                                     if (daysSinceCompleted >= 7) {
-                                        console.log(`    → 重置每周任务: ${task.text} (距今${daysSinceCompleted}天)`);
                                         task.completed = false;
                                         task.lastCompleted = null;
                                         // 更新下次日期为下周的同一天
@@ -2323,11 +2323,7 @@
                                         nextWeek.setDate(nextWeek.getDate() + 7);
                                         task.nextDate = nextWeek.toISOString();
                                         changed = true;
-                                    } else {
-                                        console.log(`    → 不重置（距今不足7天）`);
                                     }
-                                } else {
-                                    console.log(`    → 不重置（今天不是重置日）`);
                                 }
                             }
                         }
@@ -2335,19 +2331,12 @@
                 });
                 
                 if (changed) {
-                    console.log('=== 任务状态已更新，保存并重新渲染 ===');
                     saveServers();
                     // 不在这里调用 renderTasks()，等 DOM 创建后再统一渲染
-                } else {
-                    console.log('=== 没有任务需要重置 ===');
                 }
                 
                 // 更新最后检查日期
                 localStorage.setItem('lastRecurringCheck', today);
-                console.log('更新最后检查日期:', today);
-                console.log('=== 检查完成 ===');
-            } else {
-                console.log('=== 今天已经检查过，跳过重置 ===');
             }
         }
         
