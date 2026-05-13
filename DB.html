@@ -1839,38 +1839,30 @@
             
             // 判断任务是否应该显示为已完成
             const today = new Date().toDateString();
+            const todayDay = new Date().getDay();
             let shouldShowCompleted = false;
             
             if (task.completed && task.lastCompleted) {
                 const lastCompletedDate = new Date(task.lastCompleted);
+                const lastCompletedDateString = lastCompletedDate.toDateString();
                 
                 if (task.repeat === 'daily') {
                     // 每日任务：只在完成当天显示为已完成
-                    shouldShowCompleted = (lastCompletedDate.toDateString() === today);
+                    shouldShowCompleted = (lastCompletedDateString === today);
                 } else if (task.repeat && task.repeat.startsWith('weekly-')) {
-                    // 每周任务：在完成后的这一周内都显示为已完成（直到下一个重置日）
+                    // 每周任务：严格按照重置日（星期几）来判断
                     const resetDay = parseInt(task.repeat.split('-')[1]);
-                    const todayDay = new Date().getDay();
-                    const lastCompletedDay = lastCompletedDate.getDay();
                     
-                    // 如果上次完成是在本周（即距离今天不超过7天，且还没到下一个重置日）
-                    const daysSinceCompleted = Math.floor((new Date(today) - lastCompletedDate) / (1000 * 60 * 60 * 24));
-                    
-                    // 还没到下一次重置日，就显示为已完成
-                    if (daysSinceCompleted < 7) {
-                        // 检查是否已经过了本周的重置日
-                        // 如果上次完成日期在重置日之前，且今天已经过了重置日，说明需要重置
-                        if (todayDay === resetDay && daysSinceCompleted >= 7) {
-                            shouldShowCompleted = false;
-                        } else {
-                            shouldShowCompleted = true;
-                        }
-                    } else {
+                    // 如果今天是重置日，不显示为已完成（应该重置了）
+                    if (todayDay === resetDay) {
                         shouldShowCompleted = false;
+                    } else {
+                        // 不是重置日，显示为已完成
+                        shouldShowCompleted = true;
                     }
                 } else if (task.repeat === 'none') {
                     // 一次性任务：只在完成当天显示为已完成
-                    shouldShowCompleted = (lastCompletedDate.toDateString() === today);
+                    shouldShowCompleted = (lastCompletedDateString === today);
                 }
             }
             
@@ -2305,17 +2297,14 @@
                                     changed = true;
                                 }
                             }
-                            // 对于每周重复任务：检查是否需要重置
+                            // 对于每周重复任务：严格按重置日（星期几）重置
                             else if (task.repeat && task.repeat.startsWith('weekly-')) {
                                 const resetDay = parseInt(task.repeat.split('-')[1]);
                                 
-                                // 如果今天是重置日，且上次完成的不是本周（即上次完成日期到今天已经过了一周以上）
+                                // 如果今天是重置日（星期几匹配），就重置
                                 if (todayDay === resetDay) {
-                                    // 计算上次完成日期到现在是否已经过了至少一周
-                                    const daysSinceCompleted = Math.floor((new Date(today) - lastCompletedDate) / (1000 * 60 * 60 * 24));
-                                    
-                                    // 如果距离上次完成已经过了至少7天，才重置
-                                    if (daysSinceCompleted >= 7) {
+                                    // 检查上次完成是不是今天（避免重复重置）
+                                    if (lastCompletedDateString !== today) {
                                         task.completed = false;
                                         task.lastCompleted = null;
                                         // 更新下次日期为下周的同一天
@@ -2332,7 +2321,6 @@
                 
                 if (changed) {
                     saveServers();
-                    // 不在这里调用 renderTasks()，等 DOM 创建后再统一渲染
                 }
                 
                 // 更新最后检查日期
