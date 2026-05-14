@@ -526,8 +526,8 @@
                     if(typeof acc.supplement === 'undefined' || acc.supplement === null) acc.supplement = 0;
                     if(typeof acc.supplementMax === 'undefined' || acc.supplementMax === null) acc.supplementMax = 2000;
                     if(!acc.supplementRecordTime) acc.supplementRecordTime = now;
-                    // 确保有消耗能量字段
-                    if(typeof acc.consume === 'undefined' || acc.consume === null) acc.consume = 0;
+                    // 删除消耗能量字段（消耗能量是临时输入值，不应持久化）
+                    delete acc.consume;
                 }
             } else {
                 accounts = [
@@ -1508,6 +1508,8 @@
                             console.warn(`账号 ${a.name} 缺少recordTime，已重置`);
                         }
                         if(!a.lastEnergySync) a.lastEnergySync = now;
+                        // 删除消耗能量字段（消耗能量是临时输入值，不应从旧数据继承）
+                        delete a.consume;
                     }
                     if(d.maxEnergy) document.getElementById('maxEnergy').value = d.maxEnergy;
                     // 兼容旧数据
