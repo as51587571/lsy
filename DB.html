@@ -1838,8 +1838,8 @@
             checkbox.type = 'checkbox';
             
             // 判断任务是否应该显示为已完成
-            const today = new Date().toDateString();
-            const todayDay = new Date().getDay();
+            const today = new Date();
+            const todayDateString = today.toDateString();
             let shouldShowCompleted = false;
             
             if (task.completed && task.lastCompleted) {
@@ -1848,21 +1848,21 @@
                 
                 if (task.repeat === 'daily') {
                     // 每日任务：只在完成当天显示为已完成
-                    shouldShowCompleted = (lastCompletedDateString === today);
+                    shouldShowCompleted = (lastCompletedDateString === todayDateString);
                 } else if (task.repeat && task.repeat.startsWith('weekly-')) {
-                    // 每周任务：严格按照重置日（星期几）来判断
+                    // 每周任务：检查是否已经过了重置日
                     const resetDay = parseInt(task.repeat.split('-')[1]);
+                    const lastResetDate = getMostRecentResetDate(today, resetDay);
                     
-                    // 如果今天是重置日，不显示为已完成（应该重置了）
-                    if (todayDay === resetDay) {
-                        shouldShowCompleted = false;
-                    } else {
-                        // 不是重置日，显示为已完成
-                        shouldShowCompleted = true;
-                    }
+                    // 比较日期部分
+                    const lastCompletedDateOnly = new Date(lastCompletedDate);
+                    lastCompletedDateOnly.setHours(0, 0, 0, 0);
+                    
+                    // 如果上次完成时间在最近重置日之前，不应该显示为已完成
+                    shouldShowCompleted = lastCompletedDateOnly >= lastResetDate;
                 } else if (task.repeat === 'none') {
                     // 一次性任务：只在完成当天显示为已完成
-                    shouldShowCompleted = (lastCompletedDateString === today);
+                    shouldShowCompleted = (lastCompletedDateString === todayDateString);
                 }
             }
             
@@ -2270,12 +2270,13 @@
         
         // 检查重复任务并重置（每天执行）
         function checkAndResetRecurringTasks() {
-            const today = new Date().toDateString();
-            const todayDay = new Date().getDay(); // 今天是星期几
+            const today = new Date();
+            const todayDateString = today.toDateString();
+            const todayDay = today.getDay(); // 今天是星期几
             const lastCheck = localStorage.getItem('lastRecurringCheck');
             
             // 如果上次检查不是今天，则重置重复任务
-            if (lastCheck !== today) {
+            if (lastCheck !== todayDateString) {
                 let changed = false;
                 
                 servers.forEach(server => {
@@ -2287,7 +2288,7 @@
                             
                             // 对于每日重复任务：如果上次完成日期不是今天，则重置
                             if (task.repeat === 'daily') {
-                                if (lastCompletedDateString !== today) {
+                                if (lastCompletedDateString !== todayDateString) {
                                     task.completed = false;
                                     task.lastCompleted = null;
                                     // 更新下次日期为明天
@@ -2297,22 +2298,20 @@
                                     changed = true;
                                 }
                             }
-                            // 对于每周重复任务：严格按重置日（星期几）重置
+                            // 对于每周重复任务：检查是否已经过了重置日
                             else if (task.repeat && task.repeat.startsWith('weekly-')) {
                                 const resetDay = parseInt(task.repeat.split('-')[1]);
                                 
-                                // 如果今天是重置日（星期几匹配），就重置
-                                if (todayDay === resetDay) {
-                                    // 检查上次完成是不是今天（避免重复重置）
-                                    if (lastCompletedDateString !== today) {
-                                        task.completed = false;
-                                        task.lastCompleted = null;
-                                        // 更新下次日期为下周的同一天
-                                        const nextWeek = new Date();
-                                        nextWeek.setDate(nextWeek.getDate() + 7);
-                                        task.nextDate = nextWeek.toISOString();
-                                        changed = true;
-                                    }
+                                // 判断是否应该重置：上次完成时间所在周的重置日是否已经过去
+                                const shouldReset = hasResetDayPassed(lastCompletedDate, today, resetDay);
+                                
+                                if (shouldReset) {
+                                    task.completed = false;
+                                    task.lastCompleted = null;
+                                    // 更新下次日期为下一个重置日
+                                    const nextReset = getNextResetDate(today, resetDay);
+                                    task.nextDate = nextReset.toISOString();
+                                    changed = true;
                                 }
                             }
                         }
@@ -2324,8 +2323,56 @@
                 }
                 
                 // 更新最后检查日期
-                localStorage.setItem('lastRecurringCheck', today);
+                localStorage.setItem('lastRecurringCheck', todayDateString);
             }
+        }
+        
+        // 判断从上次完成时间到现在，是否已经过了重置日
+        function hasResetDayPassed(lastCompleted, today, resetDay) {
+            // 找到最近的一个重置日（包括今天或之前的最近一个）
+            const lastResetDate = getMostRecentResetDate(today, resetDay);
+            
+            // 如果上次完成时间在最近重置日之前，说明已经过了重置日，需要重置
+            // 注意：lastCompleted 是完成当天的时间点，可能在当天的任意时刻
+            // lastResetDate 是重置日当天的开始（00:00:00）
+            
+            // 比较日期部分（忽略时间）
+            const lastCompletedDateOnly = new Date(lastCompleted);
+            lastCompletedDateOnly.setHours(0, 0, 0, 0);
+            
+            return lastCompletedDateOnly < lastResetDate;
+        }
+        
+        // 获取最近的一个重置日（今天或之前的最近一个）
+        function getMostRecentResetDate(today, resetDay) {
+            const result = new Date(today);
+            result.setHours(0, 0, 0, 0);
+            
+            const currentDay = result.getDay();
+            let daysDiff = currentDay - resetDay;
+            
+            // 如果今天是重置日，最近的重置日就是今天
+            // 如果今天在重置日之后，最近的重置日是本周的重置日
+            // 如果今天在重置日之前，最近的重置日是上周的重置日
+            if (daysDiff < 0) {
+                daysDiff += 7;
+            }
+            
+            result.setDate(result.getDate() - daysDiff);
+            return result;
+        }
+        
+        // 获取下一个重置日期
+        function getNextResetDate(fromDate, resetDay) {
+            const next = new Date(fromDate);
+            const currentDay = next.getDay();
+            let daysUntilReset = (resetDay - currentDay + 7) % 7;
+            if (daysUntilReset === 0) {
+                daysUntilReset = 7; // 如果今天是重置日，下次重置是下周
+            }
+            next.setDate(next.getDate() + daysUntilReset);
+            next.setHours(0, 0, 0, 0);
+            return next;
         }
         
         // 显示全局添加任务弹窗
