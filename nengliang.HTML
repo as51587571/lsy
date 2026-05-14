@@ -418,6 +418,7 @@
     <input type="time" id="gameRecoveryTime" class="param-input" value="00:00" style="width:80px;">
     <button id="toggleDecimalBtn" class="btn btn-info" onclick="toggleDecimalMode()">🔢 显示小数</button>
     <button class="btn btn-warning" onclick="clearAllData()">🗑️ 清空数据</button>
+    <button class="btn btn-info" onclick="clearConsumeData()">🧹 清空消耗记录</button>
     <button class="btn btn-info" onclick="exportData()">📤 导出备份</button>
     <button class="btn btn-info" onclick="openExportSettings()">⚙️ 导出设置</button>
     <button class="btn btn-info" onclick="document.getElementById('importFile').click()">📥 导入恢复</button>
@@ -1054,7 +1055,7 @@
                 const consumeInput = document.createElement('input');
                 consumeInput.type = 'number';
                 consumeInput.step = '1';
-                consumeInput.value = '';  // 始终为空，使用后清空
+                consumeInput.value = '';  // 始终为空，不使用旧数据
                 consumeInput.style.width = '80px';
                 consumeInput.placeholder = '消耗';
                 consumeInput.title = '输入要消耗的能量值，按回车或点击其他地方自动扣除并清空';
@@ -1307,8 +1308,8 @@
                     energyInput.step = showDecimal ? '0.1' : '1';
                 }
                 
-                // 更新补充能量输入框
-                const suppInput = row.children[2]?.querySelector('input');
+                // 更新补充能量输入框 (列索引3)
+                const suppInput = row.children[3]?.querySelector('input');
                 if(suppInput && document.activeElement !== suppInput) {
                     const accIdx = accounts.findIndex(a => a === zoneAccounts[i]);
                     if(accIdx !== -1 && accounts[accIdx].supplement !== undefined) {
@@ -1316,8 +1317,8 @@
                     }
                 }
                 
-                // 更新战斗力输入框
-                const powerInput = row.children[3]?.querySelector('input');
+                // 更新战斗力输入框 (列索引4)
+                const powerInput = row.children[4]?.querySelector('input');
                 if(powerInput && document.activeElement !== powerInput) {
                     const accIdx = accounts.findIndex(a => a === zoneAccounts[i]);
                     if(accIdx !== -1 && accounts[accIdx].power !== undefined) {
@@ -1325,8 +1326,8 @@
                     }
                 }
                 
-                // 更新排除排名按钮状态
-                const excludeBtn = row.children[8]?.querySelector('.exclude-rank-btn');
+                // 更新排除排名按钮状态 (操作列索引9)
+                const excludeBtn = row.children[9]?.querySelector('.exclude-rank-btn');
                 if(excludeBtn) {
                     const accIdx = accounts.findIndex(a => a === zoneAccounts[i]);
                     if(accIdx !== -1) {
@@ -1387,6 +1388,16 @@
     function updateNameInZone(zoneKey, idx, newName) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) arr[idx].name = newName; renderAll(); saveData(); }
     function delRowInZone(zoneKey, idx) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) { accounts = accounts.filter(a=> a !== arr[idx]); renderAll(); saveData(); } }
     function clearAllData() { if(!confirm("彻底清空所有数据？将恢复默认值")) return; localStorage.clear(); loadData(); calibrateEnergyOnLoadOrOpen(); }
+    
+    // 清空消耗记录
+    function clearConsumeData() {
+        for(let acc of accounts) {
+            delete acc.consume;
+        }
+        saveData();
+        renderAll();
+        showToast("消耗记录已清空！", "success");
+    }
     function exportData() {
         // 导出数据：确保包含所有必要字段
         let data = {
@@ -1503,15 +1514,24 @@
                     zonesConfig = d.zonesConfig;
                     accounts = d.accounts;
                     const now = Date.now();
-                    // 确保每个账号都有recordTime，保留原始值
+                    // 完整的字段兼容处理（与loadData保持一致）
                     for(let a of accounts) {
-                        // 如果导出时没有recordTime（旧版本），则使用当前时间
-                        // 如果有recordTime，保留原始值以确保计算准确
+                        // 能量值兼容
+                        if(typeof a.current !== 'number') a.current = Number(a.current) || 0;
+                        // 记录时间兼容
                         if(!a.recordTime) {
                             a.recordTime = now;
                             console.warn(`账号 ${a.name} 缺少recordTime，已重置`);
                         }
                         if(!a.lastEnergySync) a.lastEnergySync = now;
+                        // 战斗力兼容
+                        if(typeof a.power === 'undefined' || a.power === null) a.power = 0;
+                        // 排除排名兼容
+                        if(typeof a.excludeFromRank === 'undefined') a.excludeFromRank = false;
+                        // 补充能量兼容
+                        if(typeof a.supplement === 'undefined' || a.supplement === null) a.supplement = 0;
+                        if(typeof a.supplementMax === 'undefined' || a.supplementMax === null) a.supplementMax = 2000;
+                        if(!a.supplementRecordTime) a.supplementRecordTime = now;
                         // 删除消耗能量字段（消耗能量是临时输入值，不应从旧数据继承）
                         delete a.consume;
                     }
