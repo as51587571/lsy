@@ -594,6 +594,10 @@
 
     function saveData() {
         try {
+            // 清理所有账号的consume字段（消耗能量是临时值，不应保存）
+            for(let acc of accounts) {
+                delete acc.consume;
+            }
             localStorage.setItem('energyZonesConfig', JSON.stringify(zonesConfig));
             localStorage.setItem('energyAccounts', JSON.stringify(accounts));
             localStorage.setItem('energyMax', document.getElementById('maxEnergy').value);
