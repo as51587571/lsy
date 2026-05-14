@@ -905,7 +905,7 @@
                     </div>
                 </div>
                 <table>
-                    <thead><tr><th>账号</th><th>基本能量</th><th>补充能量</th><th>战斗力</th><th>排名</th><th>还差</th><th>回满时间</th><th>剩余时间</th><th>操作</th></tr></thead>
+                    <thead><tr><th>账号</th><th>基本能量</th><th>消耗能量</th><th>补充能量</th><th>战斗力</th><th>排名</th><th>还差</th><th>回满时间</th><th>剩余时间</th><th>操作</th></tr></thead>
                     <tbody id="tbody-${zone.key}"></tbody>
                 </table>
             `;
@@ -1043,6 +1043,45 @@
                 })(zone.key, idx, acc));
                 tdEnergy.appendChild(energyInput);
                 
+                // 消耗能量输入框
+                const tdConsume = document.createElement('td');
+                const consumeInput = document.createElement('input');
+                consumeInput.type = 'number';
+                consumeInput.step = '1';
+                consumeInput.value = '';
+                consumeInput.style.width = '80px';
+                consumeInput.placeholder = '消耗';
+                consumeInput.title = '输入消耗的能量值，自动从当前能量扣除';
+                // 点击输入框时自动全选
+                consumeInput.addEventListener('focus', function() {
+                    this.select();
+                });
+                // 按回车失去焦点
+                consumeInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.blur();
+                    }
+                });
+                consumeInput.addEventListener('blur', ((z, idx2, accountRef) => (e) => {
+                    let val = parseInt(e.target.value);
+                    if (isNaN(val) || val <= 0) {
+                        // 如果输入无效或清空，不执行任何操作
+                        consumeInput.value = '';
+                        return;
+                    }
+                    const maxE = parseFloat(document.getElementById('maxEnergy').value) || 840;
+                    const currentEnergy = calculateCurrentEnergy(accountRef, maxE, getRecoverPerHour());
+                    // 从当前能量中扣除消耗值
+                    const newEnergy = Math.max(0, currentEnergy - val);
+                    setAccountEnergyAndResetTimer(accountRef, newEnergy, maxE);
+                    saveData();
+                    // 清空输入框
+                    consumeInput.value = '';
+                    renderAll();
+                })(zone.key, idx, acc));
+                tdConsume.appendChild(consumeInput);
+                
                 // 补充能量输入框
                 const tdSupplement = document.createElement('td');
                 const suppInput = document.createElement('input');
@@ -1171,6 +1210,7 @@
                 
                 tr.appendChild(tdName);
                 tr.appendChild(tdEnergy);
+                tr.appendChild(tdConsume);
                 tr.appendChild(tdSupplement);
                 tr.appendChild(tdPower);
                 tr.appendChild(tdRank);
@@ -1215,15 +1255,15 @@
                 const uniqueKey = `${zone.key}|${acc.name}`;
                 const rank = rankMap.get(uniqueKey);
                 
-                const needCell = row.children[5];
+                const needCell = row.children[6];
                 if(needCell) needCell.innerText = Math.ceil(need);
-                const fullCell = row.children[6];
+                const fullCell = row.children[7];
                 if(fullCell) fullCell.innerText = fullObj.toLocaleString().slice(5, -3);
-                const cdCell = row.children[7];
+                const cdCell = row.children[8];
                 if(cdCell && cdCell.innerText !== remainStr) cdCell.innerText = remainStr;
                 
                 // 更新排名列
-                const rankCell = row.children[4];
+                const rankCell = row.children[5];
                 if(rankCell) {
                     rankCell.innerHTML = '';
                     if(rank && rank >= 1 && rank <= 5) {
