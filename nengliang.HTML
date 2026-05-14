@@ -526,6 +526,8 @@
                     if(typeof acc.supplement === 'undefined' || acc.supplement === null) acc.supplement = 0;
                     if(typeof acc.supplementMax === 'undefined' || acc.supplementMax === null) acc.supplementMax = 2000;
                     if(!acc.supplementRecordTime) acc.supplementRecordTime = now;
+                    // 确保有消耗能量字段
+                    if(typeof acc.consume === 'undefined' || acc.consume === null) acc.consume = 0;
                 }
             } else {
                 accounts = [
@@ -1043,15 +1045,15 @@
                 })(zone.key, idx, acc));
                 tdEnergy.appendChild(energyInput);
                 
-                // 消耗能量输入框
+                // 消耗能量输入框（快捷扣除工具）
                 const tdConsume = document.createElement('td');
                 const consumeInput = document.createElement('input');
                 consumeInput.type = 'number';
                 consumeInput.step = '1';
-                consumeInput.value = '';
+                consumeInput.value = '';  // 始终为空，使用后清空
                 consumeInput.style.width = '80px';
                 consumeInput.placeholder = '消耗';
-                consumeInput.title = '输入消耗的能量值，自动从当前能量扣除';
+                consumeInput.title = '输入要消耗的能量值，按回车或点击其他地方自动扣除并清空';
                 // 点击输入框时自动全选
                 consumeInput.addEventListener('focus', function() {
                     this.select();
@@ -1066,8 +1068,8 @@
                 consumeInput.addEventListener('blur', ((z, idx2, accountRef) => (e) => {
                     let val = parseInt(e.target.value);
                     if (isNaN(val) || val <= 0) {
-                        // 如果输入无效或清空，不执行任何操作
-                        consumeInput.value = '';
+                        // 如果输入无效或为空，直接清空输入框
+                        e.target.value = '';
                         return;
                     }
                     const maxE = parseFloat(document.getElementById('maxEnergy').value) || 840;
@@ -1076,8 +1078,8 @@
                     const newEnergy = Math.max(0, currentEnergy - val);
                     setAccountEnergyAndResetTimer(accountRef, newEnergy, maxE);
                     saveData();
-                    // 清空输入框
-                    consumeInput.value = '';
+                    // 清空输入框并刷新
+                    e.target.value = '';
                     renderAll();
                 })(zone.key, idx, acc));
                 tdConsume.appendChild(consumeInput);
