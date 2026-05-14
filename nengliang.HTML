@@ -1387,7 +1387,7 @@
     function addRow() { if(!zonesConfig.length){showToast("请先添加分区！", "error");return;} let zk = prompt("分区key:"+zonesConfig.map(z=>z.key).join(',')); if(!zk||!zonesConfig.some(z=>z.key===zk)){showToast("分区不存在！", "error");return;} accounts.push({name:`新成员[${zk}]`,current:0,supplement:0,supplementMax:2000,power:0,excludeFromRank:false,zone:zk,recordTime:Date.now(),supplementRecordTime:Date.now(),lastEnergySync:Date.now()}); renderAll(); saveData(); showToast("账号添加成功！", "success"); }
     function updateNameInZone(zoneKey, idx, newName) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) arr[idx].name = newName; renderAll(); saveData(); }
     function delRowInZone(zoneKey, idx) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) { accounts = accounts.filter(a=> a !== arr[idx]); renderAll(); saveData(); } }
-    function clearAllData() { if(!confirm("彻底清空所有数据？将恢复默认值")) return; localStorage.clear(); loadData(); calibrateEnergyOnLoadOrOpen(); }
+    function clearAllData() { if(!confirm("彻底清空所有数据？将删除所有账号并保留空分区")) return; localStorage.clear(); loadData(); accounts = []; saveData(); renderAll(); showToast("所有数据已清空！", "success"); }
     
     // 清空消耗记录
     function clearConsumeData() {
