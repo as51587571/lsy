@@ -417,10 +417,17 @@
     <span style="font-size:0.75rem; color:#6b7280;">🕐 恢复基准时间:</span>
     <input type="time" id="gameRecoveryTime" class="param-input" value="00:00" style="width:80px;">
     <button id="toggleDecimalBtn" class="btn btn-info" onclick="toggleDecimalMode()">🔢 显示小数</button>
+    <span style="font-size:0.75rem; color:#6b7280;">⚡ 每次扣能量:</span>
+    <select id="consumePerTime" class="param-input" style="width:70px; border-radius:30px; padding:3px 8px;">
+        <option value="40">40</option>
+        <option value="80" selected>80</option>
+        <option value="120">120</option>
+        <option value="160">160</option>
+        <option value="200">200</option>
+    </select>
     <button class="btn btn-warning" onclick="clearAllData()">🗑️ 清空数据</button>
-    <button class="btn btn-info" onclick="clearConsumeData()">🧹 清空消耗记录</button>
-    <button class="btn btn-info" onclick="exportData()">📤 导出备份</button>
     <button class="btn btn-info" onclick="openExportSettings()">⚙️ 导出设置</button>
+    <button class="btn btn-warning" onclick="exportData()">📤 导出备份</button>
     <button class="btn btn-info" onclick="document.getElementById('importFile').click()">📥 导入恢复</button>
     <input type="file" id="importFile" accept=".json" onchange="importData(this)">
     <span class="tip">⚡ 能量变动：每15分钟自动增加 | 倒计时每秒刷新 | 支持上下移动账号顺序</span>
@@ -455,7 +462,7 @@
             </div>
             <div class="form-group">
                 <label class="form-label">文件名预览</label>
-                <div id="filenamePreview" class="preview-filename">能量备份_001_2026-05-04_12-30-45.json</div>
+                <div id="filenamePreview" class="preview-filename">能量备份_001.json</div>
             </div>
         </div>
         <div class="modal-footer">
@@ -565,6 +572,11 @@
             if (savedGameRecoveryTime) {
                 document.getElementById('gameRecoveryTime').value = savedGameRecoveryTime;
             }
+            // 恢复每次扣能量设置
+            const savedConsumePerTime = localStorage.getItem('energyConsumePerTime');
+            if (savedConsumePerTime) {
+                document.getElementById('consumePerTime').value = savedConsumePerTime;
+            }
             if (savedDecimal) showDecimal = (savedDecimal === 'true');
             if (savedLastCalc) lastRecalcTimestamp = parseInt(savedLastCalc);
             else lastRecalcTimestamp = Date.now();
@@ -604,6 +616,7 @@
             localStorage.setItem('energyMax', document.getElementById('maxEnergy').value);
             localStorage.setItem('energyRecover', document.getElementById('recoverPer3Hours').value);
             localStorage.setItem('energyGameRecoveryTime', document.getElementById('gameRecoveryTime').value);
+            localStorage.setItem('energyConsumePerTime', document.getElementById('consumePerTime').value);
             localStorage.setItem('energyShowDecimal', showDecimal);
             localStorage.setItem('energyLastRecalcTime', lastRecalcTimestamp);
             localStorage.setItem('energyExportSettings', JSON.stringify(exportSettings));
@@ -912,7 +925,7 @@
                     </div>
                 </div>
                 <table>
-                    <thead><tr><th>账号</th><th>基本能量</th><th>消耗能量</th><th>补充能量</th><th>战斗力</th><th>排名</th><th>还差</th><th>回满时间</th><th>剩余时间</th><th>操作</th></tr></thead>
+                    <thead><tr><th>账号</th><th>基本能量</th><th>消耗次数</th><th>补充能量</th><th>战斗力</th><th>排名</th><th>还差</th><th>回满时间</th><th>剩余时间</th><th>操作</th></tr></thead>
                     <tbody id="tbody-${zone.key}"></tbody>
                 </table>
             `;
@@ -1050,15 +1063,15 @@
                 })(zone.key, idx, acc));
                 tdEnergy.appendChild(energyInput);
                 
-                // 消耗能量输入框（快捷扣除工具）
+                // 消耗次数输入框（快捷扣除工具）
                 const tdConsume = document.createElement('td');
                 const consumeInput = document.createElement('input');
                 consumeInput.type = 'number';
                 consumeInput.step = '1';
                 consumeInput.value = '';  // 始终为空，不使用旧数据
                 consumeInput.style.width = '80px';
-                consumeInput.placeholder = '消耗';
-                consumeInput.title = '输入要消耗的能量值，按回车或点击其他地方自动扣除并清空';
+                consumeInput.placeholder = '次数';
+                consumeInput.title = '输入消耗次数，按回车或点击其他地方自动扣除并清空';
                 // 点击输入框时自动全选
                 consumeInput.addEventListener('focus', function() {
                     this.select();
@@ -1071,20 +1084,25 @@
                     }
                 });
                 consumeInput.addEventListener('blur', ((z, idx2, accountRef) => (e) => {
-                    let val = parseInt(e.target.value);
-                    if (isNaN(val) || val <= 0) {
+                    let times = parseInt(e.target.value);
+                    if (isNaN(times) || times <= 0) {
                         // 如果输入无效或为空，直接清空输入框
                         e.target.value = '';
                         return;
                     }
+                    // 获取每次扣能量值
+                    const consumePerTime = parseInt(document.getElementById('consumePerTime').value) || 80;
+                    const totalConsume = times * consumePerTime;
+                    
                     const maxE = parseFloat(document.getElementById('maxEnergy').value) || 840;
                     const currentEnergy = calculateCurrentEnergy(accountRef, maxE, getRecoverPerHour());
                     // 从当前能量中扣除消耗值
-                    const newEnergy = Math.max(0, currentEnergy - val);
+                    const newEnergy = Math.max(0, currentEnergy - totalConsume);
                     setAccountEnergyAndResetTimer(accountRef, newEnergy, maxE);
                     saveData();
                     // 清空输入框并刷新
                     e.target.value = '';
+                    showToast(`已扣除 ${times} 次 × ${consumePerTime} = ${totalConsume} 能量`, 'success', 2000);
                     renderAll();
                 })(zone.key, idx, acc));
                 tdConsume.appendChild(consumeInput);
@@ -1431,15 +1449,13 @@
     
     // 生成导出文件名
     function generateExportFilename() {
-        const now = new Date();
-        const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
         const prefix = exportSettings.prefix || '能量备份';
         
         if (exportSettings.autoNumber) {
             const number = String(exportSettings.nextNumber).padStart(3, '0');
-            return `${prefix}_${number}_${timestamp}.json`;
+            return `${prefix}_${number}.json`;
         } else {
-            return `${prefix}_${timestamp}.json`;
+            return `${prefix}.json`;
         }
     }
     
@@ -1478,15 +1494,13 @@
     function updateFilenamePreview() {
         const prefix = document.getElementById('exportPrefixInput').value.trim() || '能量备份';
         const autoNumber = document.getElementById('autoNumberCheckbox').checked;
-        const now = new Date();
-        const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
         
         let preview;
         if (autoNumber) {
             const number = String(exportSettings.nextNumber).padStart(3, '0');
-            preview = `${prefix}_${number}_${timestamp}.json`;
+            preview = `${prefix}_${number}.json`;
         } else {
-            preview = `${prefix}_${timestamp}.json`;
+            preview = `${prefix}.json`;
         }
         
         document.getElementById('filenamePreview').textContent = preview;
@@ -1570,6 +1584,11 @@
         document.getElementById('gameRecoveryTime').addEventListener('change', () => {
             renderAll();
             saveData();
+        });
+        // 监听每次扣能量选择器的变化
+        document.getElementById('consumePerTime').addEventListener('change', () => {
+            saveData();
+            showToast(`已设置每次扣除 ${document.getElementById('consumePerTime').value} 能量`, 'info', 1500);
         });
     };
 </script>
