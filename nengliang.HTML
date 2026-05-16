@@ -1096,13 +1096,51 @@
                     
                     const maxE = parseFloat(document.getElementById('maxEnergy').value) || 840;
                     const currentEnergy = calculateCurrentEnergy(accountRef, maxE, getRecoverPerHour());
-                    // 从当前能量中扣除消耗值
-                    const newEnergy = Math.max(0, currentEnergy - totalConsume);
-                    setAccountEnergyAndResetTimer(accountRef, newEnergy, maxE);
+                    
+                    // 计算扣除逻辑：先扣基本能量，不够再扣补充能量
+                    let remainingConsume = totalConsume;
+                    let newBaseEnergy = currentEnergy;
+                    let newSupplement = accountRef.supplement || 0;
+                    
+                    // 第一步：从基本能量中扣除
+                    if (currentEnergy >= remainingConsume) {
+                        // 基本能量足够，直接扣除
+                        newBaseEnergy = currentEnergy - remainingConsume;
+                        remainingConsume = 0;
+                    } else {
+                        // 基本能量不够，先扣完基本能量
+                        remainingConsume -= currentEnergy;
+                        newBaseEnergy = 0;
+                    }
+                    
+                    // 第二步：如果还有剩余消耗，从补充能量中扣除
+                    if (remainingConsume > 0) {
+                        if (newSupplement >= remainingConsume) {
+                            // 补充能量足够
+                            newSupplement -= remainingConsume;
+                            remainingConsume = 0;
+                        } else {
+                            // 补充能量也不够，扣完为止
+                            remainingConsume -= newSupplement;
+                            newSupplement = 0;
+                        }
+                    }
+                    
+                    // 更新账号数据
+                    setAccountEnergyAndResetTimer(accountRef, newBaseEnergy, maxE);
+                    accountRef.supplement = newSupplement;
+                    accountRef.supplementRecordTime = Date.now();
                     saveData();
+                    
+                    // 显示扣除详情
+                    let msg = `已扣除 ${times} 次 × ${consumePerTime} = ${totalConsume} 能量`;
+                    if (totalConsume - remainingConsume < totalConsume) {
+                        msg += `（实际扣除：${totalConsume - remainingConsume}，不足：${remainingConsume}）`;
+                    }
+                    showToast(msg, 'success', 2000);
+                    
                     // 清空输入框并刷新
                     e.target.value = '';
-                    showToast(`已扣除 ${times} 次 × ${consumePerTime} = ${totalConsume} 能量`, 'success', 2000);
                     renderAll();
                 })(zone.key, idx, acc));
                 tdConsume.appendChild(consumeInput);
