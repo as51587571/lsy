@@ -98,6 +98,7 @@
             border-radius: 6px;
             font-size: 14px;
             transition: border-color 0.3s;
+            cursor: pointer;
         }
 
         input[type="number"]:focus {
@@ -585,6 +586,14 @@
             if (e.key === 'Enter') {
                 calculateReverse();
             }
+        });
+
+        // 为所有数字输入框添加单击全选功能
+        const numberInputs = document.querySelectorAll('input[type="number"]');
+        numberInputs.forEach(input => {
+            input.addEventListener('click', function() {
+                this.select();
+            });
         });
     </script>
 </body>
