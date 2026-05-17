@@ -1869,9 +1869,122 @@
                         groupContainer.appendChild(groupGrid);
                         listElement.appendChild(groupContainer);
                     } else {
-                        // 单个任务直接添加
+                        // 单个任务也创建组容器显示标题
+                        const groupContainer = document.createElement('div');
+                        groupContainer.className = 'task-group';
+                        
+                        // 组标题（带删除按钮和颜色选择器）
+                        const groupHeader = document.createElement('div');
+                        groupHeader.className = 'task-group-header';
+                        
+                        // 标题文字部分
+                        const titleDiv = document.createElement('div');
+                        titleDiv.className = 'group-title';
+                        
+                        // 从任务获取颜色
+                        let groupColor = group[0].color || '#667eea';
+                        groupHeader.style.background = `linear-gradient(135deg, ${groupColor} 0%, ${groupColor}dd 100%)`;
+                        
+                        const headerText = document.createElement('span');
+                        headerText.textContent = taskName;
+                        headerText.style.fontWeight = 'bold';
+                        
+                        titleDiv.appendChild(headerText);
+                        
+                        const deleteGroupBtn = document.createElement('button');
+                        deleteGroupBtn.textContent = '删除';
+                        deleteGroupBtn.style.cssText = `
+                            padding: 3px 10px;
+                            font-size: 10px;
+                            background-color: rgba(255,255,255,0.2);
+                            color: white;
+                            border: 1px solid rgba(255,255,255,0.5);
+                            border-radius: 3px;
+                            cursor: pointer;
+                            margin-left: 10px;
+                            transition: all 0.2s;
+                        `;
+                        deleteGroupBtn.onmouseover = () => {
+                            deleteGroupBtn.style.backgroundColor = 'rgba(255,255,255,0.3)';
+                        };
+                        deleteGroupBtn.onmouseout = () => {
+                            deleteGroupBtn.style.backgroundColor = 'rgba(255,255,255,0.2)';
+                        };
+                        deleteGroupBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            deleteTaskGroup(server.id, taskName);
+                        };
+                        
+                        // 颜色选择器（小色块）
+                        const colorPicker = document.createElement('div');
+                        colorPicker.style.cssText = `
+                            display: flex;
+                            gap: 3px;
+                            margin-left: 8px;
+                        `;
+                        
+                        const presetColors = [
+                            '#667eea',
+                            '#e57373',
+                            '#81c784',
+                            '#ffb74d',
+                            '#f06292',
+                            '#ba68c8',
+                            '#64b5f6',
+                            '#4dd0e1',
+                        ];
+                        
+                        presetColors.forEach(color => {
+                            const colorDot = document.createElement('div');
+                            colorDot.style.cssText = `
+                                width: 14px;
+                                height: 14px;
+                                background-color: ${color};
+                                border: 2px solid ${color === groupColor ? '#fff' : 'transparent'};
+                                border-radius: 3px;
+                                cursor: pointer;
+                                transition: all 0.2s;
+                            `;
+                            colorDot.onmouseover = () => {
+                                if (color !== groupColor) {
+                                    colorDot.style.transform = 'scale(1.2)';
+                                    colorDot.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+                                }
+                            };
+                            colorDot.onmouseout = () => {
+                                if (color !== groupColor) {
+                                    colorDot.style.transform = 'scale(1)';
+                                    colorDot.style.boxShadow = 'none';
+                                }
+                            };
+                            colorDot.onclick = (e) => {
+                                e.stopPropagation();
+                                group[0].color = color;
+                                saveServers();
+                                groupHeader.style.background = `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`;
+                                colorPicker.querySelectorAll('div').forEach(dot => {
+                                    dot.style.borderColor = 'transparent';
+                                });
+                                colorDot.style.borderColor = '#fff';
+                            };
+                            colorPicker.appendChild(colorDot);
+                        });
+                        
+                        titleDiv.appendChild(colorPicker);
+                        groupHeader.appendChild(titleDiv);
+                        groupHeader.appendChild(deleteGroupBtn);
+                        groupContainer.appendChild(groupHeader);
+                        
+                        // 任务网格
+                        const groupGrid = document.createElement('div');
+                        groupGrid.className = 'task-group-grid';
+                        
                         const taskElement = createTaskElement(server.id, group[0]);
-                        listElement.appendChild(taskElement);
+                        taskElement.classList.add('grouped-task');
+                        groupGrid.appendChild(taskElement);
+                        
+                        groupContainer.appendChild(groupGrid);
+                        listElement.appendChild(groupContainer);
                     }
                 });
             });
