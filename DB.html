@@ -646,7 +646,7 @@
                 </div>
                 
                 <div class="data-controls">
-                    <button class="export-btn" onclick="setExportFileNamePrefix()">导出设置</button>
+                    <button class="export-btn" onclick="openExportSettings()">⚙️ 导出设置</button>
                     <button class="clear-btn" onclick="clearAllData()">清空</button>
                     <button class="add-server-btn" onclick="addNewServer()">+ 添加大区</button>
                     <button class="global-add-btn" onclick="showGlobalAddTask()" style="background-color: #9C27B0;">全局添加任务</button>
@@ -679,6 +679,45 @@
             
             <button onclick="testCustomSound()">测试当前声音</button>
             <button class="close-settings" onclick="hideSoundSettings()">关闭</button>
+        </div>
+        
+        <!-- 导出设置弹窗 -->
+        <div class="sound-settings-overlay" id="exportSettingsModal" onclick="closeExportSettingsModal()"></div>
+        <div class="sound-settings" id="exportSettingsDialog" style="max-width: 500px;">
+            <h3>⚙️ 导出设置</h3>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; color: #4a9eff; font-weight: bold;">📝 导出文件名前缀：</label>
+                <input type="text" id="exportPrefixInput" placeholder="例如：游戏待办备份" 
+                       style="width: 100%; padding: 10px; border: 1px solid #4a9eff; border-radius: 6px; 
+                              background: rgba(0,0,0,0.5); color: white; font-size: 1em;"
+                       value="游戏待办备份">
+                <p style="margin-top: 8px; font-size: 0.85em; color: #aaa;">
+                    💡 提示：导出文件名将按照 [前缀]_[序号].json 格式生成
+                </p>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; color: #4a9eff; font-weight: bold;">🔢 当前序列号：</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <span id="currentCounterDisplay" style="flex: 1; padding: 10px; background: rgba(0,0,0,0.3); 
+                           border: 1px solid #4a9eff; border-radius: 6px; color: #4a9eff; font-size: 1em;
+                           text-align: center;">001</span>
+                    <button class="btn btn-warning" onclick="resetExportCounter()" 
+                            style="padding: 10px 20px; font-size: 0.9em; white-space: nowrap; background: #e67e22; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        🔄 重置为1
+                    </button>
+                </div>
+                <p style="margin-top: 8px; font-size: 0.85em; color: #aaa;">
+                    ⚠️ 重置后下次导出将从 001 开始
+                </p>
+            </div>
+            <div style="text-align: center; margin-top: 30px; display: flex; gap: 10px; justify-content: center;">
+                <button onclick="closeExportSettingsModal()" style="padding: 10px 30px; font-size: 1em; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    取消
+                </button>
+                <button onclick="saveExportSettings()" style="padding: 10px 30px; font-size: 1em; background: #2c7a4d; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    ✅ 保存设置
+                </button>
+            </div>
         </div>
         
         <!-- 全局添加任务弹窗 -->
@@ -881,6 +920,16 @@
                 inputModalInput.addEventListener('keypress', function(e) {
                     if (e.key === 'Enter') {
                         confirmInputModal();
+                    }
+                });
+            }
+            
+            // 点击导出设置弹窗外部关闭
+            const exportModal = document.getElementById('exportSettingsModal');
+            if (exportModal) {
+                exportModal.addEventListener('click', function(e) {
+                    if (e.target === exportModal) {
+                        closeExportSettingsModal();
                     }
                 });
             }
@@ -2287,15 +2336,15 @@
             const dataStr = JSON.stringify(data, null, 2);
             const dataBlob = new Blob([dataStr], {type: 'application/json'});
             
+            // 获取自定义文件名前缀（如果没有设置则使用默认值）
+            let fileNamePrefix = localStorage.getItem('exportFileNamePrefix') || '游戏待办备份';
+            
             // 获取或初始化导出计数
             let exportCount = parseInt(localStorage.getItem('exportCount') || '0');
             exportCount++;
             localStorage.setItem('exportCount', exportCount.toString());
             
-            // 获取自定义文件名前缀（如果没有设置则使用默认值）
-            let fileNamePrefix = localStorage.getItem('exportFileNamePrefix') || '游戏待办备份';
-            
-            // 构建文件名：前缀_序号.json
+            // 构建文件名：前缀_序号.json（不含日期）
             const fileName = `${fileNamePrefix}_${String(exportCount).padStart(3, '0')}.json`;
             
             const url = URL.createObjectURL(dataBlob);
@@ -2310,22 +2359,57 @@
             showToast(`数据已导出：${fileName}`, 'success');
         }
         
-        // 设置导出文件名前缀
-        function setExportFileNamePrefix() {
-            const currentPrefix = localStorage.getItem('exportFileNamePrefix') || '游戏待办备份';
-            const newPrefix = prompt('设置导出文件名前缀（默认为"游戏待办备份"）：\n\n文件名格式：前缀_序号.json', currentPrefix);
+        // 打开导出设置弹窗
+        function openExportSettings() {
+            const overlay = document.getElementById('exportSettingsModal');
+            const dialog = document.getElementById('exportSettingsDialog');
+            const prefixInput = document.getElementById('exportPrefixInput');
+            const counterDisplay = document.getElementById('currentCounterDisplay');
             
-            if (newPrefix !== null && newPrefix.trim() !== '') {
-                localStorage.setItem('exportFileNamePrefix', newPrefix.trim());
-                showToast(`已设置文件名前缀：${newPrefix.trim()}`, 'success');
-            }
+            // 加载当前保存的前缀
+            const currentPrefix = localStorage.getItem('exportFileNamePrefix') || '游戏待办备份';
+            prefixInput.value = currentPrefix;
+            
+            // 显示当前序列号
+            let currentCounter = parseInt(localStorage.getItem('exportCount') || '0');
+            counterDisplay.textContent = (currentCounter + 1).toString().padStart(3, '0');
+            
+            overlay.classList.add('show');
+            dialog.classList.add('show');
         }
         
-        // 重置导出计数
-        function resetExportCount() {
-            if (confirm('确定要重置导出计数吗？\n\n当前计数：' + (localStorage.getItem('exportCount') || '0'))) {
+        // 关闭导出设置弹窗
+        function closeExportSettingsModal() {
+            const overlay = document.getElementById('exportSettingsModal');
+            const dialog = document.getElementById('exportSettingsDialog');
+            overlay.classList.remove('show');
+            dialog.classList.remove('show');
+        }
+        
+        // 保存导出设置
+        function saveExportSettings() {
+            const prefixInput = document.getElementById('exportPrefixInput');
+            const prefix = prefixInput.value.trim();
+            
+            if (!prefix) {
+                showToast('⚠️ 请输入导出文件名前缀', 'warning');
+                return;
+            }
+            
+            // 保存到localStorage
+            localStorage.setItem('exportFileNamePrefix', prefix);
+            showToast(`✅ 导出前缀已保存为: ${prefix}`, 'success');
+            closeExportSettingsModal();
+        }
+        
+        // 重置导出计数器
+        function resetExportCounter() {
+            if (confirm('确定要重置导出序列号吗？\n\n重置后下次导出将从 001 开始。')) {
                 localStorage.setItem('exportCount', '0');
-                showToast('导出计数已重置', 'info');
+                showToast('✅ 序列号已重置为 1', 'success');
+                // 更新显示
+                const counterDisplay = document.getElementById('currentCounterDisplay');
+                counterDisplay.textContent = '001';
             }
         }
         
