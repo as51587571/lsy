@@ -536,34 +536,34 @@
                     if(typeof acc.excludeFromRank === 'undefined') acc.excludeFromRank = false;
                     // 确保有补充能量字段
                     if(typeof acc.supplement === 'undefined' || acc.supplement === null) acc.supplement = 0;
-                    if(typeof acc.supplementMax === 'undefined' || acc.supplementMax === null) acc.supplementMax = 2000;
+                    if(typeof acc.supplementMax === 'undefined' || acc.supplementMax === null) acc.supplementMax = 20000;
                     if(!acc.supplementRecordTime) acc.supplementRecordTime = now;
                     // 删除消耗能量字段（消耗能量是临时输入值，不应持久化）
                     delete acc.consume;
                 }
             } else {
                 accounts = [
-                    { name: "北疯[奈薩]", current: 80, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "MISSS[奈薩]", current: 630, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "阿林LSY[奈薩]", current: 525, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "热巴在上钟[奈薩]", current: 615, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "莽超[奈薩]", current: 600, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "绯闻男友[塔哈]", current: 315, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "阿林[塔哈]", current: 55, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "挤不出了[塔哈]", current: 54, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "南街刘德华[塔哈]", current: 0, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "西街刘德华[塔哈]", current: 50, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "misslin[廬德]", current: 60, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "南疯[廬德]", current: 90, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "阿林[廬德]", current: 115, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "蠢人灵机一动[德]", current: 180, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "红灯星[廬德]", current: 195, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "魔三XXXX[崔妮]", current: 60, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "海王开凿[崔妮]", current: 60, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "黄金奶[崔妮]", current: 102, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "杰西卡的奶[崔妮]", current: 54, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "流川夕的奶[崔妮]", current: 52, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "八卦海的奶[崔妮]", current: 50, supplement: 0, supplementMax: 2000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() }
+                    { name: "北疯[奈薩]", current: 80, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "MISSS[奈薩]", current: 630, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "阿林LSY[奈薩]", current: 525, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "热巴在上钟[奈薩]", current: 615, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "莽超[奈薩]", current: 600, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "绯闻男友[塔哈]", current: 315, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "阿林[塔哈]", current: 55, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "挤不出了[塔哈]", current: 54, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "南街刘德华[塔哈]", current: 0, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "西街刘德华[塔哈]", current: 50, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "misslin[廬德]", current: 60, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "南疯[廬德]", current: 90, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "阿林[廬德]", current: 115, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "蠢人灵机一动[德]", current: 180, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "红灯星[廬德]", current: 195, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "魔三XXXX[崔妮]", current: 60, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "海王开凿[崔妮]", current: 60, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "黄金奶[崔妮]", current: 102, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "杰西卡的奶[崔妮]", current: 54, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "流川夕的奶[崔妮]", current: 52, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "八卦海的奶[崔妮]", current: 50, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() }
                 ];
             }
             
@@ -1171,7 +1171,7 @@
                 suppInput.addEventListener('blur', ((accountRef) => (e) => {
                     let val = parseInt(e.target.value);
                     if (isNaN(val)) val = 0;
-                    const maxSupp = accountRef.supplementMax || 2000;
+                    const maxSupp = accountRef.supplementMax || 20000;
                     accountRef.supplement = Math.min(maxSupp, Math.max(0, val));
                     accountRef.supplementRecordTime = Date.now();
                     saveData();
