@@ -536,7 +536,8 @@
                     if(typeof acc.excludeFromRank === 'undefined') acc.excludeFromRank = false;
                     // 确保有补充能量字段
                     if(typeof acc.supplement === 'undefined' || acc.supplement === null) acc.supplement = 0;
-                    if(typeof acc.supplementMax === 'undefined' || acc.supplementMax === null) acc.supplementMax = 20000;
+                    // 强制更新补充能量上限为20000
+                    acc.supplementMax = 20000;
                     if(!acc.supplementRecordTime) acc.supplementRecordTime = now;
                     // 删除消耗能量字段（消耗能量是临时输入值，不应持久化）
                     delete acc.consume;
@@ -1444,7 +1445,7 @@
     function addNewZone() { let name = prompt("分区名称"); if(!name?.trim()) return; let key = name.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g,'')||"zone"+Date.now(); if(zonesConfig.some(z=>z.key===key)){showToast("分区标识重复！", "error");return;} zonesConfig.push({name:name.trim(),key,keyCount:0,keyMax:14,keyRecordTime:Date.now()}); renderAll(); saveData(); showToast("分区添加成功！", "success"); }
     function renameZone(zoneKey, newName) { if(!newName?.trim()) return; let z = zonesConfig.find(z=>z.key===zoneKey); if(z) z.name = newName.trim(); renderAll(); saveData(); }
     function delZone(zoneKey) { if(!confirm("删除分区及其所有账号?")) return; zonesConfig = zonesConfig.filter(z=>z.key!==zoneKey); accounts = accounts.filter(a=>a.zone!==zoneKey); renderAll(); saveData(); }
-    function addRow() { if(!zonesConfig.length){showToast("请先添加分区！", "error");return;} let zk = prompt("分区key:"+zonesConfig.map(z=>z.key).join(',')); if(!zk||!zonesConfig.some(z=>z.key===zk)){showToast("分区不存在！", "error");return;} accounts.push({name:`新成员[${zk}]`,current:0,supplement:0,supplementMax:2000,power:0,excludeFromRank:false,zone:zk,recordTime:Date.now(),supplementRecordTime:Date.now(),lastEnergySync:Date.now()}); renderAll(); saveData(); showToast("账号添加成功！", "success"); }
+    function addRow() { if(!zonesConfig.length){showToast("请先添加分区！", "error");return;} let zk = prompt("分区key:"+zonesConfig.map(z=>z.key).join(',')); if(!zk||!zonesConfig.some(z=>z.key===zk)){showToast("分区不存在！", "error");return;} accounts.push({name:`新成员[${zk}]`,current:0,supplement:0,supplementMax:20000,power:0,excludeFromRank:false,zone:zk,recordTime:Date.now(),supplementRecordTime:Date.now(),lastEnergySync:Date.now()}); renderAll(); saveData(); showToast("账号添加成功！", "success"); }
     function updateNameInZone(zoneKey, idx, newName) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) arr[idx].name = newName; renderAll(); saveData(); }
     function delRowInZone(zoneKey, idx) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) { accounts = accounts.filter(a=> a !== arr[idx]); renderAll(); saveData(); } }
     function clearAllData() { if(!confirm("彻底清空所有数据？将删除所有账号并保留空分区")) return; localStorage.clear(); loadData(); accounts = []; saveData(); renderAll(); showToast("所有数据已清空！", "success"); }
@@ -1580,7 +1581,8 @@
                         if(typeof a.excludeFromRank === 'undefined') a.excludeFromRank = false;
                         // 补充能量兼容
                         if(typeof a.supplement === 'undefined' || a.supplement === null) a.supplement = 0;
-                        if(typeof a.supplementMax === 'undefined' || a.supplementMax === null) a.supplementMax = 2000;
+                        // 强制更新补充能量上限为20000
+                        a.supplementMax = 20000;
                         if(!a.supplementRecordTime) a.supplementRecordTime = now;
                         // 删除消耗能量字段（消耗能量是临时输入值，不应从旧数据继承）
                         delete a.consume;
