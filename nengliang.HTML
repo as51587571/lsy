@@ -12,8 +12,9 @@
             font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
             margin: 8px 12px;
             background: #f0f2f5;
-            height: 100vh;
-            overflow: hidden;
+            min-height: 100vh;
+            overflow-y: auto;
+            padding-bottom: 320px;
         }
         h1 {
             font-size: 1.5rem;
@@ -218,7 +219,7 @@
             }
         }
         footer {
-            margin-top: 6px;
+            margin-top: 12px;
             font-size: 0.65rem;
             text-align: center;
             color: #6c7a8e;
@@ -404,6 +405,149 @@
             margin-top: 8px;
             border: 1px dashed #cbd5e1;
         }
+        /* 操作记录面板样式 */
+        .log-panel {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 300px;
+            background: white;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            transition: height 0.3s ease;
+            z-index: 9998;
+            display: none;
+            flex-direction: column;
+            border-radius: 12px 12px 0 0;
+        }
+        .log-panel.active {
+            display: flex;
+        }
+        .log-header {
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #2c6e9e, #3b82f6);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 12px 12px 0 0;
+        }
+        .log-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        .log-close-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: 0.2s;
+        }
+        .log-close-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .log-toolbar {
+            padding: 12px;
+            background: #f8fafd;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            gap: 8px;
+        }
+        .log-filter-btn {
+            padding: 6px 12px;
+            border: 1px solid #cbd5e1;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: 0.2s;
+        }
+        .log-filter-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+        .log-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+        .log-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            border-left: 3px solid #3b82f6;
+            background: #f8fafd;
+            font-size: 0.85rem;
+            transition: 0.2s;
+        }
+        .log-item:hover {
+            background: #eef3fc;
+        }
+        .log-item.type-energy {
+            border-left-color: #2c7a4d;
+        }
+        .log-item.type-account {
+            border-left-color: #e67e22;
+        }
+        .log-item.type-zone {
+            border-left-color: #dc3545;
+        }
+        .log-item.type-system {
+            border-left-color: #6b7280;
+        }
+        .log-time {
+            font-size: 0.75rem;
+            color: #6c7a8e;
+            margin-bottom: 4px;
+        }
+        .log-content {
+            color: #1e2a3a;
+            line-height: 1.5;
+        }
+        .log-toggle-btn {
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 10px;
+            padding: 8px 20px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #2c6e9e, #3b82f6);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 0.85rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: 0.3s;
+            z-index: 9999;
+            white-space: nowrap;
+        }
+        .log-toggle-btn:hover {
+            transform: translateX(-50%) translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        }
+        .log-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c7a8e;
+        }
+        .log-clear-btn {
+            padding: 6px 12px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: 0.2s;
+        }
+        .log-clear-btn:hover {
+            background: #c0392b;
+        }
     </style>
 </head>
 <body>
@@ -477,6 +621,47 @@
     </div>
 </div>
 
+<!-- 操作记录面板 -->
+<div id="logPanel" class="log-panel">
+    <div class="log-header">
+        <div class="log-title">📋 操作记录</div>
+        <button class="log-close-btn" onclick="toggleLogPanel()">×</button>
+    </div>
+    <div class="log-toolbar">
+        <button class="log-filter-btn active" onclick="filterLogs('all')">全部</button>
+        <button class="log-filter-btn" onclick="filterLogs('energy')">能量</button>
+        <button class="log-filter-btn" onclick="filterLogs('account')">账号</button>
+        <button class="log-filter-btn" onclick="filterLogs('zone')">分区</button>
+        <button class="log-filter-btn" onclick="filterLogs('system')">系统</button>
+        <button class="log-clear-btn" onclick="clearLogs()">清空</button>
+    </div>
+    <div id="logList" class="log-list">
+        <div class="log-empty">暂无操作记录</div>
+    </div>
+</div>
+
+<!-- 操作记录切换按钮 -->
+<button class="log-toggle-btn" onclick="toggleLogPanel()" title="查看操作记录">📋 查看操作记录</button>
+
+<!-- 操作记录面板 -->
+<div id="logPanel" class="log-panel">
+    <div class="log-header">
+        <div class="log-title">📋 操作记录</div>
+        <button class="log-close-btn" onclick="toggleLogPanel()">×</button>
+    </div>
+    <div class="log-toolbar">
+        <button class="log-filter-btn active" onclick="filterLogs('all')">全部</button>
+        <button class="log-filter-btn" onclick="filterLogs('energy')">能量</button>
+        <button class="log-filter-btn" onclick="filterLogs('account')">账号</button>
+        <button class="log-filter-btn" onclick="filterLogs('zone')">分区</button>
+        <button class="log-filter-btn" onclick="filterLogs('system')">系统</button>
+        <button class="log-clear-btn" onclick="clearLogs()">清空</button>
+    </div>
+    <div id="logList" class="log-list">
+        <div class="log-empty">暂无操作记录</div>
+    </div>
+</div>
+
 <footer>💡 策略：能量值每15分钟根据经过时间统一增加；倒计时&回满时间每秒更新；账号顺序支持上下移动并自动保存。</footer>
 
 <script>
@@ -494,6 +679,11 @@
         prefix: '能量备份',
         nextNumber: 1
     };
+    
+    // 操作记录
+    let operationLogs = [];
+    const MAX_LOGS = 200; // 最多保存200条记录
+    let currentLogFilter = 'all';
     
     // ======================== 本地存储 ========================
     function loadData() {
@@ -596,6 +786,17 @@
                 }
             }
             
+            // 加载操作记录
+            const savedLogs = localStorage.getItem('energyOperationLogs');
+            if (savedLogs) {
+                try {
+                    operationLogs = JSON.parse(savedLogs);
+                } catch(e) {
+                    console.warn('操作记录解析失败');
+                    operationLogs = [];
+                }
+            }
+            
             updateDecimalButtonUI();
         } catch (e) {
             console.warn(e);
@@ -625,6 +826,7 @@
             localStorage.setItem('energyShowDecimal', showDecimal);
             localStorage.setItem('energyLastRecalcTime', lastRecalcTimestamp);
             localStorage.setItem('energyExportSettings', JSON.stringify(exportSettings));
+            localStorage.setItem('energyOperationLogs', JSON.stringify(operationLogs.slice(-MAX_LOGS)));
         } catch(e) { console.warn(e); }
     }
 
@@ -739,9 +941,14 @@
         if (isNaN(raw)) raw = 0;
         const capped = Math.min(maxE, Math.max(0, raw));
         // 存储的是基础能量值，显示时会加上恢复的部分
+        const oldVal = account.current;
         account.current = capped;
         account.recordTime = Date.now();
         saveData();
+        // 记录操作
+        if (Math.abs(oldVal - capped) > 0.01) {
+            addLog('energy', `修改账号 [${account.name}] 能量: ${formatEnergy(oldVal)} → ${formatEnergy(capped)}`);
+        }
     }
     
     function setAccountKeyAndResetTimer(zone, newVal) {
@@ -749,9 +956,14 @@
         if (isNaN(raw)) raw = 0;
         const capped = Math.min(zone.keyMax, Math.max(0, raw));
         // 存储的是基础钥匙数量，显示时会加上补充的部分
+        const oldVal = zone.keyCount;
         zone.keyCount = capped;
         zone.keyRecordTime = Date.now();
         saveData();
+        // 记录操作
+        if (oldVal !== capped) {
+            addLog('zone', `修改分区 [${zone.name}] 钥匙: ${oldVal} → ${capped}`);
+        }
     }
     
     function calibrateEnergyOnLoadOrOpen() {
@@ -804,6 +1016,7 @@
         const capped = Math.min(zone.keyMax, Math.max(0, newVal));
         
         if(capped !== zone.keyCount) {
+            const oldVal = zone.keyCount;
             zone.keyCount = capped;
             zone.keyRecordTime = Date.now();
             saveData();
@@ -813,6 +1026,8 @@
             if(keyInput) {
                 keyInput.value = capped;
             }
+            // 记录操作
+            addLog('zone', `点击${delta > 0 ? '+' : '-'}分区 [${zone.name}] 钥匙: ${oldVal} → ${capped}`);
         }
     }
     
@@ -836,6 +1051,10 @@
         // 保存并重新渲染
         saveData();
         renderAll();
+        // 记录操作
+        const movedAcc = zoneAccounts[currentIdx];
+        const dirText = direction === 'up' ? '上移' : '下移';
+        addLog('account', `${dirText}账号 [${movedAcc.name}] 在分区 [${zoneKey}]`);
     }
     
     // ======================== UI 刷新 ========================
@@ -1143,6 +1362,8 @@
                         msg += `（实际扣除：${totalConsume - remainingConsume}，不足：${remainingConsume}）`;
                     }
                     showToast(msg, 'success', 2000);
+                    // 记录操作
+                    addLog('energy', `消耗账号 [${accountRef.name}] ${times}次×${consumePerTime}=${totalConsume}能量`);
                     
                     // 清空输入框并刷新
                     e.target.value = '';
@@ -1172,10 +1393,15 @@
                 suppInput.addEventListener('blur', ((accountRef) => (e) => {
                     let val = parseInt(e.target.value);
                     if (isNaN(val)) val = 0;
+                    const oldSupp = accountRef.supplement || 0;
                     const maxSupp = accountRef.supplementMax || 20000;
                     accountRef.supplement = Math.min(maxSupp, Math.max(0, val));
                     accountRef.supplementRecordTime = Date.now();
                     saveData();
+                    // 记录操作
+                    if (oldSupp !== accountRef.supplement) {
+                        addLog('energy', `修改账号 [${accountRef.name}] 补充能量: ${oldSupp} → ${accountRef.supplement}`);
+                    }
                 })(acc));
                 tdSupplement.appendChild(suppInput);
                 
@@ -1200,8 +1426,13 @@
                 powerInput.addEventListener('blur', ((accountRef) => (e) => {
                     let val = parseInt(e.target.value);
                     if (isNaN(val)) val = 0;
+                    const oldPower = accountRef.power || 0;
                     accountRef.power = val;
                     saveData();
+                    // 记录操作
+                    if (oldPower !== val) {
+                        addLog('account', `修改账号 [${accountRef.name}] 战斗力: ${oldPower} → ${val}`);
+                    }
                 })(acc));
                 tdPower.appendChild(powerInput);
                 
@@ -1262,6 +1493,7 @@
                     saveData();
                     renderAll();
                     showToast(accountRef.excludeFromRank ? '已排除该角色参与排名' : '已恢复该角色参与排名', 'info', 1500);
+                    addLog('account', `${accountRef.excludeFromRank ? '排除' : '恢复'}账号 [${accountRef.name}] 参与排名`);
                 })(acc);
                 // 删除按钮
                 const delBtn = document.createElement('button');
@@ -1441,14 +1673,101 @@
         }, duration);
     }
     
+    // ========== 操作记录功能 ==========
+    // 添加操作记录
+    function addLog(type, content) {
+        const log = {
+            time: new Date().toISOString(),
+            type: type, // 'energy', 'account', 'zone', 'system'
+            content: content
+        };
+        operationLogs.push(log);
+        // 限制记录数量
+        if (operationLogs.length > MAX_LOGS) {
+            operationLogs = operationLogs.slice(-MAX_LOGS);
+        }
+        saveData();
+        renderLogs();
+    }
+    
+    // 渲染操作记录
+    function renderLogs() {
+        const logList = document.getElementById('logList');
+        if (!logList) return;
+        
+        // 根据过滤器筛选
+        let filteredLogs = operationLogs;
+        if (currentLogFilter !== 'all') {
+            filteredLogs = operationLogs.filter(log => log.type === currentLogFilter);
+        }
+        
+        if (filteredLogs.length === 0) {
+            logList.innerHTML = '<div class="log-empty">暂无操作记录</div>';
+            return;
+        }
+        
+        // 按时间倒序显示
+        const sortedLogs = [...filteredLogs].reverse();
+        
+        logList.innerHTML = sortedLogs.map(log => {
+            const time = new Date(log.time);
+            const timeStr = time.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            return `
+                <div class="log-item type-${log.type}">
+                    <div class="log-time">${timeStr}</div>
+                    <div class="log-content">${escapeHtml(log.content)}</div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    // 切换操作记录面板
+    function toggleLogPanel() {
+        const panel = document.getElementById('logPanel');
+        if (panel) {
+            panel.classList.toggle('active');
+            if (panel.classList.contains('active')) {
+                renderLogs();
+            }
+        }
+    }
+    
+    // 过滤操作记录
+    function filterLogs(type) {
+        currentLogFilter = type;
+        // 更新按钮状态
+        document.querySelectorAll('.log-filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.target.classList.add('active');
+        renderLogs();
+    }
+    
+    // 清空操作记录
+    function clearLogs() {
+        if (confirm('确定要清空所有操作记录吗？')) {
+            operationLogs = [];
+            saveData();
+            renderLogs();
+            showToast('操作记录已清空', 'success');
+        }
+    }
+    
     function forceFullRender() { batchUpdateEnergyByCycles(); renderAll(); }
-    function addNewZone() { let name = prompt("分区名称"); if(!name?.trim()) return; let key = name.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g,'')||"zone"+Date.now(); if(zonesConfig.some(z=>z.key===key)){showToast("分区标识重复！", "error");return;} zonesConfig.push({name:name.trim(),key,keyCount:0,keyMax:14,keyRecordTime:Date.now()}); renderAll(); saveData(); showToast("分区添加成功！", "success"); }
-    function renameZone(zoneKey, newName) { if(!newName?.trim()) return; let z = zonesConfig.find(z=>z.key===zoneKey); if(z) z.name = newName.trim(); renderAll(); saveData(); }
-    function delZone(zoneKey) { if(!confirm("删除分区及其所有账号?")) return; zonesConfig = zonesConfig.filter(z=>z.key!==zoneKey); accounts = accounts.filter(a=>a.zone!==zoneKey); renderAll(); saveData(); }
-    function addRow() { if(!zonesConfig.length){showToast("请先添加分区！", "error");return;} let zk = prompt("分区key:"+zonesConfig.map(z=>z.key).join(',')); if(!zk||!zonesConfig.some(z=>z.key===zk)){showToast("分区不存在！", "error");return;} accounts.push({name:`新成员[${zk}]`,current:0,supplement:0,supplementMax:20000,power:0,excludeFromRank:false,zone:zk,recordTime:Date.now(),supplementRecordTime:Date.now(),lastEnergySync:Date.now()}); renderAll(); saveData(); showToast("账号添加成功！", "success"); }
-    function updateNameInZone(zoneKey, idx, newName) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) arr[idx].name = newName; renderAll(); saveData(); }
-    function delRowInZone(zoneKey, idx) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) { accounts = accounts.filter(a=> a !== arr[idx]); renderAll(); saveData(); } }
-    function clearAllData() { if(!confirm("彻底清空所有数据？将删除所有账号并保留空分区")) return; localStorage.clear(); loadData(); accounts = []; saveData(); renderAll(); showToast("所有数据已清空！", "success"); }
+    function addNewZone() { let name = prompt("分区名称"); if(!name?.trim()) return; let key = name.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g,'')||"zone"+Date.now(); if(zonesConfig.some(z=>z.key===key)){showToast("分区标识重复！", "error");return;} zonesConfig.push({name:name.trim(),key,keyCount:0,keyMax:14,keyRecordTime:Date.now()}); renderAll(); saveData(); showToast("分区添加成功！", "success"); addLog('zone', `添加新分区 [${name.trim()}]`); }
+    function renameZone(zoneKey, newName) { if(!newName?.trim()) return; let z = zonesConfig.find(z=>z.key===zoneKey); if(z) { const oldName = z.name; z.name = newName.trim(); renderAll(); saveData(); addLog('zone', `重命名分区: ${oldName} → ${newName.trim()}`); } }
+    function delZone(zoneKey) { if(!confirm("删除分区及其所有账号?")) return; const zone = zonesConfig.find(z=>z.key===zoneKey); const zoneName = zone ? zone.name : zoneKey; zonesConfig = zonesConfig.filter(z=>z.key!==zoneKey); accounts = accounts.filter(a=>a.zone!==zoneKey); renderAll(); saveData(); addLog('zone', `删除分区 [${zoneName}] 及其所有账号`); }
+    function addRow() { if(!zonesConfig.length){showToast("请先添加分区！", "error");return;} let zk = prompt("分区key:"+zonesConfig.map(z=>z.key).join(',')); if(!zk||!zonesConfig.some(z=>z.key===zk)){showToast("分区不存在！", "error");return;} accounts.push({name:`新成员[${zk}]`,current:0,supplement:0,supplementMax:20000,power:0,excludeFromRank:false,zone:zk,recordTime:Date.now(),supplementRecordTime:Date.now(),lastEnergySync:Date.now()}); renderAll(); saveData(); showToast("账号添加成功！", "success"); addLog('account', `添加新账号 [新成员[${zk}]] 到分区 [${zk}]`); }
+    function updateNameInZone(zoneKey, idx, newName) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) { const oldName = arr[idx].name; arr[idx].name = newName; renderAll(); saveData(); addLog('account', `重命名账号: ${oldName} → ${newName}`); } }
+    function delRowInZone(zoneKey, idx) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) { const accName = arr[idx].name; accounts = accounts.filter(a=> a !== arr[idx]); renderAll(); saveData(); addLog('account', `删除账号 [${accName}] 从分区 [${zoneKey}]`); } }
+    function clearAllData() { if(!confirm("彻底清空所有数据？将删除所有账号并保留空分区")) return; localStorage.clear(); loadData(); accounts = []; saveData(); renderAll(); showToast("所有数据已清空！", "success"); addLog('system', '清空所有数据'); }
     
     // 清空消耗记录
     function clearConsumeData() {
@@ -1486,6 +1805,7 @@
         saveData();
         
         showToast(`导出成功！文件：${filename}`, "success");
+        addLog('system', `导出数据到文件: ${filename}`);
     }
     
     // 生成导出文件名
@@ -1603,6 +1923,7 @@
                     saveData();
                     calibrateEnergyOnLoadOrOpen();
                     showToast("恢复成功！能量计算准确", "success");
+                    addLog('system', `从文件导入数据: ${input.files[0].name}`);
                 } else throw new Error();
             } catch(e) {
                 showToast("导入失败，文件格式错误！", "error");
