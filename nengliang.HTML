@@ -953,7 +953,15 @@
         saveData();
         // 记录操作
         if (Math.abs(oldVal - capped) > 0.01) {
-            addLog('energy', `修改账号 [${account.name}] 能量: ${formatEnergy(oldVal)} → ${formatEnergy(capped)}`);
+            const supplement = account.supplement || 0;
+            const oldCurrentEnergy = oldVal;
+            const newCurrentEnergy = capped;
+            const reduced = oldCurrentEnergy - newCurrentEnergy;
+            if (reduced > 0) {
+                addLog('energy', `修改当前能量 [${account.name}] ${oldCurrentEnergy}减${reduced}(当前能量${newCurrentEnergy})`);
+            } else {
+                addLog('energy', `修改当前能量 [${account.name}] ${oldCurrentEnergy}加${Math.abs(reduced)}(当前能量${newCurrentEnergy})`);
+            }
         }
     }
     
@@ -1327,6 +1335,10 @@
                     const maxE = parseFloat(document.getElementById('maxEnergy').value) || 840;
                     const currentEnergy = calculateCurrentEnergy(accountRef, maxE, getRecoverPerHour());
                     
+                    // 保存操作前的原始值（用于记录）
+                    const oldCurrentEnergy = currentEnergy;
+                    const oldSupplement = accountRef.supplement || 0;
+                    
                     // 计算扣除逻辑：先扣基本能量，不够再扣补充能量
                     let remainingConsume = totalConsume;
                     let newBaseEnergy = currentEnergy;
@@ -1362,6 +1374,12 @@
                     accountRef.supplementRecordTime = Date.now();
                     saveData();
                     
+                    // 计算总能量（基础+补充）
+                    const newCurrentEnergy = newBaseEnergy;
+                    const newSupplementValue = newSupplement;
+                    const currentEnergyReduced = oldCurrentEnergy - newCurrentEnergy;
+                    const supplementReduced = oldSupplement - newSupplementValue;
+                    
                     // 显示扣除详情
                     let msg = `已扣除 ${times} 次 × ${consumePerTime} = ${totalConsume} 能量`;
                     if (totalConsume - remainingConsume < totalConsume) {
@@ -1369,7 +1387,7 @@
                     }
                     showToast(msg, 'success', 2000);
                     // 记录操作
-                    addLog('energy', `消耗账号 [${accountRef.name}] ${times}次×${consumePerTime}=${totalConsume}能量`);
+                    addLog('energy', `消耗能量 [${accountRef.name}] ${times}次×${consumePerTime}=${totalConsume}(当前能量${oldCurrentEnergy}减${currentEnergyReduced} 补充能量${oldSupplement}减${supplementReduced})`);
                     
                     // 清空输入框并刷新
                     e.target.value = '';
@@ -1406,7 +1424,16 @@
                     saveData();
                     // 记录操作
                     if (oldSupp !== accountRef.supplement) {
-                        addLog('energy', `修改账号 [${accountRef.name}] 补充能量: ${oldSupp} → ${accountRef.supplement}`);
+                        const maxE = parseFloat(document.getElementById('maxEnergy').value) || 840;
+                        const currentBaseEnergy = calculateCurrentEnergy(accountRef, maxE, getRecoverPerHour());
+                        const oldSupplement = oldSupp;
+                        const newSupplement = accountRef.supplement;
+                        const reduced = oldSupplement - newSupplement;
+                        if (reduced > 0) {
+                            addLog('energy', `修改补充能量 [${accountRef.name}] ${oldSupplement}减${reduced}(补充能量${newSupplement})`);
+                        } else {
+                            addLog('energy', `修改补充能量 [${accountRef.name}] ${oldSupplement}加${Math.abs(reduced)}(补充能量${newSupplement})`);
+                        }
                     }
                 })(acc));
                 tdSupplement.appendChild(suppInput);
@@ -1437,7 +1464,7 @@
                     saveData();
                     // 记录操作
                     if (oldPower !== val) {
-                        addLog('account', `修改账号 [${accountRef.name}] 战斗力: ${oldPower} → ${val}`);
+                        addLog('account', `修改战斗力 [${accountRef.name}] ${oldPower} → ${val}`);
                     }
                 })(acc));
                 tdPower.appendChild(powerInput);
@@ -1749,12 +1776,10 @@
     
     // 清空操作记录
     function clearLogs() {
-        if (confirm('确定要清空所有操作记录吗？')) {
-            operationLogs = [];
-            saveData();
-            renderLogs();
-            showToast('操作记录已清空', 'success');
-        }
+        operationLogs = [];
+        saveData();
+        renderLogs();
+        showToast('操作记录已清空', 'success');
     }
     
     function forceFullRender() { batchUpdateEnergyByCycles(); renderAll(); }
