@@ -649,25 +649,6 @@
 <!-- 操作记录切换按钮 -->
 <button class="log-toggle-btn" onclick="toggleLogPanel()" title="查看操作记录">📋 查看操作记录</button>
 
-<!-- 操作记录面板 -->
-<div id="logPanel" class="log-panel">
-    <div class="log-header">
-        <div class="log-title">📋 操作记录</div>
-        <button class="log-close-btn" onclick="toggleLogPanel()">×</button>
-    </div>
-    <div class="log-toolbar">
-        <button class="log-filter-btn active" onclick="filterLogs('all')">全部</button>
-        <button class="log-filter-btn" onclick="filterLogs('energy')">能量</button>
-        <button class="log-filter-btn" onclick="filterLogs('account')">账号</button>
-        <button class="log-filter-btn" onclick="filterLogs('zone')">分区</button>
-        <button class="log-filter-btn" onclick="filterLogs('system')">系统</button>
-        <button class="log-clear-btn" onclick="clearLogs()">清空</button>
-    </div>
-    <div id="logList" class="log-list">
-        <div class="log-empty">暂无操作记录</div>
-    </div>
-</div>
-
 <footer>💡 策略：能量值每15分钟根据经过时间统一增加；倒计时&回满时间每秒更新；账号顺序支持上下移动并自动保存。</footer>
 
 <script>
@@ -951,14 +932,19 @@
         account.current = capped;
         account.recordTime = Date.now();
         saveData();
-        // 记录操作
+        // 记录操作 - 注意：这个函数只用于直接修改能量的情况
+        // 消耗能量的日志在消耗逻辑中单独记录，避免重复
+        // 这里只在非消耗能量操作时记录修改日志
         if (Math.abs(oldVal - capped) > 0.01) {
             const supplement = account.supplement || 0;
             const oldCurrentEnergy = oldVal;
             const newCurrentEnergy = capped;
             const reduced = oldCurrentEnergy - newCurrentEnergy;
             if (reduced > 0) {
-                addLog('energy', `修改当前能量 [${account.name}] ${oldCurrentEnergy}减${reduced}(当前能量${newCurrentEnergy})`);
+                // 只有当不是消耗能量操作时才记录（通过检查调用上下文）
+                if (!window._isConsumingEnergy) {
+                    addLog('energy', `修改当前能量 [${account.name}] ${oldCurrentEnergy}减${reduced}(当前能量${newCurrentEnergy})`);
+                }
             } else {
                 addLog('energy', `修改当前能量 [${account.name}] ${oldCurrentEnergy}加${Math.abs(reduced)}(当前能量${newCurrentEnergy})`);
             }
@@ -1344,6 +1330,9 @@
                     let newBaseEnergy = currentEnergy;
                     let newSupplement = accountRef.supplement || 0;
                     
+                    // 设置标志，防止setAccountEnergyAndResetTimer重复记录日志
+                    window._isConsumingEnergy = true;
+                    
                     // 第一步：从基本能量中扣除
                     if (currentEnergy >= remainingConsume) {
                         // 基本能量足够，直接扣除
@@ -1374,6 +1363,9 @@
                     accountRef.supplementRecordTime = Date.now();
                     saveData();
                     
+                    // 清除标志
+                    window._isConsumingEnergy = false;
+                    
                     // 计算总能量（基础+补充）
                     const newCurrentEnergy = newBaseEnergy;
                     const newSupplementValue = newSupplement;
@@ -1386,7 +1378,7 @@
                         msg += `（实际扣除：${totalConsume - remainingConsume}，不足：${remainingConsume}）`;
                     }
                     showToast(msg, 'success', 2000);
-                    // 记录操作
+                    // 记录操作 - 只记录一条综合性的消耗能量日志
                     addLog('energy', `消耗能量 [${accountRef.name}] ${times}次×${consumePerTime}=${totalConsume}(当前能量${oldCurrentEnergy}减${currentEnergyReduced} 补充能量${oldSupplement}减${supplementReduced})`);
                     
                     // 清空输入框并刷新
