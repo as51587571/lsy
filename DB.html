@@ -1371,6 +1371,12 @@
                     });
                     
                     server.roles[roleIndex] = newName;
+                    
+                    // 如果当前选中的角色是被修改的那个，更新currentRoles
+                    if (currentRoles[serverId] === oldName) {
+                        currentRoles[serverId] = newName;
+                    }
+                    
                     saveServers();
                     showToast('角色名称已更新', 'success');
                 } else if (!newName) {
@@ -1454,6 +1460,7 @@
                 server.roles.push(defaultName);
                 saveServers();
                 renderServers();
+                renderTasks(); // 添加这行以刷新任务列表
                 showToast('新角色已创建，双击角色名称可编辑', 'info');
             }
         }
