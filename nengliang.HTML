@@ -686,18 +686,35 @@
             if (savedZones) {
                 zonesConfig = JSON.parse(savedZones);
                 const now = Date.now();
-                // 确保每个分区都有钥匙字段
+                // 确保每个分区都有钥匙字段和副本次数字段
                 for(let zone of zonesConfig) {
                     if(typeof zone.keyCount === 'undefined' || zone.keyCount === null) zone.keyCount = 0;
                     if(typeof zone.keyMax === 'undefined' || zone.keyMax === null) zone.keyMax = 14;
                     if(!zone.keyRecordTime) zone.keyRecordTime = now;
+                    // 初始化副本次数字段（无上限）
+                    if(!zone.dungeonConquer) zone.dungeonConquer = { count: 0, lastResetTime: null };
+                    if(!zone.dungeonTranscend) zone.dungeonTranscend = { count: 0, lastResetTime: null };
+                    // 初始化分区副本类型选择（默认征服）
+                    if(!zone.selectedDungeonType) zone.selectedDungeonType = 'conquer';
                 }
             }
             else zonesConfig = [
-                { name: "奈薩区", key: "奈薩", keyCount: 0, keyMax: 14, keyRecordTime: Date.now() },
-                { name: "塔哈区", key: "塔哈", keyCount: 0, keyMax: 14, keyRecordTime: Date.now() },
-                { name: "廬德区", key: "廬德", keyCount: 0, keyMax: 14, keyRecordTime: Date.now() },
-                { name: "崔妮区", key: "崔妮", keyCount: 0, keyMax: 14, keyRecordTime: Date.now() }
+                { name: "奈薩区", key: "奈薩", keyCount: 0, keyMax: 14, keyRecordTime: Date.now(),
+                  dungeonConquer: { count: 0, lastResetTime: null },
+                  dungeonTranscend: { count: 0, lastResetTime: null },
+                  selectedDungeonType: 'conquer' },
+                { name: "塔哈区", key: "塔哈", keyCount: 0, keyMax: 14, keyRecordTime: Date.now(),
+                  dungeonConquer: { count: 0, lastResetTime: null },
+                  dungeonTranscend: { count: 0, lastResetTime: null },
+                  selectedDungeonType: 'conquer' },
+                { name: "德区", key: "廬德", keyCount: 0, keyMax: 14, keyRecordTime: Date.now(),
+                  dungeonConquer: { count: 0, lastResetTime: null },
+                  dungeonTranscend: { count: 0, lastResetTime: null },
+                  selectedDungeonType: 'conquer' },
+                { name: "崔妮区", key: "崔妮", keyCount: 0, keyMax: 14, keyRecordTime: Date.now(),
+                  dungeonConquer: { count: 0, lastResetTime: null },
+                  dungeonTranscend: { count: 0, lastResetTime: null },
+                  selectedDungeonType: 'conquer' }
             ];
 
             if (savedAccounts) {
@@ -822,6 +839,100 @@
     function getRecoverPerHour() {
         const recoverPer3Hours = parseFloat(document.getElementById('recoverPer3Hours').value) || 15;
         return recoverPer3Hours / 3;
+    }
+    
+    // 获取本周三的凌晨5点时间戳
+    function getWednesdayTimestamp(date) {
+        const d = new Date(date);
+        const dayOfWeek = d.getDay(); // 0=周日, 1=周一, ..., 3=周三
+        // 计算距离本周三的天数差
+        let daysToWednesday = 3 - dayOfWeek;
+        if (daysToWednesday > 0) {
+            // 如果还没到本周三，用上周三
+            daysToWednesday -= 7;
+        }
+        d.setDate(d.getDate() + daysToWednesday);
+        d.setHours(5, 0, 0, 0); // 设置为凌晨5点
+        return d.getTime();
+    }
+    
+    // 检查并重置分区的副本次数（每周三）
+    function checkAndResetZoneDungeons(zone) {
+        const now = new Date();
+        const currentWednesday = getWednesdayTimestamp(now);
+        
+        // 检查征服副本是否需要重置
+        if (!zone.dungeonConquer.lastResetTime || zone.dungeonConquer.lastResetTime < currentWednesday) {
+            zone.dungeonConquer.count = 0;
+            zone.dungeonConquer.lastResetTime = currentWednesday;
+        }
+        
+        // 检查超越副本是否需要重置
+        if (!zone.dungeonTranscend.lastResetTime || zone.dungeonTranscend.lastResetTime < currentWednesday) {
+            zone.dungeonTranscend.count = 0;
+            zone.dungeonTranscend.lastResetTime = currentWednesday;
+        }
+    }
+    
+    // 增加分区副本次数（无上限）
+    function increaseZoneDungeonCount(zoneKey, type, times) {
+        const zone = zonesConfig.find(z => z.key === zoneKey);
+        if (!zone) return false;
+        
+        checkAndResetZoneDungeons(zone); // 先检查是否需要重置
+        
+        const config = type === 'conquer' ? zone.dungeonConquer : zone.dungeonTranscend;
+        const oldCount = config.count;
+        const newCount = config.count + times; // 无上限
+        
+        config.count = newCount;
+        saveData();
+        const typeName = type === 'conquer' ? '征服副本' : '超越副本';
+        addLog('system', `分区[${zone.name}] ${typeName}: ${oldCount} → ${newCount} (+${times})`);
+        showToast(`已增加 ${times} 次${typeName}`, 'success');
+        renderAll();
+        return true;
+    }
+    
+    // 减少分区副本次数
+    function decreaseZoneDungeonCount(zoneKey, type, times) {
+        const zone = zonesConfig.find(z => z.key === zoneKey);
+        if (!zone) return false;
+        
+        checkAndResetZoneDungeons(zone); // 先检查是否需要重置
+        
+        const config = type === 'conquer' ? zone.dungeonConquer : zone.dungeonTranscend;
+        const oldCount = config.count;
+        const newCount = Math.max(0, config.count - times);
+        const actualReduced = oldCount - newCount;
+        
+        if (actualReduced > 0) {
+            config.count = newCount;
+            saveData();
+            const typeName = type === 'conquer' ? '征服副本' : '超越副本';
+            addLog('system', `分区[${zone.name}] ${typeName}: ${oldCount} → ${newCount} (-${actualReduced})`);
+            showToast(`已减少 ${actualReduced} 次${typeName}`, 'info');
+            renderAll();
+            return true;
+        }
+        
+        return false;
+    }
+    
+    // 设置分区选择的副本类型
+    function setZoneDungeonType(zoneKey, type) {
+        const zone = zonesConfig.find(z => z.key === zoneKey);
+        if (!zone) return;
+        
+        const oldType = zone.selectedDungeonType;
+        zone.selectedDungeonType = type;
+        saveData();
+        
+        const oldTypeName = oldType === 'conquer' ? '征服' : '超越';
+        const newTypeName = type === 'conquer' ? '征服' : '超越';
+        addLog('system', `分区[${zone.name}] 切换副本类型: ${oldTypeName} → ${newTypeName}`);
+        showToast(`已切换到${newTypeName}副本`, 'info');
+        renderAll();
     }
     
     // 获取游戏恢复基准时间戳（今天的基准时间点）
@@ -1130,11 +1241,20 @@
         zonesConfig.forEach(zone => {
             // 获取该分区账号，保持accounts中原本的顺序
             const zoneAccounts = accounts.filter(a => a.zone === zone.key);
+            
+            // 检查并重置副本次数（每周三）
+            checkAndResetZoneDungeons(zone);
+            
             const card = document.createElement('div');
             card.className = 'zone-card';
             
             // 计算当前钥匙数量
             const currentKeyCount = calculateCurrentKeyCount(zone);
+            
+            // 获取副本次数
+            const conquerCount = zone.dungeonConquer.count;
+            const transcendCount = zone.dungeonTranscend.count;
+            const selectedType = zone.selectedDungeonType || 'conquer';
             
             card.innerHTML = `
                 <div class="zone-header">
@@ -1145,6 +1265,22 @@
                         <input type="number" id="key-input-${zone.key}" value="${currentKeyCount}" step="1" style="width:55px;text-align:center;padding:4px;border-radius:10px;border:1px solid #cbd5e1;font-weight:700;font-size:1rem;color:#1e4663;" title="${currentKeyCount}/${zone.keyMax}" placeholder="钥匙">
                         <button class="key-btn" onclick="changeKeyCount('${zone.key}', 1)" style="width:28px;height:28px;border-radius:50%;border:1px solid #cbd5e1;background:#f8fafd;cursor:pointer;font-size:1rem;font-weight:bold;color:#4a627a;display:flex;align-items:center;justify-content:center;transition:0.2s;">+</button>
                         <span style="font-size:0.75rem;color:#6c7a8e;">/${zone.keyMax}</span>
+                        <span style="width:1px;height:20px;background:#e2e8f0;margin:0 4px;"></span>
+                        <span style="font-size:0.75rem;color:#4a627a;font-weight:600;">副本类型:</span>
+                        <select onchange="setZoneDungeonType('${zone.key}', this.value)" style="width:70px;font-size:0.75rem;padding:2px 4px;border-radius:10px;border:1px solid #cbd5e1;background:white;cursor:pointer;">
+                            <option value="conquer" ${selectedType === 'conquer' ? 'selected' : ''}>征服</option>
+                            <option value="transcend" ${selectedType === 'transcend' ? 'selected' : ''}>超越</option>
+                        </select>
+                        <span style="width:1px;height:20px;background:#e2e8f0;margin:0 4px;"></span>
+                        <span style="font-size:0.75rem;color:#4a627a;font-weight:600;">征服:</span>
+                        <span style="font-size:0.85rem;font-weight:700;color:#2c7a4d;">${conquerCount}</span>
+                        <button class="btn" onclick="decreaseZoneDungeonCount('${zone.key}', 'conquer', 1)" style="padding:2px 8px;font-size:0.7rem;">−</button>
+                        <button class="btn btn-success" onclick="increaseZoneDungeonCount('${zone.key}', 'conquer', 1)" style="padding:2px 8px;font-size:0.7rem;">+</button>
+                        <span style="width:1px;height:20px;background:#e2e8f0;margin:0 4px;"></span>
+                        <span style="font-size:0.75rem;color:#4a627a;font-weight:600;">超越:</span>
+                        <span style="font-size:0.85rem;font-weight:700;color:#2c7a4d;">${transcendCount}</span>
+                        <button class="btn" onclick="decreaseZoneDungeonCount('${zone.key}', 'transcend', 1)" style="padding:2px 8px;font-size:0.7rem;">−</button>
+                        <button class="btn btn-success" onclick="increaseZoneDungeonCount('${zone.key}', 'transcend', 1)" style="padding:2px 8px;font-size:0.7rem;">+</button>
                         <button class="zone-del-btn" onclick="delZone('${zone.key}')">删除分区</button>
                     </div>
                 </div>
@@ -1289,6 +1425,22 @@
                 
                 // 消耗次数输入框（快捷扣除工具）
                 const tdConsume = document.createElement('td');
+                
+                // 创建容器
+                const consumeContainer = document.createElement('div');
+                consumeContainer.style.display = 'flex';
+                consumeContainer.style.flexDirection = 'column';
+                consumeContainer.style.gap = '4px';
+                consumeContainer.style.alignItems = 'center';
+                
+                // 显示当前分区选择的副本类型（只读提示）
+                const dungeonHint = document.createElement('div');
+                dungeonHint.style.fontSize = '0.65rem';
+                dungeonHint.style.color = '#6c7a8e';
+                dungeonHint.style.textAlign = 'center';
+                dungeonHint.textContent = `(${zone.selectedDungeonType === 'conquer' ? '征服' : '超越'})`;
+                
+                // 次数输入框
                 const consumeInput = document.createElement('input');
                 consumeInput.type = 'number';
                 consumeInput.step = '1';
@@ -1314,6 +1466,14 @@
                         e.target.value = '';
                         return;
                     }
+                    
+                    // 获取该分区选择的副本类型（不是每个角色单独选择）
+                    const zoneObj = zonesConfig.find(z => z.key === z);
+                    const dungeonType = zone ? (zone.selectedDungeonType || 'conquer') : 'conquer';
+                    
+                    // 自动增加对应分区的对应副本次数
+                    increaseZoneDungeonCount(z, dungeonType, times);
+                    
                     // 获取每次扣能量值
                     const consumePerTime = parseInt(document.getElementById('consumePerTime').value) || 80;
                     const totalConsume = times * consumePerTime;
@@ -1373,7 +1533,8 @@
                     const supplementReduced = oldSupplement - newSupplementValue;
                     
                     // 显示扣除详情
-                    let msg = `已扣除 ${times} 次 × ${consumePerTime} = ${totalConsume} 能量`;
+                    const typeName = dungeonType === 'conquer' ? '征服' : '超越';
+                    let msg = `已扣除 ${times} 次×${consumePerTime}=${totalConsume} (${typeName})`;
                     if (totalConsume - remainingConsume < totalConsume) {
                         msg += `（实际扣除：${totalConsume - remainingConsume}，不足：${remainingConsume}）`;
                     }
@@ -1385,7 +1546,10 @@
                     e.target.value = '';
                     renderAll();
                 })(zone.key, idx, acc));
-                tdConsume.appendChild(consumeInput);
+                
+                consumeContainer.appendChild(dungeonHint);
+                consumeContainer.appendChild(consumeInput);
+                tdConsume.appendChild(consumeContainer);
                 
                 // 补充能量输入框
                 const tdSupplement = document.createElement('td');
@@ -1802,7 +1966,7 @@
             gameRecoveryTime: document.getElementById('gameRecoveryTime').value,
             showDecimal: showDecimal,
             exportTime: new Date().toISOString(),  // 记录导出时间，方便调试
-            version: '2.0'  // 版本号，方便后续兼容处理
+            version: '2.1'  // 版本号，包含副本次数功能
         };
         
         // 生成文件名（不含日期）
@@ -1920,6 +2084,13 @@
                         if(!a.supplementRecordTime) a.supplementRecordTime = now;
                         // 删除消耗能量字段（消耗能量是临时输入值，不应从旧数据继承）
                         delete a.consume;
+                    }
+                    
+                    // 确保每个分区都有副本次数字段
+                    for(let zone of zonesConfig) {
+                        if(!zone.dungeonConquer) zone.dungeonConquer = { count: 0, lastResetTime: null };
+                        if(!zone.dungeonTranscend) zone.dungeonTranscend = { count: 0, lastResetTime: null };
+                        if(!zone.selectedDungeonType) zone.selectedDungeonType = 'conquer';
                     }
                     if(d.maxEnergy) document.getElementById('maxEnergy').value = d.maxEnergy;
                     // 兼容旧数据
