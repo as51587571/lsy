@@ -956,6 +956,31 @@
         renderAll();
     }
     
+    // 手动设置分区副本次数（直接输入）
+    function setZoneDungeonCountManual(zoneKey, type, value) {
+        const zone = zonesConfig.find(z => z.key === zoneKey);
+        if (!zone) return;
+        
+        checkAndResetZoneDungeons(zone); // 先检查是否需要重置
+        
+        let count = parseInt(value);
+        if (isNaN(count) || count < 0) {
+            count = 0;
+        }
+        
+        const config = type === 'conquer' ? zone.dungeonConquer : zone.dungeonTranscend;
+        const oldCount = config.count;
+        
+        if (oldCount !== count) {
+            config.count = count;
+            saveData();
+            const typeName = type === 'conquer' ? '征服副本' : '超越副本';
+            addLog('system', `分区[${zone.name}] ${typeName}: ${oldCount} → ${count} (手动修改)`);
+            showToast(`${typeName}次数已更新为 ${count}`, 'success');
+            renderAll();
+        }
+    }
+    
     // 获取游戏恢复基准时间戳（今天的基准时间点）
     function getGameRecoveryBaseTime() {
         const timeStr = document.getElementById('gameRecoveryTime').value || '00:00';
@@ -1295,12 +1320,12 @@
                         <span style="font-size:0.7rem;color:#6c7a8e;">(可单独调整)</span>
                         <span style="width:1px;height:20px;background:#e2e8f0;margin:0 4px;"></span>
                         <span style="font-size:0.75rem;color:#4a627a;font-weight:600;">征服:</span>
-                        <span style="font-size:0.85rem;font-weight:700;color:#2c7a4d;">${conquerCount}</span>
+                        <input type="number" min="0" value="${conquerCount}" onchange="setZoneDungeonCountManual('${zone.key}', 'conquer', this.value)" style="width:50px;font-size:0.85rem;font-weight:700;color:#2c7a4d;text-align:center;border:1px solid #cbd5e1;border-radius:6px;padding:2px 4px;">
                         <button class="btn" onclick="decreaseZoneDungeonCount('${zone.key}', 'conquer', 1)" style="padding:2px 8px;font-size:0.7rem;">−</button>
                         <button class="btn btn-success" onclick="increaseZoneDungeonCount('${zone.key}', 'conquer', 1)" style="padding:2px 8px;font-size:0.7rem;">+</button>
                         <span style="width:1px;height:20px;background:#e2e8f0;margin:0 4px;"></span>
                         <span style="font-size:0.75rem;color:#4a627a;font-weight:600;">超越:</span>
-                        <span style="font-size:0.85rem;font-weight:700;color:#2c7a4d;">${transcendCount}</span>
+                        <input type="number" min="0" value="${transcendCount}" onchange="setZoneDungeonCountManual('${zone.key}', 'transcend', this.value)" style="width:50px;font-size:0.85rem;font-weight:700;color:#2c7a4d;text-align:center;border:1px solid #cbd5e1;border-radius:6px;padding:2px 4px;">
                         <button class="btn" onclick="decreaseZoneDungeonCount('${zone.key}', 'transcend', 1)" style="padding:2px 8px;font-size:0.7rem;">−</button>
                         <button class="btn btn-success" onclick="increaseZoneDungeonCount('${zone.key}', 'transcend', 1)" style="padding:2px 8px;font-size:0.7rem;">+</button>
                         <button class="zone-del-btn" onclick="delZone('${zone.key}')">删除分区</button>
