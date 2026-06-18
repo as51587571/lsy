@@ -1305,10 +1305,27 @@
             const transcendCount = zone.dungeonTranscend.count;
             const selectedType = zone.selectedDungeonType || 'conquer';
             
+            // 计算该分区所有角色的总能量和可打次数
+            const maxE = parseFloat(document.getElementById('maxEnergy').value) || 840;
+            let totalCurrentEnergy = 0;
+            let totalSupplementEnergy = 0;
+            zoneAccounts.forEach(acc => {
+                const currentEnergy = calculateCurrentEnergy(acc, maxE, getRecoverPerHour());
+                totalCurrentEnergy += currentEnergy;
+                totalSupplementEnergy += (acc.supplement || 0);
+            });
+            const totalEnergy = totalCurrentEnergy + totalSupplementEnergy;
+            const canRunTimes = Math.floor(totalEnergy / 80); // 每次副本消耗80能量
+            
             card.innerHTML = `
                 <div class="zone-header">
                     <h3 class="zone-title" contenteditable="true" onblur="renameZone('${zone.key}', this.innerText)">${escapeHtml(zone.name)}</h3>
                     <div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;">
+                        <!-- 副本可打次数统计 -->
+                        <span style="font-size:0.75rem;color:#4a627a;font-weight:600;">🎮可打:</span>
+                        <span style="font-size:0.9rem;font-weight:800;color:#3b82f6;background:#dbeafe;padding:2px 8px;border-radius:12px;">${canRunTimes}次</span>
+                        <span style="font-size:0.65rem;color:#6c7a8e;">(${totalCurrentEnergy}+${totalSupplementEnergy})</span>
+                        <span style="width:1px;height:18px;background:#e2e8f0;margin:0 3px;"></span>
                         <span style="font-size:0.75rem;color:#4a627a;font-weight:600;">钥匙:</span>
                         <button class="key-btn" onclick="changeKeyCount('${zone.key}', -1)" style="width:24px;height:24px;border-radius:50%;border:1px solid #cbd5e1;background:#f8fafd;cursor:pointer;font-size:0.9rem;font-weight:bold;color:#4a627a;display:flex;align-items:center;justify-content:center;transition:0.2s;padding:0;">−</button>
                         <input type="number" id="key-input-${zone.key}" value="${currentKeyCount}" step="1" style="width:45px;text-align:center;padding:2px;border-radius:6px;border:1px solid #cbd5e1;font-weight:700;font-size:0.85rem;color:#1e4663;" title="${currentKeyCount}/${zone.keyMax}">
