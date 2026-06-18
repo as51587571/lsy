@@ -1726,7 +1726,7 @@
                 })(acc);
                 // 删除按钮
                 const delBtn = document.createElement('button');
-                delBtn.innerText = '';
+                delBtn.innerText = '✖';
                 delBtn.className = 'delete-row-btn';
                 delBtn.title = '删除账号';
                 delBtn.onclick = ((z, idx2) => () => delRowInZone(z, idx2))(zone.key, idx);
