@@ -575,6 +575,11 @@
         <option value="160">160</option>
         <option value="200">200</option>
     </select>
+    <span style="font-size:0.75rem; color:#6b7280;">🎮 全局副本类型:</span>
+    <select id="globalDungeonType" onchange="setGlobalDungeonType(this.value)" style="width:90px; border-radius:30px; padding:3px 8px; font-weight:600;">
+        <option value="conquer">征服副本</option>
+        <option value="transcend">超越副本</option>
+    </select>
     <button class="btn btn-warning" onclick="clearAllData()">🗑️ 清空数据</button>
     <button class="btn btn-info" onclick="openExportSettings()">⚙️ 导出设置</button>
     <button class="btn btn-warning" onclick="exportData()">📤 导出备份</button>
@@ -672,6 +677,9 @@
     const MAX_LOGS = 200; // 最多保存200条记录
     let currentLogFilter = 'all';
     
+    // 全局默认副本类型（用于新分区）
+    let globalDungeonType = 'conquer';
+    
     // ======================== 本地存储 ========================
     function loadData() {
         try {
@@ -702,19 +710,19 @@
                 { name: "奈薩区", key: "奈薩", keyCount: 0, keyMax: 14, keyRecordTime: Date.now(),
                   dungeonConquer: { count: 0, lastResetTime: null },
                   dungeonTranscend: { count: 0, lastResetTime: null },
-                  selectedDungeonType: 'conquer' },
+                  selectedDungeonType: globalDungeonType },
                 { name: "塔哈区", key: "塔哈", keyCount: 0, keyMax: 14, keyRecordTime: Date.now(),
                   dungeonConquer: { count: 0, lastResetTime: null },
                   dungeonTranscend: { count: 0, lastResetTime: null },
-                  selectedDungeonType: 'conquer' },
+                  selectedDungeonType: globalDungeonType },
                 { name: "德区", key: "廬德", keyCount: 0, keyMax: 14, keyRecordTime: Date.now(),
                   dungeonConquer: { count: 0, lastResetTime: null },
                   dungeonTranscend: { count: 0, lastResetTime: null },
-                  selectedDungeonType: 'conquer' },
+                  selectedDungeonType: globalDungeonType },
                 { name: "崔妮区", key: "崔妮", keyCount: 0, keyMax: 14, keyRecordTime: Date.now(),
                   dungeonConquer: { count: 0, lastResetTime: null },
                   dungeonTranscend: { count: 0, lastResetTime: null },
-                  selectedDungeonType: 'conquer' }
+                  selectedDungeonType: globalDungeonType }
             ];
 
             if (savedAccounts) {
@@ -831,6 +839,7 @@
             localStorage.setItem('energyLastRecalcTime', lastRecalcTimestamp);
             localStorage.setItem('energyExportSettings', JSON.stringify(exportSettings));
             localStorage.setItem('energyOperationLogs', JSON.stringify(operationLogs.slice(-MAX_LOGS)));
+            localStorage.setItem('energyGlobalDungeonType', globalDungeonType);
         } catch(e) { console.warn(e); }
     }
 
@@ -917,6 +926,23 @@
         }
         
         return false;
+    }
+    
+    // 设置全局副本类型（应用到所有分区）
+    function setGlobalDungeonType(type) {
+        globalDungeonType = type;
+        saveData();
+        
+        // 更新所有分区的副本类型
+        for (let zone of zonesConfig) {
+            zone.selectedDungeonType = type;
+        }
+        saveData();
+        
+        const typeName = type === 'conquer' ? '征服副本' : '超越副本';
+        showToast(`已将所有分区切换到${typeName}`, 'success');
+        addLog('system', `全局切换副本类型: ${typeName}`);
+        renderAll();
     }
     
     // 设置分区选择的副本类型
@@ -1271,6 +1297,7 @@
                             <option value="conquer" ${selectedType === 'conquer' ? 'selected' : ''}>征服</option>
                             <option value="transcend" ${selectedType === 'transcend' ? 'selected' : ''}>超越</option>
                         </select>
+                        <span style="font-size:0.7rem;color:#6c7a8e;">(可单独调整)</span>
                         <span style="width:1px;height:20px;background:#e2e8f0;margin:0 4px;"></span>
                         <span style="font-size:0.75rem;color:#4a627a;font-weight:600;">征服:</span>
                         <span style="font-size:0.85rem;font-weight:700;color:#2c7a4d;">${conquerCount}</span>
@@ -1426,20 +1453,6 @@
                 // 消耗次数输入框（快捷扣除工具）
                 const tdConsume = document.createElement('td');
                 
-                // 创建容器
-                const consumeContainer = document.createElement('div');
-                consumeContainer.style.display = 'flex';
-                consumeContainer.style.flexDirection = 'column';
-                consumeContainer.style.gap = '4px';
-                consumeContainer.style.alignItems = 'center';
-                
-                // 显示当前分区选择的副本类型（只读提示）
-                const dungeonHint = document.createElement('div');
-                dungeonHint.style.fontSize = '0.65rem';
-                dungeonHint.style.color = '#6c7a8e';
-                dungeonHint.style.textAlign = 'center';
-                dungeonHint.textContent = `(${zone.selectedDungeonType === 'conquer' ? '征服' : '超越'})`;
-                
                 // 次数输入框
                 const consumeInput = document.createElement('input');
                 consumeInput.type = 'number';
@@ -1468,7 +1481,6 @@
                     }
                     
                     // 获取该分区选择的副本类型（不是每个角色单独选择）
-                    const zoneObj = zonesConfig.find(z => z.key === z);
                     const dungeonType = zone ? (zone.selectedDungeonType || 'conquer') : 'conquer';
                     
                     // 自动增加对应分区的对应副本次数
@@ -1547,9 +1559,7 @@
                     renderAll();
                 })(zone.key, idx, acc));
                 
-                consumeContainer.appendChild(dungeonHint);
-                consumeContainer.appendChild(consumeInput);
-                tdConsume.appendChild(consumeContainer);
+                tdConsume.appendChild(consumeInput);
                 
                 // 补充能量输入框
                 const tdSupplement = document.createElement('td');
@@ -2123,6 +2133,8 @@
         loadData();
         calibrateEnergyOnLoadOrOpen();
         startRefreshTimer();
+        // 设置全局副本类型选择器的初始值
+        document.getElementById('globalDungeonType').value = globalDungeonType;
         document.getElementById('maxEnergy').addEventListener('change', () => renderAll());
         document.getElementById('recoverPer3Hours').addEventListener('change', () => renderAll());
         document.getElementById('gameRecoveryTime').addEventListener('change', () => {
