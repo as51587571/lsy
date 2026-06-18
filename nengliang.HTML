@@ -675,6 +675,9 @@
     // 全局默认副本类型（用于新分区）
     let globalDungeonType = 'conquer';
     
+    // 记录最后修改次数的2个角色（用于高亮显示战斗力）
+    let lastModifiedAccounts = []; // 存储最近修改的角色信息 [{zoneKey, idx, name}]
+    
     // ======================== 本地存储 ========================
     function loadData() {
         try {
@@ -1573,6 +1576,17 @@
                     // 记录操作 - 只记录一条综合性的消耗能量日志
                     addLog('energy', `消耗能量 [${accountRef.name}] ${times}次×${consumePerTime}=${totalConsume}(当前能量${oldCurrentEnergy}减${currentEnergyReduced} 补充能量${oldSupplement}减${supplementReduced})`);
                     
+                    // 记录最后修改的角色（用于高亮显示战斗力）
+                    const modifiedAccount = { zoneKey: z, idx: idx2, name: accountRef.name };
+                    // 移除已存在的相同角色
+                    lastModifiedAccounts = lastModifiedAccounts.filter(acc => !(acc.zoneKey === z && acc.idx === idx2));
+                    // 添加到末尾
+                    lastModifiedAccounts.push(modifiedAccount);
+                    // 只保留最后2个
+                    if (lastModifiedAccounts.length > 2) {
+                        lastModifiedAccounts.shift();
+                    }
+                    
                     // 清空输入框并刷新
                     e.target.value = '';
                     renderAll();
@@ -1630,6 +1644,15 @@
                 powerInput.value = acc.power || 0;
                 powerInput.style.width = '80px';
                 powerInput.placeholder = '战力';
+                
+                // 检查是否是最后修改的2个角色之一，如果是则高亮显示
+                const isRecentlyModified = lastModifiedAccounts.some(modAcc => modAcc.zoneKey === zone.key && modAcc.idx === idx);
+                if (isRecentlyModified) {
+                    powerInput.style.backgroundColor = '#fff3cd';
+                    powerInput.style.border = '2px solid #ffc107';
+                    powerInput.style.fontWeight = 'bold';
+                }
+                
                 // 点击输入框时自动全选
                 powerInput.addEventListener('focus', function() {
                     this.select();
