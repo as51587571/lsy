@@ -1680,7 +1680,7 @@
                 tdCountdown.className = `cd-${zone.key}-${idx}`;
                 tdCountdown.innerText = remainStr;
                 
-                // 操作按钮区域 (上下移动 + 删除 + 排除排名)
+                // 操作按钮区域 (上下移动 + 删除 + 排除排名 + 合并能量)
                 const tdActions = document.createElement('td');
                 const actionDiv = document.createElement('div');
                 actionDiv.className = 'action-buttons';
@@ -1713,9 +1713,20 @@
                     showToast(accountRef.excludeFromRank ? '已排除该角色参与排名' : '已恢复该角色参与排名', 'info', 1500);
                     addLog('account', `${accountRef.excludeFromRank ? '排除' : '恢复'}账号 [${accountRef.name}] 参与排名`);
                 })(acc);
+                // 合并能量按钮
+                const mergeBtn = document.createElement('button');
+                mergeBtn.innerText = '🔄';
+                mergeBtn.className = 'merge-energy-btn';
+                mergeBtn.title = '合并当前能量到补充能量';
+                mergeBtn.style.cssText = 'padding:2px 6px;font-size:0.7rem;background:#8b5cf6;color:white;border:none;border-radius:4px;cursor:pointer;transition:0.2s;';
+                mergeBtn.onmouseover = function() { this.style.background='#7c3aed'; };
+                mergeBtn.onmouseout = function() { this.style.background='#8b5cf6'; };
+                mergeBtn.onclick = ((accountRef) => () => {
+                    mergeEnergyToSupplement(accountRef);
+                })(acc);
                 // 删除按钮
                 const delBtn = document.createElement('button');
-                delBtn.innerText = '✖';
+                delBtn.innerText = '';
                 delBtn.className = 'delete-row-btn';
                 delBtn.title = '删除账号';
                 delBtn.onclick = ((z, idx2) => () => delRowInZone(z, idx2))(zone.key, idx);
@@ -1723,6 +1734,7 @@
                 actionDiv.appendChild(upBtn);
                 actionDiv.appendChild(downBtn);
                 actionDiv.appendChild(excludeBtn);
+                actionDiv.appendChild(mergeBtn);
                 actionDiv.appendChild(delBtn);
                 tdActions.appendChild(actionDiv);
                 
@@ -1974,6 +1986,35 @@
     function addRow() { if(!zonesConfig.length){showToast("请先添加分区！", "error");return;} let zk = prompt("分区key:"+zonesConfig.map(z=>z.key).join(',')); if(!zk||!zonesConfig.some(z=>z.key===zk)){showToast("分区不存在！", "error");return;} accounts.push({name:`新成员[${zk}]`,current:0,supplement:0,supplementMax:20000,power:0,excludeFromRank:false,zone:zk,recordTime:Date.now(),supplementRecordTime:Date.now(),lastEnergySync:Date.now()}); renderAll(); saveData(); showToast("账号添加成功！", "success"); addLog('account', `添加新账号 [新成员[${zk}]] 到分区 [${zk}]`); }
     function updateNameInZone(zoneKey, idx, newName) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) { const oldName = arr[idx].name; arr[idx].name = newName; renderAll(); saveData(); addLog('account', `重命名账号: ${oldName} → ${newName}`); } }
     function delRowInZone(zoneKey, idx) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) { const accName = arr[idx].name; accounts = accounts.filter(a=> a !== arr[idx]); renderAll(); saveData(); addLog('account', `删除账号 [${accName}] 从分区 [${zoneKey}]`); } }
+    
+    // 合并当前能量到补充能量
+    function mergeEnergyToSupplement(accountRef) {
+        const maxE = parseFloat(document.getElementById('maxEnergy').value) || 840;
+        const currentBaseEnergy = calculateCurrentEnergy(accountRef, maxE, getRecoverPerHour());
+        
+        if (currentBaseEnergy <= 0) {
+            showToast(`[${accountRef.name}] 当前能量为0，无需合并`, 'info');
+            return;
+        }
+        
+        const oldSupplement = accountRef.supplement || 0;
+        const newSupplement = oldSupplement + currentBaseEnergy;
+        
+        // 保存操作前的值用于记录
+        const oldCurrentEnergy = currentBaseEnergy;
+        
+        // 将当前能量清零，并加到补充能量中
+        setAccountEnergyAndResetTimer(accountRef, 0, maxE);
+        accountRef.supplement = newSupplement;
+        accountRef.supplementRecordTime = Date.now();
+        saveData();
+        
+        // 记录操作
+        addLog('energy', `合并能量 [${accountRef.name}] 当前能量${oldCurrentEnergy}+补充能量${oldSupplement}=新补充能量${newSupplement}`);
+        showToast(`已将 ${oldCurrentEnergy} 点当前能量合并到补充能量`, 'success');
+        renderAll();
+    }
+    
     function clearAllData() { if(!confirm("彻底清空所有数据？将删除所有账号并保留空分区")) return; localStorage.clear(); loadData(); accounts = []; saveData(); renderAll(); showToast("所有数据已清空！", "success"); addLog('system', '清空所有数据'); }
     
     // 清空消耗记录
