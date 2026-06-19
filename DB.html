@@ -1865,28 +1865,44 @@
             
             let completedCount = 0;
             tasksToComplete.forEach(task => {
+                // 兼容旧数据：如果是字符串，转换为数组
+                if (!Array.isArray(task.repeat)) {
+                    task.repeat = [task.repeat];
+                }
+                
                 if (!task.completed || task.lastCompleted !== today) {
                     task.completed = true;
                     task.lastCompleted = today;
                     
                     // 更新下次完成日期
-                    if (task.repeat === 'daily') {
+                    const hasDaily = task.repeat.includes('daily');
+                    const weeklyDays = task.repeat.filter(r => r.startsWith('weekly-'));
+                    const hasWeekly = weeklyDays.length > 0;
+                    
+                    if (hasDaily) {
                         const tomorrow = new Date();
                         tomorrow.setDate(tomorrow.getDate() + 1);
                         task.nextDate = tomorrow.toISOString();
-                    } else if (task.repeat && task.repeat.startsWith('weekly-')) {
-                        // 自定义每周重置日
-                        const resetDay = parseInt(task.repeat.split('-')[1]);
+                    } else if (hasWeekly) {
+                        // 找到最近的下一个重置日
                         const nextReset = new Date();
                         const currentDay = nextReset.getDay();
                         
-                        // 计算距离下一个重置日还有几天
-                        let daysUntilReset = (resetDay - currentDay + 7) % 7;
-                        if (daysUntilReset === 0) {
-                            daysUntilReset = 7; // 如果是同一天，就设置为7天后
-                        }
+                        // 计算每个重置日距离今天的天数
+                        let minDaysUntilReset = 7; // 默认7天
                         
-                        nextReset.setDate(nextReset.getDate() + daysUntilReset);
+                        weeklyDays.forEach(resetValue => {
+                            const resetDay = parseInt(resetValue.split('-')[1]);
+                            let daysUntilReset = (resetDay - currentDay + 7) % 7;
+                            if (daysUntilReset === 0) {
+                                daysUntilReset = 7; // 如果是同一天，就设置为7天后
+                            }
+                            if (daysUntilReset < minDaysUntilReset) {
+                                minDaysUntilReset = daysUntilReset;
+                            }
+                        });
+                        
+                        nextReset.setDate(nextReset.getDate() + minDaysUntilReset);
                         task.nextDate = nextReset.toISOString();
                     }
                     
