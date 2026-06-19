@@ -2268,6 +2268,11 @@
         function createTaskElement(serverId, task) {
             const div = document.createElement('div');
             div.className = 'task-item';
+            
+            // 兼容旧数据：如果是字符串，转换为数组
+            if (!Array.isArray(task.repeat)) {
+                task.repeat = [task.repeat];
+            }
                             
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
@@ -2281,12 +2286,18 @@
                 const lastCompletedDate = new Date(task.lastCompleted);
                 const lastCompletedDateString = lastCompletedDate.toDateString();
                 
-                if (task.repeat === 'daily') {
+                // 检查是否包含每日或每周重置
+                const hasDaily = task.repeat.includes('daily');
+                const weeklyDays = task.repeat.filter(r => r.startsWith('weekly-'));
+                const hasWeekly = weeklyDays.length > 0;
+                
+                if (hasDaily) {
                     // 每日任务：只在完成当天显示为已完成
                     shouldShowCompleted = (lastCompletedDateString === todayDateString);
-                } else if (task.repeat && task.repeat.startsWith('weekly-')) {
-                    // 每周任务：检查是否已经过了重置日
-                    const resetDay = parseInt(task.repeat.split('-')[1]);
+                } else if (hasWeekly) {
+                    // 每周任务：检查是否已经过了任意一个重置日
+                    // 取第一个重置日进行判断（简化逻辑）
+                    const resetDay = parseInt(weeklyDays[0].split('-')[1]);
                     const lastResetDate = getMostRecentResetDate(today, resetDay);
                     
                     // 比较日期部分
@@ -2340,23 +2351,64 @@
             const nextDate = new Date(task.nextDate);
             const todayDate = new Date();
             
-            // 使用辅助函数获取重复类型显示文本
-            const repeatText = getRepeatDisplayText(task.repeat);
-            dateBadge.textContent = repeatText;
-            
-            // 使用任务的自定义颜色
-            const dateColor = task.color || '#9C27B0';
-            dateBadge.style.backgroundColor = dateColor;
-            dateBadge.style.color = '#fff';
-            
-            // 如果是一次性任务且已过期，显示红色
-            if (repeatText === '一次性' && nextDate < todayDate && !task.completed) {
-                dateBadge.style.backgroundColor = '#ffcdd2'; // 红色
-                dateBadge.style.color = '#c62828';
-            }
-            // 如果任务完成，添加删除线
-            if (shouldShowCompleted) {
-                dateBadge.classList.add('completed-task');
+            // 如果是多重置日任务，需要分别显示每个重置日的完成状态
+            if (Array.isArray(task.repeat) && task.repeat.filter(r => r.startsWith('weekly-')).length > 1) {
+                // 有多重每周重置日，创建多个标签
+                dateBadge.style.display = 'flex';
+                dateBadge.style.gap = '4px';
+                dateBadge.style.flexWrap = 'wrap';
+                dateBadge.style.padding = '2px';
+                dateBadge.style.backgroundColor = 'transparent';
+                
+                const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+                const weeklyDays = task.repeat.filter(r => r.startsWith('weekly-'));
+                
+                // 获取上次完成的日期
+                let lastCompletedDay = null;
+                if (task.lastCompleted) {
+                    lastCompletedDay = new Date(task.lastCompleted).getDay();
+                }
+                
+                // 为每个重置日创建独立的标签
+                weeklyDays.forEach(resetValue => {
+                    const resetDay = parseInt(resetValue.split('-')[1]);
+                    const dayTag = document.createElement('span');
+                    dayTag.textContent = dayNames[resetDay];
+                    dayTag.style.cssText = `
+                        padding: 2px 6px;
+                        border-radius: 3px;
+                        font-size: 11px;
+                        background-color: ${task.color || '#9C27B0'};
+                        color: white;
+                    `;
+                    
+                    // 如果这个重置日已经完成，添加删除线
+                    if (lastCompletedDay === resetDay && shouldShowCompleted) {
+                        dayTag.classList.add('completed-task');
+                        dayTag.style.opacity = '0.6';
+                    }
+                    
+                    dateBadge.appendChild(dayTag);
+                });
+            } else {
+                // 单重置日或一次性/每日任务，使用原有逻辑
+                const repeatText = getRepeatDisplayText(task.repeat);
+                dateBadge.textContent = repeatText;
+                
+                // 使用任务的自定义颜色
+                const dateColor = task.color || '#9C27B0';
+                dateBadge.style.backgroundColor = dateColor;
+                dateBadge.style.color = '#fff';
+                
+                // 如果是一次性任务且已过期，显示红色
+                if (repeatText === '一次性' && nextDate < todayDate && !task.completed) {
+                    dateBadge.style.backgroundColor = '#ffcdd2'; // 红色
+                    dateBadge.style.color = '#c62828';
+                }
+                // 如果任务完成，添加删除线
+                if (shouldShowCompleted) {
+                    dateBadge.classList.add('completed-task');
+                }
             }
             // 点击日期标签也可以切换完成状态
             dateBadge.addEventListener('click', (e) => {
