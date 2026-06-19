@@ -235,7 +235,7 @@
             flex-shrink: 0;
         }
         .repeat-badge {
-            font-size: 11px;
+            display: inline-block;font-size: 11px;
             padding: 2px 5px;
             border-radius: 6px;
             background-color: #e0e0e0;
@@ -469,9 +469,6 @@
             text-decoration: line-through !important;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
             color: #fff !important;
-            padding: 2px 6px !important;
-            border-radius: 3px;
-            display: inline-block;
         }
         /* 提示信息样式 */
         .toast {
@@ -650,6 +647,7 @@
                     <button class="clear-btn" onclick="clearAllData()">清空</button>
                     <button class="add-server-btn" onclick="addNewServer()">+ 添加大区</button>
                     <button class="global-add-btn" onclick="showGlobalAddTask()" style="background-color: #9C27B0;">全局添加任务</button>
+                    <button class="reset-time-btn" onclick="openResetTimeSettings()" style="background-color: #00897B;">⏰ 刷新时间</button>
                 </div>
                 
                 <div class="date-info">
@@ -746,6 +744,26 @@
             <div style="display: flex; gap: 10px; justify-content: flex-end;">
                 <button onclick="hideGlobalAddTask()" style="background-color: #9E9E9E;">取消</button>
                 <button onclick="executeGlobalAddTask()" style="background-color: #9C27B0;">确认添加</button>
+            </div>
+        </div>
+        <!-- 刷新时间设置弹窗 -->
+        <div class="sound-settings-overlay" id="reset-time-overlay" onclick="hideResetTimeSettings()"></div>
+        <div class="sound-settings" id="reset-time-dialog" style="max-width: 400px;">
+            <h3>⏰ 刷新时间设置</h3>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; color: #4a9eff; font-weight: bold;">📅 任务刷新时间：</label>
+                <input type="time" id="reset-time-input" style="width: 100%; padding: 10px; border: 1px solid #4a9eff; border-radius: 6px; background: rgba(0,0,0,0.5); color: white; font-size: 1em;">
+                <p style="margin-top: 8px; font-size: 0.85em; color: #aaa;">
+                    💡 提示：设置游戏每日/每周任务的刷新时间（默认 22:00）。修改后，任务完成状态将以该时刻为界判断。
+                </p>
+            </div>
+            <div style="text-align: center; margin-top: 30px; display: flex; gap: 10px; justify-content: center;">
+                <button onclick="hideResetTimeSettings()" style="padding: 10px 30px; font-size: 1em; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    取消
+                </button>
+                <button onclick="saveResetTimeSettings()" style="padding: 10px 30px; font-size: 1em; background: #2c7a4d; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    ✅ 保存设置
+                </button>
             </div>
         </div>
         
@@ -1710,6 +1728,34 @@
             }, 300);
         }
         
+        // 设置下次重置时间
+        function setNextResetTime(serverId, taskId, resetDay) {
+            const server = servers.find(s => s.id === serverId);
+            if (!server) return;
+            
+            const task = server.tasks.find(t => t.id === taskId);
+            if (!task) return;
+            
+            // 计算下一个指定星期的刷新时刻（使用全局刷新时间设置）
+            const { hour, minute } = getResetTime();
+            const nextReset = new Date();
+            const currentDay = nextReset.getDay();
+            let daysUntilReset = (resetDay - currentDay + 7) % 7;
+            if (daysUntilReset === 0) {
+                daysUntilReset = 7; // 如果是同一天，就设置为下周
+            }
+
+            nextReset.setDate(nextReset.getDate() + daysUntilReset);
+            nextReset.setHours(hour, minute, 0, 0);
+
+            task.nextResetTime = nextReset.toISOString();
+
+            saveServers();
+            renderTasks();
+            const timeStr = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
+            showToast(`已设置下次重置时间为${resetDay === 0 ? '周日' : '周' + ['一', '二', '三', '四', '五', '六'][resetDay-1]} ${timeStr}`, 'success');
+        }
+        
         // 切换任务完成状态
         function toggleTaskCompletion(serverId, taskId) {
             const server = servers.find(s => s.id === serverId);
@@ -1718,54 +1764,49 @@
             const task = server.tasks.find(t => t.id === taskId);
             if (!task) return;
             
-            const today = new Date().toDateString();
-            
-            if (task.completed && task.lastCompleted === today) {
+            // 兼容旧数据：确保 repeat 为数组
+            if (!Array.isArray(task.repeat)) {
+                task.repeat = [task.repeat];
+            }
+
+            // 用统一的周期判断函数决定当前是否已完成
+            if (isTaskCompletedNow(task)) {
+                // 当前周期已完成，点击则取消完成
                 task.completed = false;
                 task.lastCompleted = null;
             } else {
+                // 标记完成，记录完整时间戳（精确到时刻，便于跨刷新点判断）
                 task.completed = true;
-                task.lastCompleted = today;
-                
+                task.lastCompleted = new Date().toISOString();
+
                 // 更新下次完成日期
                 const repeat = task.repeat;
-                if (!Array.isArray(repeat)) {
-                    // 兼容旧数据：如果是字符串，转换为数组
-                    task.repeat = [repeat];
-                }
-                
+
                 // 检查是否包含每日或每周重置
                 const hasDaily = task.repeat.includes('daily');
                 const weeklyDays = task.repeat.filter(r => r.startsWith('weekly-'));
                 const hasWeekly = weeklyDays.length > 0;
                 const hasNone = task.repeat.includes('none');
-                
+
                 if (hasDaily) {
-                    // 每日任务：明天重置
-                    const tomorrow = new Date();
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    task.nextDate = tomorrow.toISOString();
-                } else if (hasWeekly) {
-                    // 每周任务：找到最近的下一个重置日
-                    const nextReset = new Date();
-                    const currentDay = nextReset.getDay();
-                    
-                    // 计算每个重置日距离今天的天数
-                    let minDaysUntilReset = 7; // 默认7天
-                    
-                    weeklyDays.forEach(resetValue => {
-                        const resetDay = parseInt(resetValue.split('-')[1]);
-                        let daysUntilReset = (resetDay - currentDay + 7) % 7;
-                        if (daysUntilReset === 0) {
-                            daysUntilReset = 7; // 如果是同一天，就设置为7天后
-                        }
-                        if (daysUntilReset < minDaysUntilReset) {
-                            minDaysUntilReset = daysUntilReset;
-                        }
-                    });
-                    
-                    nextReset.setDate(nextReset.getDate() + minDaysUntilReset);
+                    // 每日任务：下一个刷新时刻重置
+                    const { hour, minute } = getResetTime();
+                    const now = new Date();
+                    const todayReset = new Date(now);
+                    todayReset.setHours(hour, minute, 0, 0);
+                    const nextReset = now.getTime() >= todayReset.getTime()
+                        ? new Date(todayReset.getTime() + 24 * 3600 * 1000)
+                        : todayReset;
                     task.nextDate = nextReset.toISOString();
+                    task.nextResetTime = nextReset.toISOString();
+                } else if (hasWeekly) {
+                    // 每周任务：下一个刷新时刻 = 当前周期结束时刻
+                    const resetDayNums = weeklyDays.map(r => parseInt(r.split('-')[1]));
+                    const { nextMoment } = getCurrentCycleBounds(new Date(), resetDayNums);
+                    if (nextMoment) {
+                        task.nextDate = nextMoment.toISOString();
+                        task.nextResetTime = nextMoment.toISOString();
+                    }
                 } else if (hasNone) {
                     // 一次性任务：检查同组的所有一次性任务是否都完成了
                     const sameGroupTasks = server.tasks.filter(t => 
@@ -1883,6 +1924,7 @@
                         const tomorrow = new Date();
                         tomorrow.setDate(tomorrow.getDate() + 1);
                         task.nextDate = tomorrow.toISOString();
+                        task.nextResetTime = null; // 清除下次重置时间
                     } else if (hasWeekly) {
                         // 找到最近的下一个重置日
                         const nextReset = new Date();
@@ -1902,8 +1944,14 @@
                             }
                         });
                         
-                        nextReset.setDate(nextReset.getDate() + minDaysUntilReset);
+                        if (minDaysUntilReset < 7) {
+                            nextReset.setDate(nextReset.getDate() + minDaysUntilReset);
+                        } else {
+                            nextReset.setDate(nextReset.getDate() + 7); // 下周
+                        }
+                        nextReset.setHours(22, 0, 0, 0); // 默认晚上10点
                         task.nextDate = nextReset.toISOString();
+                        task.nextResetTime = nextReset.toISOString(); // 保存下次重置时间
                     }
                     
                     completedCount++;
@@ -1917,6 +1965,36 @@
                 showToast(`已完成${completedCount}个“${taskName}”任务`, 'success');
             } else {
                 showToast('所有任务已完成', 'info');
+            }
+        }
+        // 批量取消完成任务
+        function uncompleteAllTasksInGroup(serverId, taskName) {
+            const server = servers.find(s => s.id === serverId);
+            if (!server) return;
+
+            const tasksToUncomplete = server.tasks.filter(task => task.text === taskName);
+            if (tasksToUncomplete.length === 0) {
+                showToast('没有找到任务', 'warning');
+                return;
+            }
+
+            let uncompletedCount = 0;
+            tasksToUncomplete.forEach(task => {
+                // 直接清除完成状态，不经过周期判断
+                if (task.completed) {
+                    task.completed = false;
+                    task.lastCompleted = null;
+                    uncompletedCount++;
+                }
+            });
+
+            if (uncompletedCount > 0) {
+                saveServers();
+                renderTasks();
+                updateDate();
+                showToast(`已取消完成${uncompletedCount}个“${taskName}”任务`, 'info');
+            } else {
+                showToast('没有已完成的任务', 'info');
             }
         }
         
@@ -2096,6 +2174,31 @@
                         titleDiv.appendChild(colorPicker);
                         groupHeader.appendChild(titleDiv);
                         groupHeader.appendChild(completeAllBtn);
+                        // 批量取消完成按钮
+                        const uncompleteAllBtn = document.createElement('button');
+                        uncompleteAllBtn.textContent = '全部取消';
+                        uncompleteAllBtn.style.cssText = `
+                            padding: 3px 10px;
+                            font-size: 10px;
+                            background-color: rgba(244, 67, 54, 0.8);
+                            color: white;
+                            border: 1px solid rgba(255,255,255,0.5);
+                            border-radius: 3px;
+                            cursor: pointer;
+                            margin-left: 5px;
+                            transition: all 0.2s;
+                        `;
+                        uncompleteAllBtn.onmouseover = () => {
+                            uncompleteAllBtn.style.backgroundColor = 'rgba(244, 67, 54, 1)';
+                        };
+                        uncompleteAllBtn.onmouseout = () => {
+                            uncompleteAllBtn.style.backgroundColor = 'rgba(244, 67, 54, 0.8)';
+                        };
+                        uncompleteAllBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            uncompleteAllTasksInGroup(server.id, taskName);
+                        };
+                        groupHeader.appendChild(uncompleteAllBtn);
                         groupHeader.appendChild(deleteGroupBtn);
                         groupContainer.appendChild(groupHeader);
                         
@@ -2241,6 +2344,31 @@
                         titleDiv.appendChild(colorPicker);
                         groupHeader.appendChild(titleDiv);
                         groupHeader.appendChild(completeAllBtn);
+                        // 批量取消完成按钮
+                        const uncompleteAllBtn = document.createElement('button');
+                        uncompleteAllBtn.textContent = '全部取消';
+                        uncompleteAllBtn.style.cssText = `
+                            padding: 3px 10px;
+                            font-size: 10px;
+                            background-color: rgba(244, 67, 54, 0.8);
+                            color: white;
+                            border: 1px solid rgba(255,255,255,0.5);
+                            border-radius: 3px;
+                            cursor: pointer;
+                            margin-left: 5px;
+                            transition: all 0.2s;
+                        `;
+                        uncompleteAllBtn.onmouseover = () => {
+                            uncompleteAllBtn.style.backgroundColor = 'rgba(244, 67, 54, 1)';
+                        };
+                        uncompleteAllBtn.onmouseout = () => {
+                            uncompleteAllBtn.style.backgroundColor = 'rgba(244, 67, 54, 0.8)';
+                        };
+                        uncompleteAllBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            uncompleteAllTasksInGroup(server.id, taskName);
+                        };
+                        groupHeader.appendChild(uncompleteAllBtn);
                         groupHeader.appendChild(deleteGroupBtn);
                         groupContainer.appendChild(groupHeader);
                         
@@ -2293,41 +2421,9 @@
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
             
-            // 判断任务是否应该显示为已完成
-            const today = new Date();
-            const todayDateString = today.toDateString();
-            let shouldShowCompleted = false;
-            
-            if (task.completed && task.lastCompleted) {
-                const lastCompletedDate = new Date(task.lastCompleted);
-                const lastCompletedDateString = lastCompletedDate.toDateString();
-                
-                // 检查是否包含每日或每周重置
-                const hasDaily = task.repeat.includes('daily');
-                const weeklyDays = task.repeat.filter(r => r.startsWith('weekly-'));
-                const hasWeekly = weeklyDays.length > 0;
-                
-                if (hasDaily) {
-                    // 每日任务：只在完成当天显示为已完成
-                    shouldShowCompleted = (lastCompletedDateString === todayDateString);
-                } else if (hasWeekly) {
-                    // 每周任务：检查是否已经过了任意一个重置日
-                    // 取第一个重置日进行判断（简化逻辑）
-                    const resetDay = parseInt(weeklyDays[0].split('-')[1]);
-                    const lastResetDate = getMostRecentResetDate(today, resetDay);
-                    
-                    // 比较日期部分
-                    const lastCompletedDateOnly = new Date(lastCompletedDate);
-                    lastCompletedDateOnly.setHours(0, 0, 0, 0);
-                    
-                    // 如果上次完成时间在最近重置日之前，不应该显示为已完成
-                    shouldShowCompleted = lastCompletedDateOnly >= lastResetDate;
-                } else if (task.repeat === 'none') {
-                    // 一次性任务：只在完成当天显示为已完成
-                    shouldShowCompleted = (lastCompletedDateString === todayDateString);
-                }
-            }
-            
+            // 判断任务是否应该显示为已完成（基于刷新时刻的周期判断）
+            let shouldShowCompleted = isTaskCompletedNow(task);
+
             checkbox.checked = shouldShowCompleted;
             checkbox.addEventListener('change', () => toggleTaskCompletion(serverId, task.id));
                             
@@ -2344,11 +2440,13 @@
                 roleBadge.style.backgroundColor = roleColor;
                 roleBadge.style.color = '#fff'; // 白色文字
                 roleBadge.textContent = task.role;
-                roleBadge.style.cursor = 'pointer'; // 添加指针样式
-                roleBadge.title = '点击切换完成状态'; // 添加提示
-                // 如果任务完成，添加删除线
+                roleBadge.style.cursor = 'pointer';
+                roleBadge.style.flexShrink = '0'; // 防止被压缩
+                roleBadge.style.whiteSpace = 'nowrap';
+                roleBadge.title = '点击切换完成状态';
                 if (shouldShowCompleted) {
-                    roleBadge.classList.add('completed-task');
+                    roleBadge.style.textDecoration = 'line-through';
+                    roleBadge.style.opacity = '0.6';
                 }
                 // 点击角色标签也可以切换完成状态
                 roleBadge.addEventListener('click', (e) => {
@@ -2361,8 +2459,8 @@
             // 日期显示
             const dateBadge = document.createElement('span');
             dateBadge.className = 'repeat-badge';
-            dateBadge.style.cursor = 'pointer'; // 添加指针样式
-            dateBadge.title = '点击切换完成状态'; // 添加提示
+            dateBadge.style.cursor = 'pointer';
+            dateBadge.style.flexShrink = '0'; // 防止日期标签被压缩
                                         
             const nextDate = new Date(task.nextDate);
             const todayDate = new Date();
@@ -2379,33 +2477,59 @@
                 const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
                 const weeklyDays = task.repeat.filter(r => r.startsWith('weekly-'));
                 
-                // 获取上次完成的日期
-                let lastCompletedDay = null;
-                if (task.lastCompleted) {
-                    lastCompletedDay = new Date(task.lastCompleted).getDay();
-                }
-                
+                // 获取下次重置时间和当前周期对应的重置日
+                let nextResetTime = task.nextResetTime ? new Date(task.nextResetTime) : null;
+                const resetDayNumsForCycle = weeklyDays.map(r => parseInt(r.split('-')[1]));
+                const cycleBounds = getCurrentCycleBounds(new Date(), resetDayNumsForCycle);
+                // 当前周期对应的重置日 = 当前周期开始时刻(prevMoment)的星期几
+                let currentCycleDay = cycleBounds.prevMoment ? cycleBounds.prevMoment.getDay() : null;
+
                 // 为每个重置日创建独立的标签
                 weeklyDays.forEach(resetValue => {
                     const resetDay = parseInt(resetValue.split('-')[1]);
                     const dayTag = document.createElement('span');
                     dayTag.textContent = dayNames[resetDay];
                     dayTag.style.cssText = `
+                        display: inline-block;
+                        min-width: 28px;
+                        text-align: center;
                         padding: 2px 6px;
                         border-radius: 3px;
                         font-size: 11px;
                         background-color: ${task.color || '#9C27B0'};
                         color: white;
+                        cursor: pointer;
                     `;
-                    
-                    // 如果这个重置日已经完成，添加删除线
-                    if (lastCompletedDay === resetDay && shouldShowCompleted) {
-                        dayTag.classList.add('completed-task');
+                    // 如果这个重置日已经完成，添加删除线（不改背景，避免宽度变化）
+                    if (resetDay === currentCycleDay && shouldShowCompleted) {
+                        dayTag.style.textDecoration = 'line-through';
                         dayTag.style.opacity = '0.6';
                     }
                     
+                    // 点击单个重置日标签可以设置它为下次重置时间
+                    dayTag.title = `点击设置为下次重置日`;
+                    dayTag.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        setNextResetTime(serverId, task.id, resetDay);
+                    });
+                    
                     dateBadge.appendChild(dayTag);
                 });
+                
+                // 如果有下次重置时间，显示提示
+                if (nextResetTime && !shouldShowCompleted) {
+                    const resetHint = document.createElement('span');
+                    resetHint.style.cssText = `
+                        font-size: 10px;
+                        color: #666;
+                        margin-left: 4px;
+                    `;
+                    const month = String(nextResetTime.getMonth() + 1).padStart(2, '0');
+                    const day = String(nextResetTime.getDate()).padStart(2, '0');
+                    const hours = String(nextResetTime.getHours()).padStart(2, '0');
+                    resetHint.textContent = `(下次: ${month}/${day} ${hours}:00)`;
+                    dateBadge.appendChild(resetHint);
+                }
             } else {
                 // 单重置日或一次性/每日任务，使用原有逻辑
                 const repeatText = getRepeatDisplayText(task.repeat);
@@ -2421,9 +2545,10 @@
                     dateBadge.style.backgroundColor = '#ffcdd2'; // 红色
                     dateBadge.style.color = '#c62828';
                 }
-                // 如果任务完成，添加删除线
+                // 如果任务完成，添加删除线（不改背景，避免宽度变化）
                 if (shouldShowCompleted) {
-                    dateBadge.classList.add('completed-task');
+                    dateBadge.style.textDecoration = 'line-through';
+                    dateBadge.style.opacity = '0.6';
                 }
             }
             // 点击日期标签也可以切换完成状态
@@ -2433,7 +2558,6 @@
             });
             controls.appendChild(dateBadge);
                             
-            // 删除按钮
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-btn';
             deleteBtn.textContent = '×';
@@ -2678,15 +2802,13 @@
         
         // 重置导出计数器
         function resetExportCounter() {
-            if (confirm('确定要重置导出序列号吗？\n\n重置后下次导出将从 001 开始。')) {
-                localStorage.setItem('exportCount', '0');
-                showToast('✅ 序列号已重置为 1', 'success');
-                // 更新显示
-                const counterDisplay = document.getElementById('currentCounterDisplay');
-                counterDisplay.textContent = '001';
-            }
+            localStorage.setItem('exportCount', '0');
+            showToast('✅ 序列号已重置为 1', 'success');
+            // 更新显示
+            const counterDisplay = document.getElementById('currentCounterDisplay');
+            counterDisplay.textContent = '001';
+            closeExportSettingsModal();
         }
-        
         // 导入数据功能
         function importData(inputElement) {
             const file = inputElement.files[0];
@@ -2810,57 +2932,36 @@
                         const hasWeekly = weeklyDays.length > 0;
                         
                         if ((hasDaily || hasWeekly) && task.completed && task.lastCompleted) {
-                            const lastCompletedDate = new Date(task.lastCompleted);
-                            const lastCompletedDateString = lastCompletedDate.toDateString();
-                            
-                            // 对于每日重复任务：如果上次完成日期不是今天，则重置
-                            if (hasDaily) {
-                                if (lastCompletedDateString !== todayDateString) {
-                                    task.completed = false;
-                                    task.lastCompleted = null;
-                                    // 更新下次日期为明天
-                                    const tomorrow = new Date();
-                                    tomorrow.setDate(tomorrow.getDate() + 1);
-                                    task.nextDate = tomorrow.toISOString();
-                                    changed = true;
-                                }
-                            }
-                            // 对于每周重复任务：检查是否已经过了任意一个重置日
-                            else if (hasWeekly) {
-                                // 检查每个重置日，只要有一个已经过了，就重置
-                                let shouldReset = false;
-                                let nextResetDay = null;
-                                let minDaysUntilNext = 7;
-                                
-                                weeklyDays.forEach(resetValue => {
-                                    const resetDay = parseInt(resetValue.split('-')[1]);
-                                    
-                                    // 判断是否应该重置：上次完成时间所在周的重置日是否已经过去
-                                    if (hasResetDayPassed(lastCompletedDate, today, resetDay)) {
-                                        shouldReset = true;
-                                    }
-                                    
-                                    // 计算下一个重置日
-                                    const daysUntilReset = (resetDay - todayDay + 7) % 7;
-                                    if (daysUntilReset < minDaysUntilNext) {
-                                        minDaysUntilNext = daysUntilReset;
-                                        nextResetDay = resetDay;
-                                    }
-                                });
-                                
-                                if (shouldReset) {
-                                    task.completed = false;
-                                    task.lastCompleted = null;
-                                    // 更新下次日期为最近的下一个重置日
-                                    const nextReset = getNextResetDate(today, nextResetDay);
+                            // 基于刷新时刻判断当前周期是否已完成
+                            if (!isTaskCompletedNow(task)) {
+                                // 当前周期未完成（已过刷新点），重置完成状态
+                                task.completed = false;
+                                task.lastCompleted = null;
+                                // 更新 nextDate 为下一个刷新时刻
+                                if (hasDaily) {
+                                    const { hour, minute } = getResetTime();
+                                    const now = new Date();
+                                    const todayReset = new Date(now);
+                                    todayReset.setHours(hour, minute, 0, 0);
+                                    const nextReset = now.getTime() >= todayReset.getTime()
+                                        ? new Date(todayReset.getTime() + 24 * 3600 * 1000)
+                                        : todayReset;
                                     task.nextDate = nextReset.toISOString();
-                                    changed = true;
+                                    task.nextResetTime = nextReset.toISOString();
+                                } else if (hasWeekly) {
+                                    const resetDayNums = weeklyDays.map(r => parseInt(r.split('-')[1]));
+                                    const { nextMoment } = getCurrentCycleBounds(new Date(), resetDayNums);
+                                    if (nextMoment) {
+                                        task.nextDate = nextMoment.toISOString();
+                                        task.nextResetTime = nextMoment.toISOString();
+                                    }
                                 }
+                                changed = true;
                             }
                         }
                     });
                 });
-                
+
                 if (changed) {
                     saveServers();
                 }
@@ -2870,6 +2971,115 @@
             }
         }
         
+        // 打开刷新时间设置弹窗
+        function openResetTimeSettings() {
+            const { hour, minute } = getResetTime();
+            const timeStr = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
+            const input = document.getElementById('reset-time-input');
+            if (input) input.value = timeStr;
+            document.getElementById('reset-time-overlay').style.display = 'block';
+            document.getElementById('reset-time-dialog').style.display = 'block';
+        }
+
+        // 隐藏刷新时间设置弹窗
+        function hideResetTimeSettings() {
+            document.getElementById('reset-time-overlay').style.display = 'none';
+            document.getElementById('reset-time-dialog').style.display = 'none';
+        }
+
+        // 保存刷新时间设置
+        function saveResetTimeSettings() {
+            const input = document.getElementById('reset-time-input');
+            if (!input || !input.value) {
+                showToast('请选择刷新时间');
+                return;
+            }
+            const value = input.value.trim();
+            if (!/^\d{1,2}:\d{2}$/.test(value)) {
+                showToast('时间格式不正确');
+                return;
+            }
+            localStorage.setItem('gameTodoResetTime', value);
+            hideResetTimeSettings();
+            const parts = value.split(':');
+            const timeStr = parts[0].padStart(2, '0') + ':' + parts[1];
+            showToast('刷新时间已设置为 ' + timeStr);
+            renderTasks();
+        }
+        // 获取全局刷新时间设置（默认 22:00）
+        function getResetTime() {
+            const saved = localStorage.getItem('gameTodoResetTime');
+            if (saved && /^\d{1,2}:\d{2}$/.test(saved)) {
+                const parts = saved.split(':');
+                return { hour: parseInt(parts[0]), minute: parseInt(parts[1]) };
+            }
+            return { hour: 22, minute: 0 };
+        }
+
+        // 计算当前时间所属周期的边界
+        // 周期 = [prevMoment, nextMoment)，prevMoment 为上一个已过去的刷新时刻，nextMoment 为下一个刷新时刻
+        // 当前周期对应的重置日 = nextMoment 的星期几
+        function getCurrentCycleBounds(now, resetDays) {
+            const { hour, minute } = getResetTime();
+            let prevMoment = null;
+            let nextMoment = null;
+
+            resetDays.forEach(resetDay => {
+                const base = new Date(now);
+                base.setHours(hour, minute, 0, 0);
+                const currentDay = base.getDay();
+                let diff = (resetDay - currentDay + 7) % 7;
+                base.setDate(base.getDate() + diff);
+                const thisWeek = new Date(base);
+                const lastWeek = new Date(base); lastWeek.setDate(lastWeek.getDate() - 7);
+                const nextWeek = new Date(base); nextWeek.setDate(nextWeek.getDate() + 7);
+
+                [lastWeek, thisWeek, nextWeek].forEach(m => {
+                    if (m.getTime() <= now.getTime()) {
+                        if (!prevMoment || m.getTime() > prevMoment.getTime()) prevMoment = new Date(m);
+                    } else {
+                        if (!nextMoment || m.getTime() < nextMoment.getTime()) nextMoment = new Date(m);
+                    }
+                });
+            });
+
+            return { prevMoment, nextMoment };
+        }
+
+        // 判断任务在当前周期内是否已完成（基于刷新时刻）
+        function isTaskCompletedNow(task) {
+            if (!task.completed || !task.lastCompleted) return false;
+            if (!Array.isArray(task.repeat)) task.repeat = [task.repeat];
+
+            const now = new Date();
+            const lastCompleted = new Date(task.lastCompleted);
+            if (isNaN(lastCompleted.getTime())) return false;
+
+            const hasDaily = task.repeat.includes('daily');
+            const weeklyDays = task.repeat.filter(r => r.startsWith('weekly-'));
+            const hasWeekly = weeklyDays.length > 0;
+
+            if (hasDaily) {
+                const { hour, minute } = getResetTime();
+                const todayReset = new Date(now);
+                todayReset.setHours(hour, minute, 0, 0);
+                const prevDailyReset = now.getTime() >= todayReset.getTime()
+                    ? todayReset
+                    : new Date(todayReset.getTime() - 24 * 3600 * 1000);
+                return lastCompleted.getTime() >= prevDailyReset.getTime();
+            } else if (hasWeekly) {
+                const resetDayNums = weeklyDays.map(r => parseInt(r.split('-')[1]));
+                const { prevMoment } = getCurrentCycleBounds(now, resetDayNums);
+                if (!prevMoment) return false;
+                return lastCompleted.getTime() >= prevMoment.getTime();
+            }
+
+            if (task.repeat.includes('none')) {
+                return lastCompleted.toDateString() === now.toDateString();
+            }
+            return true;
+        }
+
         // 判断从上次完成时间到现在，是否已经过了重置日
         function hasResetDayPassed(lastCompleted, today, resetDay) {
             // 找到最近的一个重置日（包括今天或之前的最近一个）
