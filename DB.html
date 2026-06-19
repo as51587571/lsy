@@ -734,18 +734,10 @@
                 <span style="font-size: 12px; color: #666; display: block; margin-top: 5px;">点击选择角色和日期标签的颜色</span>
             </div>
             <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: bold;">重复类型：</label>
-                <select id="global-task-repeat" style="width: 100%; padding: 8px;">
-                    <option value="none">一次性</option>
-                    <option value="daily">每日</option>
-                    <option value="weekly-1">每周一</option>
-                    <option value="weekly-2">每周二</option>
-                    <option value="weekly-3">每周三</option>
-                    <option value="weekly-4">每周四</option>
-                    <option value="weekly-5">每周五</option>
-                    <option value="weekly-6">每周六</option>
-                    <option value="weekly-0">每周日</option>
-                </select>
+                <label style="display: block; margin-bottom: 8px; font-weight: bold;">重复类型：(点击选择，可多选)</label>
+                <div id="global-repeat-container" style="display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; background-color: #f5f5f5; border-radius: 4px; min-height: 36px;">
+                    <!-- 标签将通过JavaScript动态生成 -->
+                </div>
             </div>
             <div style="margin-bottom: 15px;">
                 <label style="display: block; margin-bottom: 5px; font-weight: bold;">任务日期：</label>
@@ -1205,19 +1197,76 @@
             const minutes = String(now.getMinutes()).padStart(2, '0');
             dateInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
                         
-            const repeatSelect = document.createElement('select');
-            repeatSelect.id = `repeat-${server.id}`;
-            repeatSelect.innerHTML = `
-                <option value="none">一次性</option>
-                <option value="daily">每日</option>
-                <option value="weekly-1">每周一</option>
-                <option value="weekly-2">每周二</option>
-                <option value="weekly-3">每周三</option>
-                <option value="weekly-4">每周四</option>
-                <option value="weekly-5">每周五</option>
-                <option value="weekly-6">每周六</option>
-                <option value="weekly-0">每周日</option>
+            // 重复类型选择器（标签式）
+            const repeatContainer = document.createElement('div');
+            repeatContainer.id = `repeat-container-${server.id}`;
+            repeatContainer.style.cssText = `
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+                padding: 4px;
+                background-color: #f5f5f5;
+                border-radius: 4px;
+                min-height: 32px;
             `;
+            
+            // 存储选中的值
+            const selectedRepeats = new Set(['none']); // 默认选中"一次性"
+            repeatContainer.dataset.selected = 'none';
+            
+            // 创建选项标签
+            const repeatOptions = [
+                { value: 'none', label: '一次性' },
+                { value: 'daily', label: '每日' },
+                { value: 'weekly-1', label: '周一' },
+                { value: 'weekly-2', label: '周二' },
+                { value: 'weekly-3', label: '周三' },
+                { value: 'weekly-4', label: '周四' },
+                { value: 'weekly-5', label: '周五' },
+                { value: 'weekly-6', label: '周六' },
+                { value: 'weekly-0', label: '周日' }
+            ];
+            
+            repeatOptions.forEach(opt => {
+                const tag = document.createElement('span');
+                tag.className = 'repeat-tag';
+                tag.dataset.value = opt.value;
+                tag.textContent = opt.label;
+                const isSelected = opt.value === 'none';
+                tag.style.cssText = `
+                    padding: 4px 10px;
+                    font-size: 11px;
+                    border-radius: 3px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    user-select: none;
+                    background-color: ${isSelected ? '#9C27B0' : 'white'};
+                    color: ${isSelected ? 'white' : '#333'};
+                    border: ${isSelected ? '1px solid #9C27B0' : '1px solid #ddd'};
+                `;
+                
+                tag.onclick = () => {
+                    if (selectedRepeats.has(opt.value)) {
+                        // 取消选中（但至少要保留一个选项）
+                        if (selectedRepeats.size > 1) {
+                            selectedRepeats.delete(opt.value);
+                            tag.style.backgroundColor = 'white';
+                            tag.style.color = '#333';
+                            tag.style.border = '1px solid #ddd';
+                        }
+                    } else {
+                        // 选中
+                        selectedRepeats.add(opt.value);
+                        tag.style.backgroundColor = '#9C27B0';
+                        tag.style.color = 'white';
+                        tag.style.border = '1px solid #9C27B0';
+                    }
+                    // 更新dataset
+                    repeatContainer.dataset.selected = Array.from(selectedRepeats).join(',');
+                };
+                
+                repeatContainer.appendChild(tag);
+            });
                         
             // 角色选择下拉框
             const roleSelect = document.createElement('select');
@@ -1297,7 +1346,7 @@
             addBtn.style.whiteSpace = 'nowrap';
                         
             row2.appendChild(dateInput);
-            row2.appendChild(repeatSelect);
+            row2.appendChild(repeatContainer);
             row2.appendChild(roleSelect);
             row2.appendChild(colorPickerWrapper);
             row2.appendChild(addBtn);
@@ -1542,7 +1591,7 @@
                             
             const taskInput = document.getElementById(`input-${serverId}`);
             const dateInput = document.getElementById(`date-${serverId}`);
-            const repeatSelect = document.getElementById(`repeat-${serverId}`);
+            const repeatContainer = document.getElementById(`repeat-container-${serverId}`);
             const roleSelect = document.getElementById(`role-${serverId}`);
             const taskText = taskInput.value.trim();
                             
@@ -1571,23 +1620,32 @@
                                     
                     // 检查是否选择“全部角色”
                     const selectedRole = roleSelect.value;
-                                    
+                    
+                    // 从标签式选择器获取选中的重复选项
+                    let selectedRepeats = repeatContainer.dataset.selected.split(',').filter(s => s.trim());
+                    
+                    // 如果没有选择任何项，默认使用"一次性"
+                    if (selectedRepeats.length === 0) {
+                        selectedRepeats = ['none'];
+                    }
+                    
                     if (selectedRole === '__all__') {
-                        // 为每个角色创建任务副本（除了“全部”）
+                        // 为每个角色创建任务副本（除了"全部"）
                         const rolesToAdd = server.roles.filter(role => role !== '全部');
-                                                            
+                                                                                
                         if (rolesToAdd.length === 0) {
                             showToast('没有可添加的角色', 'warning');
                             isAddingTask = false;
                             return;
                         }
-                                                            
+                                                                                
                         let addedCount = 0;
+                        // 将选中的重复选项合并为一个数组
                         rolesToAdd.forEach(role => {
                             const newTask = {
                                 id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                                 text: taskText,
-                                repeat: repeatSelect.value,
+                                repeat: selectedRepeats, // 存储为数组
                                 role: role,
                                 color: taskColor,
                                 completed: false,
@@ -1598,15 +1656,15 @@
                             server.tasks.push(newTask);
                             addedCount++;
                         });
-                                                            
+                                                                                
                         console.log(`已为${addedCount}个角色添加任务`);
                         showToast(`已为${addedCount}个角色添加任务`, 'success');
                     } else {
                         // 为单个角色添加任务
                         const newTask = {
-                            id: `task-${Date.now()}`,
+                            id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                             text: taskText,
-                            repeat: repeatSelect.value,
+                            repeat: selectedRepeats, // 存储为数组
                             role: selectedRole,
                             color: taskColor,
                             completed: false,
@@ -1614,10 +1672,14 @@
                             created: new Date().toISOString(),
                             nextDate: selectedDate.toISOString()
                         };
-                        
                         server.tasks.push(newTask);
-                        console.log('添加后任务数量:', server.tasks.length);
-                        showToast('任务已添加', 'success');
+                                            
+                        console.log('添加任务详情:');
+                        console.log('- 任务名称:', taskText);
+                        console.log('- 选中角色:', selectedRole);
+                        console.log('- 选中的重复类型:', selectedRepeats);
+                        console.log('- 当前大区任务总数:', server.tasks.length);
+                        showToast('已添加任务', 'success');
                     }
                     
                     saveServers();
@@ -1666,29 +1728,49 @@
                 task.lastCompleted = today;
                 
                 // 更新下次完成日期
-                if (task.repeat === 'daily') {
+                const repeat = task.repeat;
+                if (!Array.isArray(repeat)) {
+                    // 兼容旧数据：如果是字符串，转换为数组
+                    task.repeat = [repeat];
+                }
+                
+                // 检查是否包含每日或每周重置
+                const hasDaily = task.repeat.includes('daily');
+                const weeklyDays = task.repeat.filter(r => r.startsWith('weekly-'));
+                const hasWeekly = weeklyDays.length > 0;
+                const hasNone = task.repeat.includes('none');
+                
+                if (hasDaily) {
+                    // 每日任务：明天重置
                     const tomorrow = new Date();
                     tomorrow.setDate(tomorrow.getDate() + 1);
                     task.nextDate = tomorrow.toISOString();
-                } else if (task.repeat && task.repeat.startsWith('weekly-')) {
-                    // 自定义每周重置日
-                    const resetDay = parseInt(task.repeat.split('-')[1]);
+                } else if (hasWeekly) {
+                    // 每周任务：找到最近的下一个重置日
                     const nextReset = new Date();
                     const currentDay = nextReset.getDay();
                     
-                    // 计算距离下一个重置日还有几天
-                    let daysUntilReset = (resetDay - currentDay + 7) % 7;
-                    if (daysUntilReset === 0) {
-                        daysUntilReset = 7; // 如果是同一天，就设置为7天后
-                    }
+                    // 计算每个重置日距离今天的天数
+                    let minDaysUntilReset = 7; // 默认7天
                     
-                    nextReset.setDate(nextReset.getDate() + daysUntilReset);
+                    weeklyDays.forEach(resetValue => {
+                        const resetDay = parseInt(resetValue.split('-')[1]);
+                        let daysUntilReset = (resetDay - currentDay + 7) % 7;
+                        if (daysUntilReset === 0) {
+                            daysUntilReset = 7; // 如果是同一天，就设置为7天后
+                        }
+                        if (daysUntilReset < minDaysUntilReset) {
+                            minDaysUntilReset = daysUntilReset;
+                        }
+                    });
+                    
+                    nextReset.setDate(nextReset.getDate() + minDaysUntilReset);
                     task.nextDate = nextReset.toISOString();
-                } else if (task.repeat === 'none') {
+                } else if (hasNone) {
                     // 一次性任务：检查同组的所有一次性任务是否都完成了
                     const sameGroupTasks = server.tasks.filter(t => 
                         t.text === task.text && 
-                        t.repeat === 'none'
+                        Array.isArray(t.repeat) && t.repeat.includes('none')
                     );
                     
                     const allCompleted = sameGroupTasks.every(t => 
@@ -1768,6 +1850,60 @@
             }
         }
         
+        // 批量完成组内所有任务
+        function completeAllTasksInGroup(serverId, taskName) {
+            const server = servers.find(s => s.id === serverId);
+            if (!server) return;
+            
+            const today = new Date().toDateString();
+            const tasksToComplete = server.tasks.filter(task => task.text === taskName);
+            
+            if (tasksToComplete.length === 0) {
+                showToast('没有找到任务', 'warning');
+                return;
+            }
+            
+            let completedCount = 0;
+            tasksToComplete.forEach(task => {
+                if (!task.completed || task.lastCompleted !== today) {
+                    task.completed = true;
+                    task.lastCompleted = today;
+                    
+                    // 更新下次完成日期
+                    if (task.repeat === 'daily') {
+                        const tomorrow = new Date();
+                        tomorrow.setDate(tomorrow.getDate() + 1);
+                        task.nextDate = tomorrow.toISOString();
+                    } else if (task.repeat && task.repeat.startsWith('weekly-')) {
+                        // 自定义每周重置日
+                        const resetDay = parseInt(task.repeat.split('-')[1]);
+                        const nextReset = new Date();
+                        const currentDay = nextReset.getDay();
+                        
+                        // 计算距离下一个重置日还有几天
+                        let daysUntilReset = (resetDay - currentDay + 7) % 7;
+                        if (daysUntilReset === 0) {
+                            daysUntilReset = 7; // 如果是同一天，就设置为7天后
+                        }
+                        
+                        nextReset.setDate(nextReset.getDate() + daysUntilReset);
+                        task.nextDate = nextReset.toISOString();
+                    }
+                    
+                    completedCount++;
+                }
+            });
+            
+            if (completedCount > 0) {
+                saveServers();
+                renderTasks();
+                updateDate();
+                showToast(`已完成${completedCount}个“${taskName}”任务`, 'success');
+            } else {
+                showToast('所有任务已完成', 'info');
+            }
+        }
+        
         // 渲染任务列表
         function renderTasks() {
             servers.forEach(server => {
@@ -1781,6 +1917,15 @@
                 let filteredTasks = selectedRole === '全部' 
                     ? server.tasks 
                     : server.tasks.filter(task => task.role === selectedRole);
+                
+                // 调试信息：显示过滤后的任务数量
+                console.log(`大区 ${server.name}:`);
+                console.log('- 当前选中角色:', selectedRole);
+                console.log('- 总任务数:', server.tasks.length);
+                console.log('- 过滤后任务数:', filteredTasks.length);
+                if (filteredTasks.length > 0) {
+                    console.log('- 前3个任务:', filteredTasks.slice(0, 3).map(t => ({text: t.text, role: t.role})));
+                }
                 
                 // 按任务名分组
                 const taskGroups = {};
@@ -1907,8 +2052,34 @@
                             colorPicker.appendChild(colorDot);
                         });
                         
+                        // 批量完成按钮
+                        const completeAllBtn = document.createElement('button');
+                        completeAllBtn.textContent = '全部完成';
+                        completeAllBtn.style.cssText = `
+                            padding: 3px 10px;
+                            font-size: 10px;
+                            background-color: rgba(76, 175, 80, 0.8);
+                            color: white;
+                            border: 1px solid rgba(255,255,255,0.5);
+                            border-radius: 3px;
+                            cursor: pointer;
+                            margin-left: 10px;
+                            transition: all 0.2s;
+                        `;
+                        completeAllBtn.onmouseover = () => {
+                            completeAllBtn.style.backgroundColor = 'rgba(76, 175, 80, 1)';
+                        };
+                        completeAllBtn.onmouseout = () => {
+                            completeAllBtn.style.backgroundColor = 'rgba(76, 175, 80, 0.8)';
+                        };
+                        completeAllBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            completeAllTasksInGroup(server.id, taskName);
+                        };
+                        
                         titleDiv.appendChild(colorPicker);
                         groupHeader.appendChild(titleDiv);
+                        groupHeader.appendChild(completeAllBtn);
                         groupHeader.appendChild(deleteGroupBtn);
                         groupContainer.appendChild(groupHeader);
                         
@@ -2026,8 +2197,34 @@
                             colorPicker.appendChild(colorDot);
                         });
                         
+                        // 批量完成按钮（单个任务也显示，保持一致性）
+                        const completeAllBtn = document.createElement('button');
+                        completeAllBtn.textContent = '完成';
+                        completeAllBtn.style.cssText = `
+                            padding: 3px 10px;
+                            font-size: 10px;
+                            background-color: rgba(76, 175, 80, 0.8);
+                            color: white;
+                            border: 1px solid rgba(255,255,255,0.5);
+                            border-radius: 3px;
+                            cursor: pointer;
+                            margin-left: 10px;
+                            transition: all 0.2s;
+                        `;
+                        completeAllBtn.onmouseover = () => {
+                            completeAllBtn.style.backgroundColor = 'rgba(76, 175, 80, 1)';
+                        };
+                        completeAllBtn.onmouseout = () => {
+                            completeAllBtn.style.backgroundColor = 'rgba(76, 175, 80, 0.8)';
+                        };
+                        completeAllBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            completeAllTasksInGroup(server.id, taskName);
+                        };
+                        
                         titleDiv.appendChild(colorPicker);
                         groupHeader.appendChild(titleDiv);
+                        groupHeader.appendChild(completeAllBtn);
                         groupHeader.appendChild(deleteGroupBtn);
                         groupContainer.appendChild(groupHeader);
                         
@@ -2044,6 +2241,27 @@
                     }
                 });
             });
+        }
+        
+        // 将重复类型数组转换为显示文本
+        function getRepeatDisplayText(repeat) {
+            if (!repeat || !Array.isArray(repeat)) return '一次性';
+            
+            const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+            const parts = [];
+            
+            repeat.forEach(r => {
+                if (r === 'none') {
+                    parts.push('一次性');
+                } else if (r === 'daily') {
+                    parts.push('每日');
+                } else if (r.startsWith('weekly-')) {
+                    const resetDay = parseInt(r.split('-')[1]);
+                    parts.push(dayNames[resetDay]); // 简化为"周三"而不是"每周三"
+                }
+            });
+            
+            return parts.join(' ');
         }
         
         // 创建任务元素
@@ -2121,39 +2339,20 @@
                                         
             const nextDate = new Date(task.nextDate);
             const todayDate = new Date();
-                                        
-            if (task.repeat === 'daily') {
-                dateBadge.textContent = '每日';
-                // 使用任务的自定义颜色
-                const dateColor = task.color || '#9C27B0';
-                dateBadge.style.backgroundColor = dateColor;
-                dateBadge.style.color = '#fff';
-            } else if (task.repeat && task.repeat.startsWith('weekly-')) {
-                // 显示自定义的每周重置日
-                const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-                const resetDay = parseInt(task.repeat.split('-')[1]);
-                dateBadge.textContent = '每' + dayNames[resetDay];
-                // 使用任务的自定义颜色
-                const dateColor = task.color || '#9C27B0';
-                dateBadge.style.backgroundColor = dateColor;
-                dateBadge.style.color = '#fff';
-            } else {
-                // 一次性任务，显示具体日期和时间
-                const month = nextDate.getMonth() + 1;
-                const day = nextDate.getDate();
-                const hours = String(nextDate.getHours()).padStart(2, '0');
-                const minutes = String(nextDate.getMinutes()).padStart(2, '0');
-                dateBadge.textContent = `${month}/${day} ${hours}:${minutes}`;
-                // 使用任务的自定义颜色
-                const dateColor = task.color || '#9C27B0';
-                dateBadge.style.backgroundColor = dateColor;
-                dateBadge.style.color = '#fff';
-                                    
-                // 如果是一次性任务且已过期，显示红色
-                if (nextDate < todayDate && !task.completed) {
-                    dateBadge.style.backgroundColor = '#ffcdd2'; // 红色
-                    dateBadge.style.color = '#c62828';
-                }
+            
+            // 使用辅助函数获取重复类型显示文本
+            const repeatText = getRepeatDisplayText(task.repeat);
+            dateBadge.textContent = repeatText;
+            
+            // 使用任务的自定义颜色
+            const dateColor = task.color || '#9C27B0';
+            dateBadge.style.backgroundColor = dateColor;
+            dateBadge.style.color = '#fff';
+            
+            // 如果是一次性任务且已过期，显示红色
+            if (repeatText === '一次性' && nextDate < todayDate && !task.completed) {
+                dateBadge.style.backgroundColor = '#ffcdd2'; // 红色
+                dateBadge.style.color = '#c62828';
             }
             // 如果任务完成，添加删除线
             if (shouldShowCompleted) {
@@ -2532,13 +2731,22 @@
                 
                 servers.forEach(server => {
                     server.tasks.forEach(task => {
+                        // 兼容旧数据：如果是字符串，转换为数组
+                        if (!Array.isArray(task.repeat)) {
+                            task.repeat = [task.repeat];
+                        }
+                        
                         // 只有重复任务且已完成的任务才需要检查重置
-                        if (task.repeat !== 'none' && task.completed && task.lastCompleted) {
+                        const hasDaily = task.repeat.includes('daily');
+                        const weeklyDays = task.repeat.filter(r => r.startsWith('weekly-'));
+                        const hasWeekly = weeklyDays.length > 0;
+                        
+                        if ((hasDaily || hasWeekly) && task.completed && task.lastCompleted) {
                             const lastCompletedDate = new Date(task.lastCompleted);
                             const lastCompletedDateString = lastCompletedDate.toDateString();
                             
                             // 对于每日重复任务：如果上次完成日期不是今天，则重置
-                            if (task.repeat === 'daily') {
+                            if (hasDaily) {
                                 if (lastCompletedDateString !== todayDateString) {
                                     task.completed = false;
                                     task.lastCompleted = null;
@@ -2549,18 +2757,34 @@
                                     changed = true;
                                 }
                             }
-                            // 对于每周重复任务：检查是否已经过了重置日
-                            else if (task.repeat && task.repeat.startsWith('weekly-')) {
-                                const resetDay = parseInt(task.repeat.split('-')[1]);
+                            // 对于每周重复任务：检查是否已经过了任意一个重置日
+                            else if (hasWeekly) {
+                                // 检查每个重置日，只要有一个已经过了，就重置
+                                let shouldReset = false;
+                                let nextResetDay = null;
+                                let minDaysUntilNext = 7;
                                 
-                                // 判断是否应该重置：上次完成时间所在周的重置日是否已经过去
-                                const shouldReset = hasResetDayPassed(lastCompletedDate, today, resetDay);
+                                weeklyDays.forEach(resetValue => {
+                                    const resetDay = parseInt(resetValue.split('-')[1]);
+                                    
+                                    // 判断是否应该重置：上次完成时间所在周的重置日是否已经过去
+                                    if (hasResetDayPassed(lastCompletedDate, today, resetDay)) {
+                                        shouldReset = true;
+                                    }
+                                    
+                                    // 计算下一个重置日
+                                    const daysUntilReset = (resetDay - todayDay + 7) % 7;
+                                    if (daysUntilReset < minDaysUntilNext) {
+                                        minDaysUntilNext = daysUntilReset;
+                                        nextResetDay = resetDay;
+                                    }
+                                });
                                 
                                 if (shouldReset) {
                                     task.completed = false;
                                     task.lastCompleted = null;
-                                    // 更新下次日期为下一个重置日
-                                    const nextReset = getNextResetDate(today, resetDay);
+                                    // 更新下次日期为最近的下一个重置日
+                                    const nextReset = getNextResetDate(today, nextResetDay);
                                     task.nextDate = nextReset.toISOString();
                                     changed = true;
                                 }
@@ -2649,7 +2873,74 @@
                 
                 // 初始化全局颜色选择器
                 initGlobalColorPicker();
+                
+                // 初始化全局重复类型标签选择器
+                initGlobalRepeatSelector();
             }
+        }
+        
+        // 初始化全局重复类型标签选择器
+        function initGlobalRepeatSelector() {
+            const container = document.getElementById('global-repeat-container');
+            if (!container || container.children.length > 0) return;
+            
+            // 存储选中的值
+            const selectedRepeats = new Set(['none']); // 默认选中"一次性"
+            container.dataset.selected = 'none';
+            
+            // 创建选项标签
+            const repeatOptions = [
+                { value: 'none', label: '一次性' },
+                { value: 'daily', label: '每日' },
+                { value: 'weekly-1', label: '周一' },
+                { value: 'weekly-2', label: '周二' },
+                { value: 'weekly-3', label: '周三' },
+                { value: 'weekly-4', label: '周四' },
+                { value: 'weekly-5', label: '周五' },
+                { value: 'weekly-6', label: '周六' },
+                { value: 'weekly-0', label: '周日' }
+            ];
+            
+            repeatOptions.forEach(opt => {
+                const tag = document.createElement('span');
+                tag.className = 'repeat-tag';
+                tag.dataset.value = opt.value;
+                tag.textContent = opt.label;
+                const isSelected = opt.value === 'none';
+                tag.style.cssText = `
+                    padding: 6px 12px;
+                    font-size: 12px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    user-select: none;
+                    background-color: ${isSelected ? '#9C27B0' : 'white'};
+                    color: ${isSelected ? 'white' : '#333'};
+                    border: ${isSelected ? '1px solid #9C27B0' : '1px solid #ddd'};
+                `;
+                
+                tag.onclick = () => {
+                    if (selectedRepeats.has(opt.value)) {
+                        // 取消选中（但至少要保留一个选项）
+                        if (selectedRepeats.size > 1) {
+                            selectedRepeats.delete(opt.value);
+                            tag.style.backgroundColor = 'white';
+                            tag.style.color = '#333';
+                            tag.style.border = '1px solid #ddd';
+                        }
+                    } else {
+                        // 选中
+                        selectedRepeats.add(opt.value);
+                        tag.style.backgroundColor = '#9C27B0';
+                        tag.style.color = 'white';
+                        tag.style.border = '1px solid #9C27B0';
+                    }
+                    // 更新dataset
+                    container.dataset.selected = Array.from(selectedRepeats).join(',');
+                };
+                
+                container.appendChild(tag);
+            });
         }
         
         // 初始化全局颜色选择器
@@ -2721,7 +3012,7 @@
         function executeGlobalAddTask() {
             const taskNameInput = document.getElementById('global-task-name');
             const colorContainer = document.getElementById('global-color-picker');
-            const repeatSelect = document.getElementById('global-task-repeat');
+            const repeatContainer = document.getElementById('global-repeat-container');
             const dateInput = document.getElementById('global-task-date');
             
             const taskName = taskNameInput.value.trim();
@@ -2732,7 +3023,14 @@
             
             const selectedDate = dateInput.value ? new Date(dateInput.value) : new Date();
             const taskColor = colorContainer ? colorContainer.dataset.selectedColor || '#9C27B0' : '#9C27B0';
-            const taskRepeat = repeatSelect.value;
+            
+            // 从标签式选择器获取选中的重复选项
+            let selectedRepeats = repeatContainer.dataset.selected.split(',').filter(s => s.trim());
+            
+            // 如果没有选择任何项，默认使用"一次性"
+            if (selectedRepeats.length === 0) {
+                selectedRepeats = ['none'];
+            }
             
             let totalAdded = 0;
             let serverCount = 0;
@@ -2746,13 +3044,12 @@
                     return;
                 }
                 
-                // 为每个角色创建任务
+                // 为每个角色创建任务，将选中的重复类型存储为数组
                 rolesToAdd.forEach(role => {
-                    // 检查是否已存在相同名称、相同角色、相同重复类型的任务
+                    // 检查是否已存在相同名称、相同角色的任务（不检查重复类型，因为现在一个任务可以有多个重置日）
                     const existingTask = server.tasks.find(t => 
                         t.text === taskName && 
-                        t.role === role && 
-                        t.repeat === taskRepeat
+                        t.role === role
                     );
                     
                     if (existingTask) {
@@ -2764,7 +3061,7 @@
                     const newTask = {
                         id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
                         text: taskName,
-                        repeat: taskRepeat,
+                        repeat: selectedRepeats, // 存储为数组
                         role: role,
                         color: taskColor,
                         completed: false,
