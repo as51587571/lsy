@@ -51,16 +51,20 @@
             padding-bottom: 6px;
         }
         .zone-title {
-            font-size: 1rem;
+            font-size: 0.9rem;
             font-weight: 700;
             background: #f8fafd;
-            padding: 2px 10px;
-            border-radius: 30px;
+            padding: 2px 8px;
+            border-radius: 20px;
             margin: 0;
             color: #1f3b4c;
             cursor: text;
             outline: none;
-            min-width: 130px;
+            min-width: 60px;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .zone-del-btn {
             background: #e74c3c;
@@ -1322,32 +1326,36 @@
                     <h3 class="zone-title" contenteditable="true" onblur="renameZone('${zone.key}', this.innerText)">${escapeHtml(zone.name)}</h3>
                     <div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;">
                         <!-- 副本可打次数统计 -->
-                        <span style="font-size:0.75rem;color:#4a627a;font-weight:600;">🎮可打:</span>
-                        <span style="font-size:0.9rem;font-weight:800;color:#3b82f6;background:#dbeafe;padding:2px 8px;border-radius:12px;">${canRunTimes}次</span>
-                        <span style="font-size:0.65rem;color:#6c7a8e;">(${totalCurrentEnergy}+${totalSupplementEnergy})</span>
+                        <span style="font-size:0.7rem;color:#4a627a;font-weight:600;">🎮可打:</span>
+                        <span style="font-size:0.85rem;font-weight:800;color:#3b82f6;background:#dbeafe;padding:1px 6px;border-radius:10px;">${canRunTimes}次</span>
+                        <span style="font-size:0.6rem;color:#6c7a8e;">(${totalCurrentEnergy}+${totalSupplementEnergy})</span>
                         <span style="width:1px;height:18px;background:#e2e8f0;margin:0 3px;"></span>
-                        <span style="font-size:0.75rem;color:#4a627a;font-weight:600;">钥匙:</span>
-                        <button class="key-btn" onclick="changeKeyCount('${zone.key}', -1)" style="width:24px;height:24px;border-radius:50%;border:1px solid #cbd5e1;background:#f8fafd;cursor:pointer;font-size:0.9rem;font-weight:bold;color:#4a627a;display:flex;align-items:center;justify-content:center;transition:0.2s;padding:0;">−</button>
-                        <input type="number" id="key-input-${zone.key}" value="${currentKeyCount}" step="1" style="width:45px;text-align:center;padding:2px;border-radius:6px;border:1px solid #cbd5e1;font-weight:700;font-size:0.85rem;color:#1e4663;" title="${currentKeyCount}/${zone.keyMax}">
-                        <button class="key-btn" onclick="changeKeyCount('${zone.key}', 1)" style="width:24px;height:24px;border-radius:50%;border:1px solid #cbd5e1;background:#f8fafd;cursor:pointer;font-size:0.9rem;font-weight:bold;color:#4a627a;display:flex;align-items:center;justify-content:center;transition:0.2s;padding:0;">+</button>
-                        <span style="font-size:0.7rem;color:#6c7a8e;">/${zone.keyMax}</span>
+                        <!-- 钥匙 -->
+                        <span style="font-size:0.7rem;color:#4a627a;font-weight:600;">钥匙:</span>
+                        <button class="key-btn" onclick="changeKeyCount('${zone.key}', -1)" style="width:22px;height:22px;border-radius:50%;border:1px solid #cbd5e1;background:#f8fafd;cursor:pointer;font-size:0.85rem;font-weight:bold;color:#4a627a;display:flex;align-items:center;justify-content:center;transition:0.2s;padding:0;">−</button>
+                        <input type="number" id="key-input-${zone.key}" value="${currentKeyCount}" step="1" style="width:40px;text-align:center;padding:1px;border-radius:5px;border:1px solid #cbd5e1;font-weight:700;font-size:0.8rem;color:#1e4663;" title="${currentKeyCount}/${zone.keyMax}">
+                        <button class="key-btn" onclick="changeKeyCount('${zone.key}', 1)" style="width:22px;height:22px;border-radius:50%;border:1px solid #cbd5e1;background:#f8fafd;cursor:pointer;font-size:0.85rem;font-weight:bold;color:#4a627a;display:flex;align-items:center;justify-content:center;transition:0.2s;padding:0;">+</button>
+                        <span style="font-size:0.65rem;color:#6c7a8e;">/${zone.keyMax}</span>
                         <span style="width:1px;height:18px;background:#e2e8f0;margin:0 3px;"></span>
+                        <!-- 征服次数 -->
+                        <span style="font-size:0.7rem;color:#4a627a;font-weight:600;">征服:</span>
+                        <input type="number" min="0" value="${conquerCount}" onchange="setZoneDungeonCountManual('${zone.key}', 'conquer', this.value)" style="width:35px;font-size:0.75rem;font-weight:700;color:#2c7a4d;text-align:center;border:1px solid #cbd5e1;border-radius:4px;padding:1px 2px;height:22px;">
+                        <button class="btn btn-success" onclick="increaseZoneDungeonCount('${zone.key}', 'conquer', 1)" style="padding:2px 8px;font-size:0.75rem;height:22px;line-height:1;width:28px;">+</button>
+                        <button class="btn" onclick="decreaseZoneDungeonCount('${zone.key}', 'conquer', 1)" style="padding:2px 8px;font-size:0.75rem;height:22px;line-height:1;width:28px;">−</button>
+                        <span style="width:1px;height:18px;background:#e2e8f0;margin:0 3px;"></span>
+                        <!-- 类型选择器 -->
                         <span style="font-size:0.7rem;color:#4a627a;font-weight:600;">类型:</span>
-                        <select onchange="setZoneDungeonType('${zone.key}', this.value)" style="width:60px;font-size:0.7rem;padding:1px 3px;border-radius:6px;border:1px solid #cbd5e1;background:white;cursor:pointer;height:22px;">
+                        <select onchange="setZoneDungeonType('${zone.key}', this.value)" style="width:55px;font-size:0.7rem;padding:1px 3px;border-radius:5px;border:1px solid #cbd5e1;background:white;cursor:pointer;height:22px;">
                             <option value="conquer" ${selectedType === 'conquer' ? 'selected' : ''}>征服</option>
                             <option value="transcend" ${selectedType === 'transcend' ? 'selected' : ''}>超越</option>
                         </select>
                         <span style="width:1px;height:18px;background:#e2e8f0;margin:0 3px;"></span>
-                        <span style="font-size:0.7rem;color:#4a627a;font-weight:600;">征:</span>
-                        <input type="number" min="0" value="${conquerCount}" onchange="setZoneDungeonCountManual('${zone.key}', 'conquer', this.value)" style="width:40px;font-size:0.8rem;font-weight:700;color:#2c7a4d;text-align:center;border:1px solid #cbd5e1;border-radius:4px;padding:1px 2px;height:22px;">
-                        <button class="btn" onclick="decreaseZoneDungeonCount('${zone.key}', 'conquer', 1)" style="padding:1px 6px;font-size:0.65rem;height:22px;line-height:1;">−</button>
-                        <button class="btn btn-success" onclick="increaseZoneDungeonCount('${zone.key}', 'conquer', 1)" style="padding:1px 6px;font-size:0.65rem;height:22px;line-height:1;">+</button>
-                        <span style="width:1px;height:18px;background:#e2e8f0;margin:0 3px;"></span>
-                        <span style="font-size:0.7rem;color:#4a627a;font-weight:600;">超:</span>
-                        <input type="number" min="0" value="${transcendCount}" onchange="setZoneDungeonCountManual('${zone.key}', 'transcend', this.value)" style="width:40px;font-size:0.8rem;font-weight:700;color:#2c7a4d;text-align:center;border:1px solid #cbd5e1;border-radius:4px;padding:1px 2px;height:22px;">
-                        <button class="btn" onclick="decreaseZoneDungeonCount('${zone.key}', 'transcend', 1)" style="padding:1px 6px;font-size:0.65rem;height:22px;line-height:1;">−</button>
-                        <button class="btn btn-success" onclick="increaseZoneDungeonCount('${zone.key}', 'transcend', 1)" style="padding:1px 6px;font-size:0.65rem;height:22px;line-height:1;">+</button>
-                        <button class="zone-del-btn" onclick="delZone('${zone.key}')" style="padding:3px 8px;font-size:0.7rem;height:24px;line-height:1;">删除</button>
+                        <!-- 超越次数 -->
+                        <span style="font-size:0.7rem;color:#4a627a;font-weight:600;">超越:</span>
+                        <input type="number" min="0" value="${transcendCount}" onchange="setZoneDungeonCountManual('${zone.key}', 'transcend', this.value)" style="width:35px;font-size:0.75rem;font-weight:700;color:#2c7a4d;text-align:center;border:1px solid #cbd5e1;border-radius:4px;padding:1px 2px;height:22px;">
+                        <button class="btn btn-success" onclick="increaseZoneDungeonCount('${zone.key}', 'transcend', 1)" style="padding:2px 8px;font-size:0.75rem;height:22px;line-height:1;width:28px;">+</button>
+                        <button class="btn" onclick="decreaseZoneDungeonCount('${zone.key}', 'transcend', 1)" style="padding:2px 8px;font-size:0.75rem;height:22px;line-height:1;width:28px;">−</button>
+                        <button class="zone-del-btn" onclick="delZone('${zone.key}')" style="padding:2px 8px;font-size:0.65rem;height:22px;line-height:1;">删除</button>
                     </div>
                 </div>
                 <table>
@@ -2020,10 +2028,56 @@
     }
     
     function forceFullRender() { batchUpdateEnergyByCycles(); renderAll(); }
-    function addNewZone() { let name = prompt("分区名称"); if(!name?.trim()) return; let key = name.replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g,'')||"zone"+Date.now(); if(zonesConfig.some(z=>z.key===key)){showToast("分区标识重复！", "error");return;} zonesConfig.push({name:name.trim(),key,keyCount:0,keyMax:14,keyRecordTime:Date.now()}); renderAll(); saveData(); showToast("分区添加成功！", "success"); addLog('zone', `添加新分区 [${name.trim()}]`); }
+    function addNewZone() { 
+        let name = prompt("请输入分区名称（例如：天1、魔2）"); 
+        console.log('addNewZone called, name:', name);
+        if(!name?.trim()) {
+            showToast("未输入分区名称！", "info");
+            return; 
+        }
+        // 使用修改后的名字作为key，而不是默认生成的
+        let key = name.trim().replace(/[^\u4e00-\u9fa5a-zA-Z0-9]/g,'');
+        console.log('Generated key:', key);
+        if(!key) {
+            // 如果过滤后为空，使用时间戳作为key
+            key = "zone" + Date.now(); 
+            console.log('Using timestamp key:', key);
+        }
+        const isDuplicate = zonesConfig.some(z=>z.key===key);
+        console.log('Is duplicate?', isDuplicate, 'Current zones:', zonesConfig.map(z => z.key));
+        if(isDuplicate){showToast("分区标识重复！", "error");return;} 
+        // 初始化新分区的所有必需字段
+        const now = Date.now();
+        const newZone = {
+            name:name.trim(),
+            key,
+            keyCount:0,
+            keyMax:14,
+            keyRecordTime:now,
+            dungeonConquer: { count: 0, lastResetTime: null },
+            dungeonTranscend: { count: 0, lastResetTime: null },
+            selectedDungeonType: globalDungeonType || 'conquer'
+        };
+        console.log('Adding new zone:', newZone);
+        zonesConfig.push(newZone); 
+        console.log('Zones after push:', zonesConfig);
+        renderAll(); saveData(); showToast("分区添加成功！", "success"); addLog('zone', `添加新分区 [${name.trim()}]`); 
+    }
     function renameZone(zoneKey, newName) { if(!newName?.trim()) return; let z = zonesConfig.find(z=>z.key===zoneKey); if(z) { const oldName = z.name; z.name = newName.trim(); renderAll(); saveData(); addLog('zone', `重命名分区: ${oldName} → ${newName.trim()}`); } }
     function delZone(zoneKey) { if(!confirm("删除分区及其所有账号?")) return; const zone = zonesConfig.find(z=>z.key===zoneKey); const zoneName = zone ? zone.name : zoneKey; zonesConfig = zonesConfig.filter(z=>z.key!==zoneKey); accounts = accounts.filter(a=>a.zone!==zoneKey); renderAll(); saveData(); addLog('zone', `删除分区 [${zoneName}] 及其所有账号`); }
-    function addRow() { if(!zonesConfig.length){showToast("请先添加分区！", "error");return;} let zk = prompt("分区key:"+zonesConfig.map(z=>z.key).join(',')); if(!zk||!zonesConfig.some(z=>z.key===zk)){showToast("分区不存在！", "error");return;} accounts.push({name:`新成员[${zk}]`,current:0,supplement:0,supplementMax:20000,power:0,excludeFromRank:false,zone:zk,recordTime:Date.now(),supplementRecordTime:Date.now(),lastEnergySync:Date.now()}); renderAll(); saveData(); showToast("账号添加成功！", "success"); addLog('account', `添加新账号 [新成员[${zk}]] 到分区 [${zk}]`); }
+    function addRow() { 
+        if(!zonesConfig.length){showToast("请先添加分区！", "error");return;} 
+        // 只显示当前存在的分区名称
+        let zoneNames = zonesConfig.map(z => z.name).join('、');
+        let zk = prompt(`请选择分区（输入分区名称）：${zoneNames}`); 
+        if(!zk||!zk.trim()){showToast("未选择分区！", "error");return;}
+        // 支持通过名称或key查找分区
+        let selectedZone = zonesConfig.find(z => z.key === zk.trim() || z.name === zk.trim());
+        if(!selectedZone){showToast("分区不存在！", "error");return;}
+        // 使用分区的实际名称，而不是key
+        accounts.push({name:`新成员[${selectedZone.name}]`,current:0,supplement:0,supplementMax:20000,power:0,excludeFromRank:false,zone:selectedZone.key,recordTime:Date.now(),supplementRecordTime:Date.now(),lastEnergySync:Date.now()}); 
+        renderAll(); saveData(); showToast("账号添加成功！", "success"); addLog('account', `添加新账号 [新成员[${selectedZone.name}]] 到分区 [${selectedZone.name}]`); 
+    }
     function updateNameInZone(zoneKey, idx, newName) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) { const oldName = arr[idx].name; arr[idx].name = newName; renderAll(); saveData(); addLog('account', `重命名账号: ${oldName} → ${newName}`); } }
     function delRowInZone(zoneKey, idx) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) { const accName = arr[idx].name; accounts = accounts.filter(a=> a !== arr[idx]); renderAll(); saveData(); addLog('account', `删除账号 [${accName}] 从分区 [${zoneKey}]`); } }
     
