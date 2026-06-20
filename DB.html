@@ -2437,8 +2437,11 @@
                 roleBadge.style.whiteSpace = 'nowrap';
                 roleBadge.title = '点击切换完成状态';
                 if (shouldShowCompleted) {
+                    // 已完成：红色删除线（更显眼）
                     roleBadge.style.textDecoration = 'line-through';
-                    roleBadge.style.opacity = '0.6';
+                    roleBadge.style.textDecorationColor = '#e53935';
+                    roleBadge.style.textDecorationThickness = '2px';
+                    roleBadge.style.textDecorationSkipInk = 'none';
                 }
                 // 点击角色标签也可以切换完成状态
                 roleBadge.addEventListener('click', (e) => {
@@ -2494,8 +2497,11 @@
                     `;
                     // 如果这个重置日已经完成，添加删除线（不改背景，避免宽度变化）
                     if (resetDay === currentCycleDay && shouldShowCompleted) {
+                        // 已完成：红色删除线
                         dayTag.style.textDecoration = 'line-through';
-                        dayTag.style.opacity = '0.6';
+                        dayTag.style.textDecorationColor = '#e53935';
+                        dayTag.style.textDecorationThickness = '2px';
+                        dayTag.style.textDecorationSkipInk = 'none';
                     }
                     
                     // 点击单个重置日标签可以设置它为下次重置时间
@@ -2526,8 +2532,11 @@
                 }
                 // 如果任务完成，添加删除线（不改背景，避免宽度变化）
                 if (shouldShowCompleted) {
+                    // 已完成：红色删除线
                     dateBadge.style.textDecoration = 'line-through';
-                    dateBadge.style.opacity = '0.6';
+                    dateBadge.style.textDecorationColor = '#e53935';
+                    dateBadge.style.textDecorationThickness = '2px';
+                    dateBadge.style.textDecorationSkipInk = 'none';
                 }
             }
             // 点击日期标签也可以切换完成状态
