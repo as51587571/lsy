@@ -3063,15 +3063,15 @@
             closeExportSettingsModal();
         }
         
-        // 重置导出计数器
+        // 重置导出计数器（直接重置，不弹确认框，并自动关闭导出设置弹窗）
         function resetExportCounter() {
-            if (confirm('确定要重置导出序列号吗？\n\n重置后下次导出将从 001 开始。')) {
-                localStorage.setItem('exportCounter', '0');
-                showNotification('✅ 序列号已重置为 1', 'success');
-                // 更新显示
-                const counterDisplay = document.getElementById('currentCounterDisplay');
-                counterDisplay.textContent = '001';
-            }
+            localStorage.setItem('exportCounter', '0');
+            showNotification('✅ 序列号已重置为 1', 'success');
+            // 更新显示
+            const counterDisplay = document.getElementById('currentCounterDisplay');
+            if (counterDisplay) counterDisplay.textContent = '001';
+            // 自动关闭导出设置弹窗
+            closeExportSettingsModal();
         }
         
         // 点击导出设置弹窗外部关闭
