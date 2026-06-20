@@ -2190,15 +2190,15 @@
     
     // 重置导出计数器
     function resetExportCounter() {
-        if (confirm('确定要重置导出序列号吗？\n\n重置后下次导出将从 001 开始。')) {
-            exportSettings.nextNumber = 1;
-            saveData();
-            showToast('✅ 序列号已重置为 1', 'success');
-            // 更新显示
-            const counterDisplay = document.getElementById('currentCounterDisplay');
-            counterDisplay.textContent = '001';
-            updateFilenamePreview();
-        }
+        exportSettings.nextNumber = 1;
+        saveData();
+        showToast('✅ 序列号已重置为 1', 'success');
+        // 更新显示
+        const counterDisplay = document.getElementById('currentCounterDisplay');
+        counterDisplay.textContent = '001';
+        updateFilenamePreview();
+        // 自动关闭导出设置弹窗
+        closeExportSettings();
     }
     
     // 更新文件名预览
