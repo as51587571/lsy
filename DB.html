@@ -754,7 +754,7 @@
                 <label style="display: block; margin-bottom: 8px; color: #4a9eff; font-weight: bold;">📅 任务刷新时间：</label>
                 <input type="time" id="reset-time-input" style="width: 100%; padding: 10px; border: 1px solid #4a9eff; border-radius: 6px; background: rgba(0,0,0,0.5); color: white; font-size: 1em;">
                 <p style="margin-top: 8px; font-size: 0.85em; color: #aaa;">
-                    💡 提示：设置游戏每日/每周任务的刷新时间（默认 22:00）。修改后，任务完成状态将以该时刻为界判断。
+                    💡 提示：刷新时间仅对<strong style="color:#4a9eff">多重置日任务</strong>生效（默认 22:00）。每日任务与单重置日任务固定按 <strong style="color:#4a9eff">00:00（午夜）</strong>重置。
                 </p>
             </div>
             <div style="text-align: center; margin-top: 30px; display: flex; gap: 10px; justify-content: center;">
@@ -1736,8 +1736,9 @@
             const task = server.tasks.find(t => t.id === taskId);
             if (!task) return;
             
-            // 计算下一个指定星期的刷新时刻（使用全局刷新时间设置）
-            const { hour, minute } = getResetTime();
+            // 计算下一个指定星期的刷新时刻（根据任务类型决定刷新时间）
+            // 该函数仅在多重置日任务 UI 中被调用，因此使用全局刷新时间设置
+            const { hour, minute } = getTaskResetTime(task);
             const nextReset = new Date();
             const currentDay = nextReset.getDay();
             let daysUntilReset = (resetDay - currentDay + 7) % 7;
@@ -1789,8 +1790,8 @@
                 const hasNone = task.repeat.includes('none');
 
                 if (hasDaily) {
-                    // 每日任务：下一个刷新时刻重置
-                    const { hour, minute } = getResetTime();
+                    // 每日任务：单重置任务，固定 00:00 刷新（过 12 点重置）
+                    const { hour, minute } = getTaskResetTime(task);
                     const now = new Date();
                     const todayReset = new Date(now);
                     todayReset.setHours(hour, minute, 0, 0);
@@ -1801,8 +1802,10 @@
                     task.nextResetTime = nextReset.toISOString();
                 } else if (hasWeekly) {
                     // 每周任务：下一个刷新时刻 = 当前周期结束时刻
+                    // 多重置日使用全局刷新时间设置，单重置日使用 00:00
                     const resetDayNums = weeklyDays.map(r => parseInt(r.split('-')[1]));
-                    const { nextMoment } = getCurrentCycleBounds(new Date(), resetDayNums);
+                    const { hour, minute } = getTaskResetTime(task);
+                    const { nextMoment } = getCurrentCycleBounds(new Date(), resetDayNums, hour, minute);
                     if (nextMoment) {
                         task.nextDate = nextMoment.toISOString();
                         task.nextResetTime = nextMoment.toISOString();
@@ -1921,37 +1924,26 @@
                     const hasWeekly = weeklyDays.length > 0;
                     
                     if (hasDaily) {
-                        const tomorrow = new Date();
-                        tomorrow.setDate(tomorrow.getDate() + 1);
-                        task.nextDate = tomorrow.toISOString();
-                        task.nextResetTime = null; // 清除下次重置时间
-                    } else if (hasWeekly) {
-                        // 找到最近的下一个重置日
-                        const nextReset = new Date();
-                        const currentDay = nextReset.getDay();
-                        
-                        // 计算每个重置日距离今天的天数
-                        let minDaysUntilReset = 7; // 默认7天
-                        
-                        weeklyDays.forEach(resetValue => {
-                            const resetDay = parseInt(resetValue.split('-')[1]);
-                            let daysUntilReset = (resetDay - currentDay + 7) % 7;
-                            if (daysUntilReset === 0) {
-                                daysUntilReset = 7; // 如果是同一天，就设置为7天后
-                            }
-                            if (daysUntilReset < minDaysUntilReset) {
-                                minDaysUntilReset = daysUntilReset;
-                            }
-                        });
-                        
-                        if (minDaysUntilReset < 7) {
-                            nextReset.setDate(nextReset.getDate() + minDaysUntilReset);
-                        } else {
-                            nextReset.setDate(nextReset.getDate() + 7); // 下周
-                        }
-                        nextReset.setHours(22, 0, 0, 0); // 默认晚上10点
+                        // 每日任务：单重置任务，固定 00:00 刷新
+                        const { hour, minute } = getTaskResetTime(task);
+                        const now = new Date();
+                        const todayReset = new Date(now);
+                        todayReset.setHours(hour, minute, 0, 0);
+                        const nextReset = now.getTime() >= todayReset.getTime()
+                            ? new Date(todayReset.getTime() + 24 * 3600 * 1000)
+                            : todayReset;
                         task.nextDate = nextReset.toISOString();
-                        task.nextResetTime = nextReset.toISOString(); // 保存下次重置时间
+                        task.nextResetTime = nextReset.toISOString();
+                    } else if (hasWeekly) {
+                        // 每周任务：根据任务类型决定刷新时刻
+                        // 多重置日使用全局刷新时间设置，单重置日使用 00:00
+                        const resetDayNums = weeklyDays.map(r => parseInt(r.split('-')[1]));
+                        const { hour, minute } = getTaskResetTime(task);
+                        const { nextMoment } = getCurrentCycleBounds(new Date(), resetDayNums, hour, minute);
+                        if (nextMoment) {
+                            task.nextDate = nextMoment.toISOString();
+                            task.nextResetTime = nextMoment.toISOString();
+                        }
                     }
                     
                     completedCount++;
@@ -2477,10 +2469,10 @@
                 const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
                 const weeklyDays = task.repeat.filter(r => r.startsWith('weekly-'));
                 
-                // 获取下次重置时间和当前周期对应的重置日
-                let nextResetTime = task.nextResetTime ? new Date(task.nextResetTime) : null;
+                // 此分支仅多重置日任务进入，使用全局刷新时间设置
                 const resetDayNumsForCycle = weeklyDays.map(r => parseInt(r.split('-')[1]));
-                const cycleBounds = getCurrentCycleBounds(new Date(), resetDayNumsForCycle);
+                const { hour: cycleHour, minute: cycleMinute } = getTaskResetTime(task);
+                const cycleBounds = getCurrentCycleBounds(new Date(), resetDayNumsForCycle, cycleHour, cycleMinute);
                 // 当前周期对应的重置日 = 当前周期开始时刻(prevMoment)的星期几
                 let currentCycleDay = cycleBounds.prevMoment ? cycleBounds.prevMoment.getDay() : null;
 
@@ -2516,20 +2508,7 @@
                     dateBadge.appendChild(dayTag);
                 });
                 
-                // 如果有下次重置时间，显示提示
-                if (nextResetTime && !shouldShowCompleted) {
-                    const resetHint = document.createElement('span');
-                    resetHint.style.cssText = `
-                        font-size: 10px;
-                        color: #666;
-                        margin-left: 4px;
-                    `;
-                    const month = String(nextResetTime.getMonth() + 1).padStart(2, '0');
-                    const day = String(nextResetTime.getDate()).padStart(2, '0');
-                    const hours = String(nextResetTime.getHours()).padStart(2, '0');
-                    resetHint.textContent = `(下次: ${month}/${day} ${hours}:00)`;
-                    dateBadge.appendChild(resetHint);
-                }
+                // “下次”提示文字已按用户要求移除
             } else {
                 // 单重置日或一次性/每日任务，使用原有逻辑
                 const repeatText = getRepeatDisplayText(task.repeat);
@@ -2939,7 +2918,8 @@
                                 task.lastCompleted = null;
                                 // 更新 nextDate 为下一个刷新时刻
                                 if (hasDaily) {
-                                    const { hour, minute } = getResetTime();
+                                    // 单重置任务：固定 00:00 刷新
+                                    const { hour, minute } = getTaskResetTime(task);
                                     const now = new Date();
                                     const todayReset = new Date(now);
                                     todayReset.setHours(hour, minute, 0, 0);
@@ -2950,7 +2930,8 @@
                                     task.nextResetTime = nextReset.toISOString();
                                 } else if (hasWeekly) {
                                     const resetDayNums = weeklyDays.map(r => parseInt(r.split('-')[1]));
-                                    const { nextMoment } = getCurrentCycleBounds(new Date(), resetDayNums);
+                                    const { hour, minute } = getTaskResetTime(task);
+                                    const { nextMoment } = getCurrentCycleBounds(new Date(), resetDayNums, hour, minute);
                                     if (nextMoment) {
                                         task.nextDate = nextMoment.toISOString();
                                         task.nextResetTime = nextMoment.toISOString();
@@ -3007,6 +2988,7 @@
             renderTasks();
         }
         // 获取全局刷新时间设置（默认 22:00）
+        // 仅对多重置日任务生效；单重置日 / 每日任务固定使用 00:00（午夜）刷新
         function getResetTime() {
             const saved = localStorage.getItem('gameTodoResetTime');
             if (saved && /^\d{1,2}:\d{2}$/.test(saved)) {
@@ -3016,11 +2998,24 @@
             return { hour: 22, minute: 0 };
         }
 
+        // 根据任务类型返回该任务实际使用的刷新时刻
+        // - 多重置日任务（≥2 个 weekly-X）：使用全局刷新时间设置
+        // - 单重置日任务 / 每日任务：固定使用 00:00（午夜，过 12 点重置）
+        function getTaskResetTime(task) {
+            if (!Array.isArray(task.repeat)) task.repeat = [task.repeat];
+            const weeklyDays = task.repeat.filter(r => r.startsWith('weekly-'));
+            const isMultiReset = weeklyDays.length > 1;
+            if (isMultiReset) {
+                return getResetTime();
+            }
+            return { hour: 0, minute: 0 };
+        }
+
         // 计算当前时间所属周期的边界
         // 周期 = [prevMoment, nextMoment)，prevMoment 为上一个已过去的刷新时刻，nextMoment 为下一个刷新时刻
         // 当前周期对应的重置日 = nextMoment 的星期几
-        function getCurrentCycleBounds(now, resetDays) {
-            const { hour, minute } = getResetTime();
+        // hour/minute 由调用方根据任务类型传入（多重置日使用全局设置，单重置日 / 每日使用 00:00）
+        function getCurrentCycleBounds(now, resetDays, hour, minute) {
             let prevMoment = null;
             let nextMoment = null;
 
@@ -3060,7 +3055,8 @@
             const hasWeekly = weeklyDays.length > 0;
 
             if (hasDaily) {
-                const { hour, minute } = getResetTime();
+                // 单重置任务：固定 00:00 刷新（不受全局刷新时间设置影响）
+                const { hour, minute } = getTaskResetTime(task);
                 const todayReset = new Date(now);
                 todayReset.setHours(hour, minute, 0, 0);
                 const prevDailyReset = now.getTime() >= todayReset.getTime()
@@ -3069,7 +3065,8 @@
                 return lastCompleted.getTime() >= prevDailyReset.getTime();
             } else if (hasWeekly) {
                 const resetDayNums = weeklyDays.map(r => parseInt(r.split('-')[1]));
-                const { prevMoment } = getCurrentCycleBounds(now, resetDayNums);
+                const { hour, minute } = getTaskResetTime(task);
+                const { prevMoment } = getCurrentCycleBounds(now, resetDayNums, hour, minute);
                 if (!prevMoment) return false;
                 return lastCompleted.getTime() >= prevMoment.getTime();
             }
