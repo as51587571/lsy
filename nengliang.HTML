@@ -1323,7 +1323,15 @@
             
             card.innerHTML = `
                 <div class="zone-header">
-                    <h3 class="zone-title" contenteditable="true" onblur="renameZone('${zone.key}', this.innerText)">${escapeHtml(zone.name)}</h3>
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;">
+                        <h3 class="zone-title" contenteditable="true" onblur="renameZone('${zone.key}', this.innerText)">${escapeHtml(zone.name)}</h3>
+                        <!-- 类型选择器（与大区名字同大小） -->
+                        <span style="font-size:0.9rem;color:#4a627a;font-weight:700;">类型:</span>
+                        <select onchange="setZoneDungeonType('${zone.key}', this.value)" style="width:65px;font-size:0.9rem;font-weight:700;padding:2px 6px;border-radius:20px;border:1px solid #cbd5e1;background:#f8fafd;cursor:pointer;height:26px;color:#1f3b4c;">
+                            <option value="conquer" ${selectedType === 'conquer' ? 'selected' : ''}>征服</option>
+                            <option value="transcend" ${selectedType === 'transcend' ? 'selected' : ''}>超越</option>
+                        </select>
+                    </div>
                     <div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;">
                         <!-- 副本可打次数统计 -->
                         <span style="font-size:0.7rem;color:#4a627a;font-weight:600;">🎮可打:</span>
@@ -1342,13 +1350,6 @@
                         <input type="number" min="0" value="${conquerCount}" onchange="setZoneDungeonCountManual('${zone.key}', 'conquer', this.value)" style="width:35px;font-size:0.75rem;font-weight:700;color:#2c7a4d;text-align:center;border:1px solid #cbd5e1;border-radius:4px;padding:1px 2px;height:22px;">
                         <button class="btn btn-success" onclick="increaseZoneDungeonCount('${zone.key}', 'conquer', 1)" style="padding:2px 8px;font-size:0.75rem;height:22px;line-height:1;width:28px;">+</button>
                         <button class="btn" onclick="decreaseZoneDungeonCount('${zone.key}', 'conquer', 1)" style="padding:2px 8px;font-size:0.75rem;height:22px;line-height:1;width:28px;">−</button>
-                        <span style="width:1px;height:18px;background:#e2e8f0;margin:0 3px;"></span>
-                        <!-- 类型选择器 -->
-                        <span style="font-size:0.7rem;color:#4a627a;font-weight:600;">类型:</span>
-                        <select onchange="setZoneDungeonType('${zone.key}', this.value)" style="width:55px;font-size:0.7rem;padding:1px 3px;border-radius:5px;border:1px solid #cbd5e1;background:white;cursor:pointer;height:22px;">
-                            <option value="conquer" ${selectedType === 'conquer' ? 'selected' : ''}>征服</option>
-                            <option value="transcend" ${selectedType === 'transcend' ? 'selected' : ''}>超越</option>
-                        </select>
                         <span style="width:1px;height:18px;background:#e2e8f0;margin:0 3px;"></span>
                         <!-- 超越次数 -->
                         <span style="font-size:0.7rem;color:#1e40af;font-weight:800;">超越:</span>
