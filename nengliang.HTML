@@ -1331,6 +1331,11 @@
                             <option value="conquer" ${selectedType === 'conquer' ? 'selected' : ''}>征服</option>
                             <option value="transcend" ${selectedType === 'transcend' ? 'selected' : ''}>超越</option>
                         </select>
+                        <!-- 征服次数（与大区标题同大小） -->
+                        <span style="font-size:0.9rem;color:#dc2626;font-weight:700;">征服:</span>
+                        <input type="number" min="0" value="${conquerCount}" onchange="setZoneDungeonCountManual('${zone.key}', 'conquer', this.value)" style="width:42px;font-size:0.9rem;font-weight:700;color:#dc2626;text-align:center;border:1px solid #cbd5e1;border-radius:20px;padding:2px 4px;height:26px;background:#fef2f2;">
+                        <button class="btn btn-success" onclick="increaseZoneDungeonCount('${zone.key}', 'conquer', 1)" style="padding:2px 10px;font-size:0.9rem;height:26px;line-height:1;width:32px;border-radius:20px;">+</button>
+                        <button class="btn" onclick="decreaseZoneDungeonCount('${zone.key}', 'conquer', 1)" style="padding:2px 10px;font-size:0.9rem;height:26px;line-height:1;width:32px;border-radius:20px;">−</button>
                     </div>
                     <div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;">
                         <!-- 副本可打次数统计 -->
@@ -1345,17 +1350,11 @@
                         <button class="key-btn" onclick="changeKeyCount('${zone.key}', 1)" style="width:22px;height:22px;border-radius:50%;border:1px solid #cbd5e1;background:#f8fafd;cursor:pointer;font-size:0.85rem;font-weight:bold;color:#4a627a;display:flex;align-items:center;justify-content:center;transition:0.2s;padding:0;">+</button>
                         <span style="font-size:0.65rem;color:#6c7a8e;">/${zone.keyMax}</span>
                         <span style="width:1px;height:18px;background:#e2e8f0;margin:0 3px;"></span>
-                        <!-- 征服次数 -->
-                        <span style="font-size:0.7rem;color:#dc2626;font-weight:800;">征服:</span>
-                        <input type="number" min="0" value="${conquerCount}" onchange="setZoneDungeonCountManual('${zone.key}', 'conquer', this.value)" style="width:35px;font-size:0.75rem;font-weight:700;color:#2c7a4d;text-align:center;border:1px solid #cbd5e1;border-radius:4px;padding:1px 2px;height:22px;">
-                        <button class="btn btn-success" onclick="increaseZoneDungeonCount('${zone.key}', 'conquer', 1)" style="padding:2px 8px;font-size:0.75rem;height:22px;line-height:1;width:28px;">+</button>
-                        <button class="btn" onclick="decreaseZoneDungeonCount('${zone.key}', 'conquer', 1)" style="padding:2px 8px;font-size:0.75rem;height:22px;line-height:1;width:28px;">−</button>
-                        <span style="width:1px;height:18px;background:#e2e8f0;margin:0 3px;"></span>
-                        <!-- 超越次数 -->
-                        <span style="font-size:0.7rem;color:#1e40af;font-weight:800;">超越:</span>
-                        <input type="number" min="0" value="${transcendCount}" onchange="setZoneDungeonCountManual('${zone.key}', 'transcend', this.value)" style="width:35px;font-size:0.75rem;font-weight:700;color:#2c7a4d;text-align:center;border:1px solid #cbd5e1;border-radius:4px;padding:1px 2px;height:22px;">
-                        <button class="btn btn-success" onclick="increaseZoneDungeonCount('${zone.key}', 'transcend', 1)" style="padding:2px 8px;font-size:0.75rem;height:22px;line-height:1;width:28px;">+</button>
-                        <button class="btn" onclick="decreaseZoneDungeonCount('${zone.key}', 'transcend', 1)" style="padding:2px 8px;font-size:0.75rem;height:22px;line-height:1;width:28px;">−</button>
+                        <!-- 超越次数（与大区标题同大小） -->
+                        <span style="font-size:0.9rem;color:#1e40af;font-weight:700;">超越:</span>
+                        <input type="number" min="0" value="${transcendCount}" onchange="setZoneDungeonCountManual('${zone.key}', 'transcend', this.value)" style="width:42px;font-size:0.9rem;font-weight:700;color:#1e40af;text-align:center;border:1px solid #cbd5e1;border-radius:20px;padding:2px 4px;height:26px;background:#eff6ff;">
+                        <button class="btn btn-success" onclick="increaseZoneDungeonCount('${zone.key}', 'transcend', 1)" style="padding:2px 10px;font-size:0.9rem;height:26px;line-height:1;width:32px;border-radius:20px;">+</button>
+                        <button class="btn" onclick="decreaseZoneDungeonCount('${zone.key}', 'transcend', 1)" style="padding:2px 10px;font-size:0.9rem;height:26px;line-height:1;width:32px;border-radius:20px;">−</button>
                         <button class="zone-del-btn" onclick="delZone('${zone.key}')" style="padding:2px 8px;font-size:0.65rem;height:22px;line-height:1;">删除</button>
                     </div>
                 </div>
