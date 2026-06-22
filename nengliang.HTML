@@ -558,11 +558,12 @@
 </head>
 <body>
 <div class="btn-group">
-    <button class="btn" onclick="forceFullRender()">🔄 强制刷新</button>
-    <button class="btn btn-success" onclick="addNewZone()">➕ 添加分区</button>
-    <span>🎯 能量上限:</span>
+    <button class="btn btn-warning" onclick="clearAllData()" style="height:22px;padding:0 10px;line-height:22px;box-sizing:border-box;">🗑️ 清空数据</button>
+    <button class="btn" onclick="forceFullRender()" style="height:22px;padding:0 10px;line-height:22px;box-sizing:border-box;">🔄 强制刷新</button>
+    <button class="btn btn-success" onclick="addNewZone()" style="height:22px;padding:0 10px;line-height:22px;box-sizing:border-box;">➕ 添加分区</button>
+    <span style="font-size:0.75rem; color:#6b7280;">🎯 能量上限:</span>
     <input type="number" id="maxEnergy" class="param-input" value="840" step="1">
-    <span⏱️ 每3小时恢复:</span>
+    <span style="font-size:0.75rem; color:#6b7280;">⏱️ 每3小时恢复:</span>
     <input type="number" id="recoverPer3Hours" class="param-input" value="15" step="1">
     <span style="font-size:0.75rem; color:#6b7280;">🕐 恢复基准时间:</span>
     <input type="time" id="gameRecoveryTime" class="param-input" value="00:00" style="width:80px;">
@@ -581,7 +582,7 @@
         <option value="transcend">超越副本</option>
     </select>
     <button class="btn btn-info" onclick="toggleGlobalDungeonType()" title="一键在 征服 ↔ 超越 之间切换所有分区">🔁 一键切换</button>
-    <button class="btn btn-warning" onclick="clearAllData()">🗑️ 清空数据</button>
+    <div style="width:88px;height:1px;flex-shrink:0;" aria-hidden="true"></div>
     <button class="btn btn-info" onclick="openExportSettings()">⚙️ 导出设置</button>
     <button class="btn btn-warning" onclick="exportData()">📤 导出备份</button>
     <button class="btn btn-info" onclick="document.getElementById('importFile').click()">📥 导入恢复</button>
