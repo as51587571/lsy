@@ -580,6 +580,7 @@
         <option value="conquer">征服副本</option>
         <option value="transcend">超越副本</option>
     </select>
+    <button class="btn btn-info" onclick="toggleGlobalDungeonType()" title="一键在 征服 ↔ 超越 之间切换所有分区">🔁 一键切换</button>
     <button class="btn btn-warning" onclick="clearAllData()">🗑️ 清空数据</button>
     <button class="btn btn-info" onclick="openExportSettings()">⚙️ 导出设置</button>
     <button class="btn btn-warning" onclick="exportData()">📤 导出备份</button>
@@ -945,6 +946,15 @@
         showToast(`已将所有分区切换到${typeName}`, 'success');
         addLog('system', `全局切换副本类型: ${typeName}`);
         renderAll();
+    }
+
+    // 一键切换全局副本类型（征服 ↔ 超越）
+    function toggleGlobalDungeonType() {
+        const next = globalDungeonType === 'conquer' ? 'transcend' : 'conquer';
+        setGlobalDungeonType(next);
+        // 同步顶部下拉框显示
+        const sel = document.getElementById('globalDungeonType');
+        if (sel) sel.value = next;
     }
     
     // 设置分区选择的副本类型
