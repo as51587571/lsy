@@ -465,6 +465,18 @@
         .add-server-btn:hover {
             background-color: #7B1FA2;
         }
+        .global-complete-btn {
+            background-color: #43A047;
+        }
+        .global-complete-btn:hover {
+            background-color: #2E7D32;
+        }
+        .global-uncomplete-btn {
+            background-color: #E53935;
+        }
+        .global-uncomplete-btn:hover {
+            background-color: #C62828;
+        }
         .completed-task {
             text-decoration: line-through !important;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
@@ -647,6 +659,8 @@
                     <button class="clear-btn" onclick="clearAllData()">清空</button>
                     <button class="add-server-btn" onclick="addNewServer()">+ 添加大区</button>
                     <button class="global-add-btn" onclick="showGlobalAddTask()" style="background-color: #9C27B0;">全局添加任务</button>
+                    <button class="global-complete-btn" onclick="completeAllTasksGlobally()" title="将所有大区、所有任务标记为已完成">✅ 全部完成</button>
+                    <button class="global-uncomplete-btn" onclick="uncompleteAllTasksGlobally()" title="将所有大区、所有任务取消完成">↩️ 全部取消</button>
                     <button class="reset-time-btn" onclick="openResetTimeSettings()" style="background-color: #00897B;">⏰ 刷新时间</button>
                 </div>
                 
@@ -1985,6 +1999,108 @@
                 renderTasks();
                 updateDate();
                 showToast(`已取消完成${uncompletedCount}个“${taskName}”任务`, 'info');
+            } else {
+                showToast('没有已完成的任务', 'info');
+            }
+        }
+        
+        // 全局完成：所有大区、所有任务（不含一次性任务）一次性标记为完成
+        function completeAllTasksGlobally() {
+            // 统计待完成数量（一次性任务不参与批量完成，避免被自动删除）
+            let pendingCount = 0;
+            servers.forEach(server => {
+                server.tasks.forEach(task => {
+                    if (!Array.isArray(task.repeat)) task.repeat = [task.repeat];
+                    if (task.repeat.includes('none')) return; // 跳过一次性任务
+                    if (!isTaskCompletedNow(task)) pendingCount++;
+                });
+            });
+            if (pendingCount === 0) {
+                showToast('所有任务都已完成', 'info');
+                return;
+            }
+
+            const now = new Date();
+            const nowIso = now.toISOString();
+            let completedCount = 0;
+
+            servers.forEach(server => {
+                server.tasks.forEach(task => {
+                    if (!Array.isArray(task.repeat)) task.repeat = [task.repeat];
+                    if (task.repeat.includes('none')) return; // 跳过一次性任务
+                    if (isTaskCompletedNow(task)) return;     // 已经完成则跳过
+
+                    task.completed = true;
+                    task.lastCompleted = nowIso;
+
+                    const hasDaily = task.repeat.includes('daily');
+                    const weeklyDays = task.repeat.filter(r => r.startsWith('weekly-'));
+                    const hasWeekly = weeklyDays.length > 0;
+
+                    if (hasDaily) {
+                        // 每日任务：单重置任务，固定 00:00 刷新
+                        const { hour, minute } = getTaskResetTime(task);
+                        const todayReset = new Date(now);
+                        todayReset.setHours(hour, minute, 0, 0);
+                        const nextReset = now.getTime() >= todayReset.getTime()
+                            ? new Date(todayReset.getTime() + 24 * 3600 * 1000)
+                            : todayReset;
+                        task.nextDate = nextReset.toISOString();
+                        task.nextResetTime = nextReset.toISOString();
+                    } else if (hasWeekly) {
+                        // 每周任务：多重置日使用全局刷新时间设置，单重置日使用 00:00
+                        const resetDayNums = weeklyDays.map(r => parseInt(r.split('-')[1]));
+                        const { hour, minute } = getTaskResetTime(task);
+                        const { nextMoment } = getCurrentCycleBounds(now, resetDayNums, hour, minute);
+                        if (nextMoment) {
+                            task.nextDate = nextMoment.toISOString();
+                            task.nextResetTime = nextMoment.toISOString();
+                        }
+                    }
+                    completedCount++;
+                });
+            });
+
+            if (completedCount > 0) {
+                saveServers();
+                renderTasks();
+                updateDate();
+                showToast(`已全局完成 ${completedCount} 个任务`, 'success');
+            } else {
+                showToast('没有需要完成的任务', 'info');
+            }
+        }
+
+        // 全局取消完成：清除所有大区、所有任务的完成状态
+        function uncompleteAllTasksGlobally() {
+            // 统计已完成数量（包含一次性任务，因为用户可能手动标记过）
+            let completedCount = 0;
+            servers.forEach(server => {
+                server.tasks.forEach(task => {
+                    if (task.completed) completedCount++;
+                });
+            });
+            if (completedCount === 0) {
+                showToast('没有已完成的任务', 'info');
+                return;
+            }
+
+            let uncompletedCount = 0;
+            servers.forEach(server => {
+                server.tasks.forEach(task => {
+                    if (task.completed) {
+                        task.completed = false;
+                        task.lastCompleted = null;
+                        uncompletedCount++;
+                    }
+                });
+            });
+
+            if (uncompletedCount > 0) {
+                saveServers();
+                renderTasks();
+                updateDate();
+                showToast(`已全局取消 ${uncompletedCount} 个任务`, 'info');
             } else {
                 showToast('没有已完成的任务', 'info');
             }
