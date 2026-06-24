@@ -631,45 +631,46 @@
     <div class="container">
         <!-- 标题和控制栏在同一行 -->
         <div class="header-row">
+            <button class="export-btn" onclick="resetExportCounter()" style="flex-shrink:0; margin-right:12px;">⚙️ 导出设置</button>
+
+            <!-- 数据管理区域（导出/导入） -->
+            <div class="data-management" style="margin-right:12px;">
+                <span class="data-management-label">📦 数据管理</span>
+                <div class="data-management-buttons">
+                    <button class="export-main-btn" onclick="exportData()">💾 导出数据</button>
+                    <button class="import-main-btn" onclick="document.getElementById('import-file').click()">📂 导入数据</button>
+                    <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(this)">
+                </div>
+            </div>
+
+            <!-- 完成状态操作 -->
+            <div class="data-controls" style="margin-right:12px;">
+                <button class="global-complete-btn" onclick="completeAllTasksGlobally()" title="将所有大区、所有任务标记为已完成">✅ 全部完成</button>
+                <button class="global-uncomplete-btn" onclick="uncompleteAllTasksGlobally()" title="将所有大区、所有任务取消完成">↩️ 全部取消</button>
+            </div>
+
             <h1>游戏待办事项列表</h1>
-            
+
             <!-- 全局控制区 -->
             <div class="global-controls">
-                <div class="sound-control">
-                    <label>
-                        <input type="checkbox" id="sound-toggle" checked>
-                        启用声音提示
-                    </label>
-                    <button onclick="testSound()">测试声音</button>
-                    <button onclick="showSoundSettings()">声音设置</button>
-                </div>
-                
-                <!-- 数据管理区域（导出/导入） -->
-                <div class="data-management">
-                    <span class="data-management-label">📦 数据管理</span>
-                    <div class="data-management-buttons">
-                        <button class="export-main-btn" onclick="exportData()">💾 导出数据</button>
-                        <button class="import-main-btn" onclick="document.getElementById('import-file').click()">📂 导入数据</button>
-                        <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(this)">
-                    </div>
-                </div>
-                
+                <!-- 大区/任务管理 -->
                 <div class="data-controls">
-                    <button class="export-btn" onclick="openExportSettings()">⚙️ 导出设置</button>
-                    <button class="clear-btn" onclick="clearAllData()">清空</button>
                     <button class="add-server-btn" onclick="addNewServer()">+ 添加大区</button>
                     <button class="global-add-btn" onclick="showGlobalAddTask()" style="background-color: #9C27B0;">全局添加任务</button>
-                    <button class="global-complete-btn" onclick="completeAllTasksGlobally()" title="将所有大区、所有任务标记为已完成">✅ 全部完成</button>
-                    <button class="global-uncomplete-btn" onclick="uncompleteAllTasksGlobally()" title="将所有大区、所有任务取消完成">↩️ 全部取消</button>
+                </div>
+
+                <!-- 其他操作 -->
+                <div class="data-controls">
+                    <button class="clear-btn" onclick="clearAllData()">清空</button>
                     <button class="reset-time-btn" onclick="openResetTimeSettings()" style="background-color: #00897B;">⏰ 刷新时间</button>
                 </div>
-                
+
                 <div class="date-info">
                     最后更新: <span id="last-updated"></span>
                 </div>
             </div>
         </div>
-        
+
         <!-- 大区网格布局 -->
         <div class="servers-grid" id="servers-container"></div>
         
@@ -959,26 +960,32 @@
             }
         });
         
-        // 切换声音开关
-        document.getElementById('sound-toggle').addEventListener('change', function() {
-            soundEnabled = this.checked;
-            localStorage.setItem('todoSoundEnabled', soundEnabled);
-        });
+        // 切换声音开关（元素已删除，跳过绑定）
+        const soundToggleEl = document.getElementById('sound-toggle');
+        if (soundToggleEl) {
+            soundToggleEl.addEventListener('change', function() {
+                soundEnabled = this.checked;
+                localStorage.setItem('todoSoundEnabled', soundEnabled);
+            });
+        }
         
         // 从 localStorage 加载声音设置
         function loadSoundSetting() {
             const savedSetting = localStorage.getItem('todoSoundEnabled');
             if (savedSetting !== null) {
                 soundEnabled = savedSetting === 'true';
-                document.getElementById('sound-toggle').checked = soundEnabled;
+                const soundToggle = document.getElementById('sound-toggle');
+                if (soundToggle) soundToggle.checked = soundEnabled;
             }
                     
             // 加载时长设置
             const savedDuration = localStorage.getItem('todoSoundDuration');
             if (savedDuration !== null) {
                 soundDuration = parseFloat(savedDuration);
-                document.getElementById('sound-duration').value = soundDuration;
-                document.getElementById('duration-value').textContent = soundDuration.toFixed(1) + '秒';
+                const soundDur = document.getElementById('sound-duration');
+                const durValue = document.getElementById('duration-value');
+                if (soundDur) soundDur.value = soundDuration;
+                if (durValue) durValue.textContent = soundDuration.toFixed(1) + '秒';
             }
         }
         
@@ -2950,7 +2957,8 @@
                     // 导入声音设置（如果存在）
                     if (importedData.soundEnabled !== undefined) {
                         soundEnabled = importedData.soundEnabled;
-                        document.getElementById('sound-toggle').checked = soundEnabled;
+                        const stEl = document.getElementById('sound-toggle');
+                        if (stEl) stEl.checked = soundEnabled;
                         localStorage.setItem('todoSoundEnabled', soundEnabled);
                     }
                     
