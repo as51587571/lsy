@@ -802,6 +802,12 @@
                 }
             }
             
+            // 加载全局副本类型选择
+            const savedGlobalDungeonType = localStorage.getItem('energyGlobalDungeonType');
+            if (savedGlobalDungeonType) {
+                globalDungeonType = savedGlobalDungeonType;
+            }
+            
             // 加载操作记录
             const savedLogs = localStorage.getItem('energyOperationLogs');
             if (savedLogs) {
