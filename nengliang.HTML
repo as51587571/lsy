@@ -584,6 +584,7 @@
     <button class="btn btn-info" onclick="toggleGlobalDungeonType()" title="一键在 征服 ↔ 超越 之间切换所有分区">🔁 一键切换</button>
     <div style="width:88px;height:1px;flex-shrink:0;" aria-hidden="true"></div>
     <button class="btn btn-info" onclick="openExportSettings()">⚙️ 导出设置</button>
+    <button class="btn btn-warning" onclick="resetExportCounterDirect()" title="一键重置导出序列号为1" style="padding:4px 8px;font-size:0.7rem;">🔄 重置序号</button>
     <button class="btn btn-warning" onclick="exportData()">📤 导出备份</button>
     <button class="btn btn-info" onclick="document.getElementById('importFile').click()">📥 导入恢复</button>
     <input type="file" id="importFile" accept=".json" onchange="importData(this)">
@@ -711,19 +712,19 @@
                 }
             }
             else zonesConfig = [
-                { name: "奈薩区", key: "奈薩", keyCount: 0, keyMax: 14, keyRecordTime: Date.now(),
+                { name: "天2", key: "奈薩", keyCount: 0, keyMax: 14, keyRecordTime: Date.now(),
                   dungeonConquer: { count: 0, lastResetTime: null },
                   dungeonTranscend: { count: 0, lastResetTime: null },
                   selectedDungeonType: globalDungeonType },
-                { name: "塔哈区", key: "塔哈", keyCount: 0, keyMax: 14, keyRecordTime: Date.now(),
+                { name: "天11", key: "塔哈", keyCount: 0, keyMax: 14, keyRecordTime: Date.now(),
                   dungeonConquer: { count: 0, lastResetTime: null },
                   dungeonTranscend: { count: 0, lastResetTime: null },
                   selectedDungeonType: globalDungeonType },
-                { name: "德区", key: "廬德", keyCount: 0, keyMax: 14, keyRecordTime: Date.now(),
+                { name: "魔11", key: "廬德", keyCount: 0, keyMax: 14, keyRecordTime: Date.now(),
                   dungeonConquer: { count: 0, lastResetTime: null },
                   dungeonTranscend: { count: 0, lastResetTime: null },
                   selectedDungeonType: globalDungeonType },
-                { name: "崔妮区", key: "崔妮", keyCount: 0, keyMax: 14, keyRecordTime: Date.now(),
+                { name: "魔11", key: "崔妮", keyCount: 0, keyMax: 14, keyRecordTime: Date.now(),
                   dungeonConquer: { count: 0, lastResetTime: null },
                   dungeonTranscend: { count: 0, lastResetTime: null },
                   selectedDungeonType: globalDungeonType }
@@ -750,27 +751,27 @@
                 }
             } else {
                 accounts = [
-                    { name: "北疯[奈薩]", current: 80, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "MISSS[奈薩]", current: 630, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "阿林LSY[奈薩]", current: 525, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "热巴在上钟[奈薩]", current: 615, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "莽超[奈薩]", current: 600, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "绯闻男友[塔哈]", current: 315, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "阿林[塔哈]", current: 55, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "挤不出了[塔哈]", current: 54, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "南街刘德华[塔哈]", current: 0, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "西街刘德华[塔哈]", current: 50, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "misslin[廬德]", current: 60, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "南疯[廬德]", current: 90, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "阿林[廬德]", current: 115, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "蠢人灵机一动[德]", current: 180, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "红灯星[廬德]", current: 195, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "魔三XXXX[崔妮]", current: 60, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "海王开凿[崔妮]", current: 60, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "黄金奶[崔妮]", current: 102, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "杰西卡的奶[崔妮]", current: 54, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "流川夕的奶[崔妮]", current: 52, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "八卦海的奶[崔妮]", current: 50, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() }
+                    { name: "北疯[天2]", current: 80, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "MISSS[天2]", current: 630, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "阿林LSY[天2]", current: 525, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "热巴在上钟[天2]", current: 615, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "莽超[天2]", current: 600, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "绯闻男友[天11]", current: 315, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "阿林[天11]", current: 55, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "挤不出了[天11]", current: 54, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "南街刘德华[天11]", current: 0, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "西街刘德华[天11]", current: 50, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "misslin[魔11]", current: 60, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "南疯[魔11]", current: 90, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "阿林[魔11]", current: 115, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "蠢人灵机一动[魔11]", current: 180, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "红灯星[魔11]", current: 195, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "魔三XXXX[魔11]", current: 60, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "海王开凿[魔11]", current: 60, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "黄金奶[魔11]", current: 102, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "杰西卡的奶[魔11]", current: 54, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "流川夕的奶[魔11]", current: 52, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
+                    { name: "八卦海的奶[魔11]", current: 50, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() }
                 ];
             }
             
@@ -823,10 +824,10 @@
         } catch (e) {
             console.warn(e);
             zonesConfig = [
-                { name: "奈薩区", key: "奈薩" },
-                { name: "塔哈区", key: "塔哈" },
+                { name: "天2", key: "奈薩" },
+                { name: "天11", key: "塔哈" },
                 { name: "廬德区", key: "廬德" },
-                { name: "崔妮区", key: "崔妮" }
+                { name: "魔11", key: "崔妮" }
             ];
             accounts = [];
             showToast("读取数据出错，已重置为默认", "error", 5000);
@@ -2216,6 +2217,13 @@
         updateFilenamePreview();
         // 自动关闭导出设置弹窗
         closeExportSettings();
+    }
+    
+    // 一键重置导出序号（不依赖弹窗）
+    function resetExportCounterDirect() {
+        exportSettings.nextNumber = 1;
+        saveData();
+        showToast('序列号已重置为 1', 'success');
     }
     
     // 更新文件名预览
