@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>继承制作 - 价值反向推算器</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --text-secondary: #8b949e;
+    --accent: #3fb950;
+    --accent-dim: #238636;
+    --gold: #d4a843;
+    --danger: #f85149;
+    --blue: #58a6ff;
+    --cyan: #39d2c0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .container {
+    width: 100%; max-width: 880px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .header {
+    background: linear-gradient(135deg, #1a1f2e 0%, #161b22 100%);
+    padding: 16px 24px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .header h1 { font-size: 18px; font-weight: 600; color: #e6edf3; display: flex; align-items: center; gap: 10px; }
+  .header h1 span { color: var(--accent); }
+  .badge { background: var(--accent-dim); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .content { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+  @media (max-width: 820px) { .content { grid-template-columns: 1fr; } }
+  .panel { padding: 20px 24px; }
+  .panel-left { border-right: 1px solid var(--border); }
+  @media (max-width: 820px) { .panel-left { border-right: none; border-bottom: 1px solid var(--border); } }
+  .panel-title {
+    font-size: 14px; font-weight: 600; color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel-title::before { content: ''; display: inline-block; width: 4px; height: 16px; background: var(--accent); border-radius: 2px; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+  .form-group .input-row { display: flex; align-items: center; gap: 8px; }
+  .form-group input[type="number"], .form-group input[type="text"] {
+    flex: 1; background: #0d1117; border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 12px; color: #e6edf3; font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.2s;
+  }
+  .form-group input:focus { border-color: var(--accent); }
+  .form-group input[type="range"] { padding: 0; border: none; background: transparent; accent-color: var(--accent); }
+  .unit { color: var(--text-secondary); font-size: 13px; white-space: nowrap; min-width: 36px; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+  .result-card {
+    background: #0d1117; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 10px;
+  }
+  .result-card .rc-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .result-card .rc-value { font-size: 22px; font-weight: 700; }
+  .result-card .rc-detail { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .result-card.highlight { border-color: var(--gold); background: linear-gradient(135deg, rgba(212,168,67,0.08) 0%, #0d1117 100%); }
+  .accent-green { color: var(--accent); }
+  .accent-gold { color: var(--gold); }
+  .accent-red { color: var(--danger); }
+  .accent-blue { color: var(--blue); }
+  .accent-cyan { color: var(--cyan); }
+  .fee-selector { display: flex; gap: 8px; }
+  .fee-selector button {
+    flex: 1; padding: 8px 12px; border: 1px solid var(--border);
+    background: #0d1117; color: var(--text-secondary); border-radius: 6px;
+    font-size: 14px; font-family: inherit; cursor: pointer; transition: all 0.2s;
+  }
+  .fee-selector button.active { border-color: var(--gold); color: var(--gold); background: rgba(212,168,67,0.1); }
+  .fee-selector button:hover { border-color: var(--text-secondary); }
+  .combo-section {
+    background: linear-gradient(135deg, rgba(63,185,80,0.06) 0%, rgba(63,185,80,0.02) 100%);
+    border: 1px solid rgba(63,185,80,0.2); border-radius: 8px; padding: 14px 16px; margin-top: 8px;
+  }
+  .combo-section h4 { font-size: 13px; color: var(--accent); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .profit-indicator {
+    display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px;
+    border-radius: 12px; font-size: 13px; font-weight: 600;
+  }
+  .profit-indicator.positive { background: #0d3320; color: #3fb950; }
+  .profit-indicator.negative { background: #3d1015; color: #f85149; }
+  .profit-indicator.neutral { background: #1a1a1a; color: #8b949e; }
+  .breakdown { font-size: 12px; color: var(--text-secondary); margin-top: 6px; line-height: 1.6; }
+  .breakdown span { color: var(--text); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><span style="font-size:22px">⚒️</span> 制作管理 <span>|</span> 继承制作 · 反向推算器</h1>
+    <span class="badge">鎏金 Lv.90</span>
+  </div>
+  <div class="content">
+    <div class="panel panel-left">
+      <div class="panel-title">已知条件</div>
+
+      <div class="form-group">
+        <label>下级材料名称</label>
+        <input type="text" id="lowerName" value="下级魔石">
+      </div>
+
+      <div class="form-group">
+        <label>中级产物名称（基础产出，无价值）</label>
+        <input type="text" id="midName" value="中级魔石">
+      </div>
+
+      <div class="form-group">
+        <label>上级产物名称（暴击产出，有价值）</label>
+        <input type="text" id="upperName" value="上级魔石">
+      </div>
+
+      <div class="form-group">
+        <label id="lblUpperPrice">上级魔石市价</label>
+        <div class="input-row">
+          <input type="number" id="upperPrice" value="35000" min="0" step="100">
+          <span class="unit">金币</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label id="lblLowerRequired">每颗中级魔石所需下级魔石数量</label>
+        <div class="input-row">
+          <input type="number" id="lowerRequired" value="5" min="1" max="99">
+          <span class="unit">颗</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>其他材料总成本</label>
+        <div class="input-row">
+          <input type="number" id="otherCost" value="2000" min="0" step="100">
+          <span class="unit">金币</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>交易所手续费</label>
+        <div class="fee-selector" id="feeSelector">
+          <button type="button" data-fee="0.10" class="active">10%</button>
+          <button type="button" data-fee="0.20">20%</button>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="combo-section">
+        <h4>⚡ COMBO 暴击设定</h4>
+        <div class="form-group">
+          <label>暴击率</label>
+          <div class="input-row">
+            <input type="range" id="critRateSlider" value="20" min="0" max="100" step="1" oninput="syncSlider()">
+            <input type="number" id="critRate" value="20" min="0" max="100" step="1" onchange="syncInput()" style="width:60px;text-align:center;flex:none;">
+            <span class="unit">%</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label id="lblCritBonus">暴击时额外获得（上级魔石）</label>
+          <div class="input-row">
+            <input type="number" id="critBonus" value="1" min="0" max="10" step="1">
+            <span class="unit">颗</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">反向推算结果</div>
+
+      <div class="result-card highlight">
+        <div class="rc-label" id="lblResult">下级魔石推算价值（单价）</div>
+        <div class="rc-value accent-gold" id="lowerStoneValue">-</div>
+        <div class="rc-detail">盈亏平衡价 — 低于此价买入即有利可图</div>
+      </div>
+
+      <div class="result-card">
+        <div class="rc-label" id="lblExpectedOutput">期望产出量（有价值的上级产物）</div>
+        <div class="rc-value accent-green" id="expectedOutput">-</div>
+        <div class="rc-detail">暴击率 × 额外数量（基础1颗中级产物无价值）</div>
+      </div>
+
+      <div class="result-card">
+        <div class="rc-label">期望总收益（扣手续费后）</div>
+        <div class="rc-value accent-cyan" id="expectedRevenue">-</div>
+        <div class="rc-detail">期望产出 × 市价 × (1 − 手续费)</div>
+      </div>
+
+      <div class="breakdown" id="breakdownDetail"></div>
+
+      <hr class="divider">
+
+      <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px">情景分析</div>
+
+      <div class="result-card">
+        <div class="rc-label" id="lblProfit10">下级魔石买入价低于推算值 10% → 每组利润</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+          <span style="font-size:18px;font-weight:700" id="profit10">-</span>
+          <span class="profit-indicator" id="profit10Badge">-</span>
+        </div>
+      </div>
+
+      <div class="result-card">
+        <div class="rc-label" id="lblNoCrit">暴击率为 0%（不暴击）→ 下级魔石价值</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+          <span style="font-size:18px;font-weight:700" id="noCritValue">-</span>
+          <span class="profit-indicator" id="noCritBadge">-</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let feeRate = 0.10;
+document.querySelectorAll('#feeSelector button').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('#feeSelector button').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    feeRate = parseFloat(this.dataset.fee);
+    updateAll();
+  });
+});
+
+function syncSlider() {
+  document.getElementById('critRate').value = document.getElementById('critRateSlider').value;
+  updateAll();
+}
+function syncInput() {
+  let v = parseInt(document.getElementById('critRate').value) || 0;
+  v = Math.max(0, Math.min(100, v));
+  document.getElementById('critRate').value = v;
+  document.getElementById('critRateSlider').value = v;
+  updateAll();
+}
+
+function fmt(n) {
+  if (isNaN(n) || !isFinite(n)) return '-';
+  return n.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+function fmtDec(n, d) {
+  if (isNaN(n) || !isFinite(n)) return '-';
+  return n.toLocaleString('zh-CN', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+
+function updateLabels() {
+  const uname = document.getElementById('upperName').value || '上级产物';
+  const mname = document.getElementById('midName').value || '中级产物';
+  const lname = document.getElementById('lowerName').value || '下级材料';
+  document.getElementById('lblUpperPrice').textContent = uname + '市价';
+  document.getElementById('lblLowerRequired').textContent = '每颗' + mname + '所需' + lname + '数量';
+  document.getElementById('lblCritBonus').textContent = '暴击时额外获得（' + uname + '）';
+  document.getElementById('lblResult').textContent = lname + '推算价值（单价）';
+  document.getElementById('lblProfit10').textContent = lname + '买入价低于推算值 10% → 每组利润';
+  document.getElementById('lblNoCrit').textContent = '暴击率为 0%（不暴击）→ ' + lname + '价值';
+  document.getElementById('lblExpectedOutput').textContent = '期望产出量（有价值的' + uname + '）';
+}
+
+function updateAll() {
+  updateLabels();
+  calculate();
+}
+
+function calculate() {
+  const uname = document.getElementById('upperName').value || '上级产物';
+  const mname = document.getElementById('midName').value || '中级产物';
+  const lname = document.getElementById('lowerName').value || '下级材料';
+  const upperPrice = parseInt(document.getElementById('upperPrice').value) || 0;
+  const lowerReq = parseInt(document.getElementById('lowerRequired').value) || 1;
+  const otherCost = parseInt(document.getElementById('otherCost').value) || 0;
+  const critRate = (parseInt(document.getElementById('critRate').value) || 0) / 100;
+  const critBonus = parseInt(document.getElementById('critBonus').value) || 0;
+
+  const netRate = 1 - feeRate;
+
+  // 基础产出 1 颗中级产物无价值，只有暴击额外产出的上级产物才值钱
+  const expectedOutput = critRate * critBonus;
+  const expectedRevenue = expectedOutput * upperPrice * netRate;
+  const budget = expectedRevenue - otherCost;
+  const lowerValue = budget > 0 ? budget / lowerReq : 0;
+
+  const buy10 = lowerValue * 0.9;
+  const profit10 = (lowerValue - buy10) * lowerReq;
+
+  // 不暴击时价值必定为 0
+  const noCritValue = 0;
+
+  document.getElementById('lowerStoneValue').textContent = (lowerValue > 0 ? fmt(lowerValue) : '0') + ' 金币';
+  document.getElementById('expectedOutput').textContent = fmtDec(expectedOutput, 3) + ' 颗';
+  document.getElementById('expectedRevenue').textContent = fmt(expectedRevenue) + ' 金币';
+
+  document.getElementById('breakdownDetail').innerHTML =
+    '有价值的产出 = <span>' + fmtDec(critRate * 100, 0) + '%</span> × <span>' + critBonus + '</span> = <span>' + fmtDec(expectedOutput, 3) + ' 颗 ' + uname + '</span>（基础1颗' + mname + '无价值）<br>' +
+    '期望收益 = <span>' + fmtDec(expectedOutput, 3) + '</span> × <span>' + fmt(upperPrice) + '</span> × <span>' + fmtDec(netRate * 100, 0) + '%</span> = <span>' + fmt(expectedRevenue) + ' 金币</span><br>' +
+    '可用预算 = <span>' + fmt(expectedRevenue) + '</span> − <span>' + fmt(otherCost) + '</span> = <span>' + fmt(Math.max(0, budget)) + ' 金币</span><br>' +
+    lname + '价值 = <span>' + fmt(Math.max(0, budget)) + '</span> ÷ <span>' + lowerReq + '</span> = <strong style="color:var(--gold)">' + fmt(Math.max(0, lowerValue)) + ' 金币/颗</strong>';
+
+  document.getElementById('profit10').textContent = fmt(profit10) + ' 金币';
+  const b10 = document.getElementById('profit10Badge');
+  if (profit10 > 0) { b10.textContent = '获利'; b10.className = 'profit-indicator positive'; }
+  else { b10.textContent = '亏损'; b10.className = 'profit-indicator negative'; }
+
+  document.getElementById('noCritValue').textContent = '0 金币/颗';
+  const bn = document.getElementById('noCritBadge');
+  bn.textContent = '无价值';
+  bn.className = 'profit-indicator negative';
+}
+
+document.querySelectorAll('input[type="number"], input[type="text"]').forEach(el => {
+  el.addEventListener('click', function() { this.select(); });
+});
+
+document.getElementById('upperName').addEventListener('input', updateAll);
+document.getElementById('midName').addEventListener('input', updateAll);
+document.getElementById('lowerName').addEventListener('input', updateAll);
+document.querySelectorAll('input[type="number"]').forEach(el => el.addEventListener('input', calculate));
+document.querySelectorAll('input[type="range"]').forEach(el => el.addEventListener('input', calculate));
+
+updateAll();
+</script>
+</body>
+</html>
