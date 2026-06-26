@@ -610,6 +610,7 @@
             border-radius: 50%;
             transition: 0.15s;
             font-weight: bold;
+            margin-left: 6px;
         }
         .remark-clear-btn:hover {
             background: #fee2e2;
@@ -796,6 +797,7 @@
                                 // 移动操作: 在accounts数组内交换相邻元素（前提是同一分区）。
     let showDecimal = false;
     let remarkMode = false;
+    let deleteSelectMode = {};
     let lastRecalcTimestamp = Date.now();
     const RECALC_INTERVAL_MS = 15 * 60 * 1000;  // 15分钟
     
@@ -1522,7 +1524,8 @@
                         <input type="number" min="0" value="${transcendCount}" onfocus="this.select()" onchange="setZoneDungeonCountManual('${zone.key}', 'transcend', this.value)" style="width:42px;font-size:0.9rem;font-weight:700;color:#1e40af;text-align:center;border:1px solid #cbd5e1;border-radius:20px;padding:2px 4px;height:26px;background:#eff6ff;">
                         <button class="btn btn-success" onclick="increaseZoneDungeonCount('${zone.key}', 'transcend', 1)" style="padding:2px 10px;font-size:0.9rem;height:26px;line-height:1;width:32px;border-radius:20px;">+</button>
                         <button class="btn" onclick="decreaseZoneDungeonCount('${zone.key}', 'transcend', 1)" style="padding:2px 10px;font-size:0.9rem;height:26px;line-height:1;width:32px;border-radius:20px;">−</button>
-                        <button class="zone-del-btn" onclick="delZone('${zone.key}')" style="padding:2px 8px;font-size:0.65rem;height:22px;line-height:1;">删除</button>
+                        <span id="del-ctrl-${zone.key}"></span>
+                        <button class="zone-del-btn" onclick="delZone('${zone.key}')" style="padding:2px 8px;font-size:0.65rem;height:22px;line-height:1;">删除分区</button>
                     </div>
                 </div>
                 <table>
@@ -1581,6 +1584,17 @@
                 nameWrapper.style.display = 'flex';
                 nameWrapper.style.alignItems = 'center';
                 nameWrapper.style.gap = '4px';
+
+                // 选择模式下的复选框
+                if (deleteSelectMode[zone.key]) {
+                    const chk = document.createElement('input');
+                    chk.type = 'checkbox';
+                    chk.className = 'del-select-chk';
+                    chk.dataset.zone = zone.key;
+                    chk.dataset.idx = idx;
+                    chk.style.cssText = 'width:16px;height:16px;cursor:pointer;margin:0;flex-shrink:0;';
+                    nameWrapper.appendChild(chk);
+                }
                 
                 const nameInput = document.createElement('input');
                 nameInput.type = 'text';
@@ -1920,6 +1934,7 @@
                 downBtn.innerText = '↓';
                 downBtn.className = 'move-down-btn';
                 downBtn.title = '下移';
+                downBtn.style.marginRight = '8px';
                 downBtn.onclick = (() => {
                     moveAccount(zone.key, idx, 'down');
                 });
@@ -1946,12 +1961,6 @@
                 mergeBtn.onclick = ((accountRef) => () => {
                     mergeEnergyToSupplement(accountRef);
                 })(acc);
-                // 删除按钮
-                const delBtn = document.createElement('button');
-                delBtn.innerText = '✖';
-                delBtn.className = 'delete-row-btn';
-                delBtn.title = '删除账号';
-                delBtn.onclick = ((z, idx2) => () => delRowInZone(z, idx2))(zone.key, idx);
                 
                 actionDiv.appendChild(upBtn);
                 actionDiv.appendChild(downBtn);
@@ -1969,20 +1978,21 @@
                 })(acc, zone.key, idx);
                 actionDiv.appendChild(remarkBtn);
                 
-                // 清除备注按钮（有备注时显示）
-                if (acc.remark && acc.remark.trim()) {
-                    const clearRemarkBtn = document.createElement('button');
-                    clearRemarkBtn.innerText = '✕';
-                    clearRemarkBtn.className = 'remark-clear-btn';
-                    clearRemarkBtn.title = '清除备注';
-                    clearRemarkBtn.onclick = ((accountRef, zk, i) => (e) => {
-                        e.stopPropagation();
-                        clearAccountRemark(accountRef, zk, i);
-                    })(acc, zone.key, idx);
-                    actionDiv.appendChild(clearRemarkBtn);
+                // 清除备注按钮（始终渲染，无备注时 visibility:hidden 占位保证对齐）
+                const clearRemarkBtn = document.createElement('button');
+                clearRemarkBtn.innerText = '✕';
+                clearRemarkBtn.className = 'remark-clear-btn';
+                clearRemarkBtn.title = '清除备注';
+                clearRemarkBtn.style.marginLeft = '6px';
+                clearRemarkBtn.onclick = ((accountRef, zk, i) => (e) => {
+                    e.stopPropagation();
+                    clearAccountRemark(accountRef, zk, i);
+                })(acc, zone.key, idx);
+                if (!acc.remark || !acc.remark.trim()) {
+                    clearRemarkBtn.style.visibility = 'hidden';
                 }
+                actionDiv.appendChild(clearRemarkBtn);
                 
-                actionDiv.appendChild(delBtn);
                 tdActions.appendChild(actionDiv);
                 
                 tr.appendChild(tdName);
@@ -1997,6 +2007,7 @@
                 tr.appendChild(tdActions)
                 tbody.appendChild(tr);
             });
+            updateDeleteControlUI(zone.key);
         });
         saveData();
     }
@@ -2126,12 +2137,9 @@
                             remarkBtn.title = '添加备注';
                         }
                     }
-                    // 清除备注按钮
-                    if (hasRemark && !clearRemarkBtn) {
-                        // 仅在缺失时重建（但操作列需要重新渲染，这里简单触发 renderAll）
-                        // 跳过，让 renderAll 处理
-                    } else if (!hasRemark && clearRemarkBtn) {
-                        clearRemarkBtn.remove();
+                    // 清除备注按钮：始终存在，根据备注有无切换 visibility
+                    if (clearRemarkBtn) {
+                        clearRemarkBtn.style.visibility = hasRemark ? 'visible' : 'hidden';
                     }
                 }
             }
@@ -2328,6 +2336,58 @@
     }
     function updateNameInZone(zoneKey, idx, newName) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) { const oldName = arr[idx].name; arr[idx].name = newName; renderAll(); saveData(); addLog('account', `重命名账号: ${oldName} → ${newName}`); } }
     function delRowInZone(zoneKey, idx) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) { const accName = arr[idx].name; accounts = accounts.filter(a=> a !== arr[idx]); renderAll(); saveData(); addLog('account', `删除账号 [${accName}] 从分区 [${zoneKey}]`); } }
+
+    // 多选删除模式
+    function toggleDeleteSelect(zoneKey) {
+        if (deleteSelectMode[zoneKey]) {
+            cancelBatchDelete(zoneKey);
+        } else {
+            deleteSelectMode[zoneKey] = true;
+            renderAll();
+        }
+    }
+
+    function cancelBatchDelete(zoneKey) {
+        deleteSelectMode[zoneKey] = false;
+        renderAll();
+    }
+
+    function confirmBatchDelete(zoneKey) {
+        const tbody = document.getElementById(`tbody-${zoneKey}`);
+        if (!tbody) return;
+        const chks = tbody.querySelectorAll('.del-select-chk:checked');
+        if (chks.length === 0) {
+            showToast('未选中任何账号', 'warn', 1500);
+            return;
+        }
+        const idxs = Array.from(chks).map(c => parseInt(c.dataset.idx)).sort((a, b) => b - a);
+        const zoneAccounts = accounts.filter(a => a.zone === zoneKey);
+        const deletedNames = [];
+        idxs.forEach(i => {
+            if (zoneAccounts[i]) {
+                deletedNames.push(zoneAccounts[i].name);
+                accounts = accounts.filter(a => a !== zoneAccounts[i]);
+            }
+        });
+        deleteSelectMode[zoneKey] = false;
+        saveData();
+        renderAll();
+        addLog('account', `批量删除 ${deletedNames.length} 个账号从分区 [${zoneKey}]: ${deletedNames.join(', ')}`);
+        showToast(`已删除 ${deletedNames.length} 个账号`, 'info', 2000);
+    }
+
+    function updateDeleteControlUI(zoneKey) {
+        const span = document.getElementById(`del-ctrl-${zoneKey}`);
+        if (!span) return;
+        if (deleteSelectMode[zoneKey]) {
+            span.innerHTML = `
+                <button onclick="confirmBatchDelete('${zoneKey}')" style="padding:2px 8px;font-size:0.65rem;height:22px;line-height:1;background:#dc2626;color:#fff;border:none;border-radius:4px;cursor:pointer;">确认删除</button>
+                <button onclick="cancelBatchDelete('${zoneKey}')" style="padding:2px 8px;font-size:0.65rem;height:22px;line-height:1;background:#6b7280;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-left:2px;">取消</button>
+            `;
+        } else {
+            span.innerHTML = `<button class="zone-del-btn" onclick="toggleDeleteSelect('${zoneKey}')" style="padding:2px 8px;font-size:0.65rem;height:22px;line-height:1;">🗑 删除账号</button>`;
+        }
+    }
     
     // 合并当前能量到补充能量
     function mergeEnergyToSupplement(accountRef) {
