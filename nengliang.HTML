@@ -697,7 +697,6 @@
     <input type="number" id="recoverPer3Hours" class="param-input" value="15" step="1">
     <span style="font-size:0.75rem; color:#6b7280;">🕐 恢复基准时间:</span>
     <input type="time" id="gameRecoveryTime" class="param-input" value="00:00" style="width:80px;">
-    <button id="toggleDecimalBtn" class="btn btn-info" onclick="toggleDecimalMode()">🔢 显示小数</button>
     <button id="toggleRemarkBtn" class="btn btn-info" onclick="toggleRemarkMode()">💬 显示备注</button>
     <span style="font-size:0.75rem; color:#6b7280;">⚡ 每次扣能量:</span>
     <select id="consumePerTime" class="param-input" style="width:70px; border-radius:30px; padding:3px 8px;">
@@ -707,7 +706,7 @@
         <option value="160">160</option>
         <option value="200">200</option>
     </select>
-    <span style="font-size:0.75rem; color:#6b7280;">🎮 全局副本类型:</span>
+    <span style="font-size:0.75rem; color:#6b7280;">副本类型:</span>
     <select id="globalDungeonType" onchange="setGlobalDungeonType(this.value)" onblur="setGlobalDungeonType(this.value)" style="width:90px; border-radius:30px; padding:3px 8px; font-weight:600;">
         <option value="conquer">征服副本</option>
         <option value="transcend">超越副本</option>
@@ -962,7 +961,6 @@
                 }
             }
             
-            updateDecimalButtonUI();
             updateRemarkButtonUI();
         } catch (e) {
             console.warn(e);
@@ -2609,7 +2607,6 @@
                         document.getElementById('gameRecoveryTime').value = d.gameRecoveryTime;
                     }
                     if(typeof d.showDecimal === 'boolean') showDecimal = d.showDecimal;
-                    updateDecimalButtonUI();
                     saveData();
                     calibrateEnergyOnLoadOrOpen();
                     showToast("恢复成功！能量计算准确", "success");
