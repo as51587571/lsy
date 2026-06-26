@@ -554,6 +554,136 @@
         .log-clear-btn:hover {
             background: #c0392b;
         }
+
+        /* 备注标签样式 */
+        .remark-tag {
+            display: inline-block;
+            font-size: 0.65rem;
+            padding: 1px 6px;
+            border-radius: 8px;
+            background: #fef3c7;
+            color: #92400e;
+            font-weight: 500;
+            max-width: 100px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            border: 1px solid #fcd34d;
+            vertical-align: middle;
+            line-height: 1.4;
+            cursor: default;
+            margin-left: 2px;
+        }
+        .remark-btn {
+            color: #6b7280;
+            background: none;
+            border: 1px solid #d1d5db;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: 0.15s;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .remark-btn:hover {
+            background: #f3f4f6;
+            color: #374151;
+        }
+        .remark-btn.has-remark {
+            color: #d97706;
+            border-color: #f59e0b;
+            background: #fffbeb;
+            font-weight: 700;
+        }
+        .remark-btn.has-remark:hover {
+            background: #fef3c7;
+            color: #b45309;
+        }
+        .remark-clear-btn {
+            color: #ef4444;
+            background: none;
+            border: none;
+            font-size: 0.8rem;
+            cursor: pointer;
+            padding: 1px 4px;
+            border-radius: 50%;
+            transition: 0.15s;
+            font-weight: bold;
+        }
+        .remark-clear-btn:hover {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+        .remark-editor-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10001;
+        }
+        .remark-editor-box {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            min-width: 300px;
+            max-width: 400px;
+        }
+        .remark-editor-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #1e2a3a;
+            margin-bottom: 12px;
+        }
+        .remark-editor-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            box-sizing: border-box;
+        }
+        .remark-editor-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+        }
+        .remark-editor-btns {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 14px;
+        }
+        .remark-editor-btns button {
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: 0.15s;
+        }
+        .remark-editor-save {
+            background: #3b82f6;
+            color: white;
+        }
+        .remark-editor-save:hover {
+            background: #2563eb;
+        }
+        .remark-editor-cancel {
+            background: #e5e7eb;
+            color: #374151;
+        }
+        .remark-editor-cancel:hover {
+            background: #d1d5db;
+        }
+
     </style>
 </head>
 <body>
@@ -568,6 +698,7 @@
     <span style="font-size:0.75rem; color:#6b7280;">🕐 恢复基准时间:</span>
     <input type="time" id="gameRecoveryTime" class="param-input" value="00:00" style="width:80px;">
     <button id="toggleDecimalBtn" class="btn btn-info" onclick="toggleDecimalMode()">🔢 显示小数</button>
+    <button id="toggleRemarkBtn" class="btn btn-info" onclick="toggleRemarkMode()">💬 显示备注</button>
     <span style="font-size:0.75rem; color:#6b7280;">⚡ 每次扣能量:</span>
     <select id="consumePerTime" class="param-input" style="width:70px; border-radius:30px; padding:3px 8px;">
         <option value="40">40</option>
@@ -665,6 +796,7 @@
                                 // 为了方便移动，我们直接操作accounts数组，保证同一分区的账号在数组中连续，不同分区顺序无关紧要。
                                 // 移动操作: 在accounts数组内交换相邻元素（前提是同一分区）。
     let showDecimal = false;
+    let remarkMode = false;
     let lastRecalcTimestamp = Date.now();
     const RECALC_INTERVAL_MS = 15 * 60 * 1000;  // 15分钟
     
@@ -693,6 +825,7 @@
             const savedMaxEnergy = localStorage.getItem('energyMax');
             const savedRecover = localStorage.getItem('energyRecover');
             const savedDecimal = localStorage.getItem('energyShowDecimal');
+            const savedRemark = localStorage.getItem('energyRemarkMode');
             const savedLastCalc = localStorage.getItem('energyLastRecalcTime');
             const savedGameRecoveryTime = localStorage.getItem('energyGameRecoveryTime');
 
@@ -746,33 +879,41 @@
                     // 强制更新补充能量上限为20000
                     acc.supplementMax = 20000;
                     if(!acc.supplementRecordTime) acc.supplementRecordTime = now;
+                    if(typeof acc.remark === 'undefined' || acc.remark === null) acc.remark = "";
                     // 删除消耗能量字段（消耗能量是临时输入值，不应持久化）
                     delete acc.consume;
+                    
+
                 }
             } else {
                 accounts = [
-                    { name: "北疯[天2]", current: 80, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "MISSS[天2]", current: 630, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "阿林LSY[天2]", current: 525, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "热巴在上钟[天2]", current: 615, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "莽超[天2]", current: 600, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "绯闻男友[天11]", current: 315, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "阿林[天11]", current: 55, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "挤不出了[天11]", current: 54, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "南街刘德华[天11]", current: 0, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "西街刘德华[天11]", current: 50, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "misslin[魔11]", current: 60, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "南疯[魔11]", current: 90, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "阿林[魔11]", current: 115, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "蠢人灵机一动[魔11]", current: 180, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "红灯星[魔11]", current: 195, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "魔三XXXX[魔11]", current: 60, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "海王开凿[魔11]", current: 60, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "黄金奶[魔11]", current: 102, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "杰西卡的奶[魔11]", current: 54, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "流川夕的奶[魔11]", current: 52, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() },
-                    { name: "八卦海的奶[魔11]", current: 50, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now() }
+                    { name: "北疯[天2]", current: 80, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "MISSS[天2]", current: 630, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "阿林LSY[天2]", current: 525, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "热巴在上钟[天2]", current: 615, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "莽超[天2]", current: 600, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "奈薩", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "绯闻男友[天11]", current: 315, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "阿林[天11]", current: 55, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "挤不出了[天11]", current: 54, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "南街刘德华[天11]", current: 0, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "西街刘德华[天11]", current: 50, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "塔哈", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "misslin[魔11]", current: 60, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "南疯[魔11]", current: 90, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "阿林[魔11]", current: 115, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "蠢人灵机一动[魔11]", current: 180, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "红灯星[魔11]", current: 195, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "德", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "魔三XXXX[魔11]", current: 60, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "海王开凿[魔11]", current: 60, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "黄金奶[魔11]", current: 102, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "杰西卡的奶[魔11]", current: 54, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "流川夕的奶[魔11]", current: 52, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" },
+                    { name: "八卦海的奶[魔11]", current: 50, supplement: 0, supplementMax: 20000, power: 0, excludeFromRank: false, zone: "崔妮", recordTime: Date.now(), supplementRecordTime: Date.now(), lastEnergySync: Date.now(), remark:"" }
                 ];
+                // 为默认账号添加副本次数详情
+                for(let acc of accounts) {
+
+
+                }
             }
             
             if (savedMaxEnergy) document.getElementById('maxEnergy').value = savedMaxEnergy;
@@ -790,6 +931,7 @@
                 document.getElementById('consumePerTime').value = savedConsumePerTime;
             }
             if (savedDecimal) showDecimal = (savedDecimal === 'true');
+            if (savedRemark) remarkMode = (savedRemark === 'true');
             if (savedLastCalc) lastRecalcTimestamp = parseInt(savedLastCalc);
             else lastRecalcTimestamp = Date.now();
             
@@ -821,6 +963,7 @@
             }
             
             updateDecimalButtonUI();
+            updateRemarkButtonUI();
         } catch (e) {
             console.warn(e);
             zonesConfig = [
@@ -847,6 +990,7 @@
             localStorage.setItem('energyGameRecoveryTime', document.getElementById('gameRecoveryTime').value);
             localStorage.setItem('energyConsumePerTime', document.getElementById('consumePerTime').value);
             localStorage.setItem('energyShowDecimal', showDecimal);
+            localStorage.setItem('energyRemarkMode', remarkMode);
             localStorage.setItem('energyLastRecalcTime', lastRecalcTimestamp);
             localStorage.setItem('energyExportSettings', JSON.stringify(exportSettings));
             localStorage.setItem('energyOperationLogs', JSON.stringify(operationLogs.slice(-MAX_LOGS)));
@@ -1301,7 +1445,7 @@
         if (showDecimal) return value.toFixed(1);
         else return Math.round(value).toString();
     }
-    
+
     function renderAll() {
         const maxEnergy = parseFloat(document.getElementById('maxEnergy').value) || 840;
         const recoverPerHour = getRecoverPerHour();
@@ -1315,6 +1459,8 @@
             
             // 检查并重置副本次数（每周三）
             checkAndResetZoneDungeons(zone);
+            
+
             
             const card = document.createElement('div');
             card.className = 'zone-card';
@@ -1339,6 +1485,11 @@
             const totalEnergy = totalCurrentEnergy + totalSupplementEnergy;
             const canRunTimes = Math.floor(totalEnergy / 80); // 每次副本消耗80能量
             
+            
+            const remarkHeaderCols = remarkMode 
+                ? `<th>备注</th><th style="display:none"></th><th style="display:none"></th>`
+                : `<th id="hdr-need-${zone.key}">还差</th><th id="hdr-full-${zone.key}">回满时间</th><th id="hdr-cd-${zone.key}">剩余时间</th>`;
+
             card.innerHTML = `
                 <div class="zone-header">
                     <div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;">
@@ -1377,7 +1528,7 @@
                     </div>
                 </div>
                 <table>
-                    <thead><tr><th>账号</th><th>基本能量</th><th>消耗次数</th><th>补充能量</th><th>战斗力</th><th>排名</th><th>还差</th><th>回满时间</th><th>剩余时间</th><th>操作</th></tr></thead>
+                    <thead><tr><th>账号</th><th>基本能量</th><th>消耗次数</th><th>补充能量</th><th>战斗力</th><th>排名</th>${remarkHeaderCols}<th>操作</th></tr></thead>
                     <tbody id="tbody-${zone.key}"></tbody>
                 </table>
             `;
@@ -1475,7 +1626,7 @@
                 
                 nameWrapper.appendChild(nameInput);
                 nameWrapper.appendChild(copyBtn);
-                tdName.appendChild(nameWrapper);
+            tdName.appendChild(nameWrapper);
                 
                 // 能量输入框
                 const tdEnergy = document.createElement('td');
@@ -1738,13 +1889,20 @@
                 }
                 
                 const tdNeed = document.createElement('td');
-                tdNeed.innerText = Math.ceil(need);
-                
                 const tdFull = document.createElement('td');
-                tdFull.innerText = fullTimeObj.toLocaleString().slice(5, -3);
                 const tdCountdown = document.createElement('td');
-                tdCountdown.className = `cd-${zone.key}-${idx}`;
-                tdCountdown.innerText = remainStr;
+                
+                if (remarkMode) {
+                    tdNeed.innerText = acc.remark || '';
+                    tdNeed.style.cssText = 'font-size:0.75rem;color:#b45309;word-break:break-all;';
+                    tdFull.style.display = 'none';
+                    tdCountdown.style.display = 'none';
+                } else {
+                    tdNeed.innerText = Math.ceil(need);
+                    tdFull.innerText = fullTimeObj.toLocaleString().slice(5, -3);
+                    tdCountdown.className = `cd-${zone.key}-${idx}`;
+                    tdCountdown.innerText = remainStr;
+                }
                 
                 // 操作按钮区域 (上下移动 + 删除 + 排除排名 + 合并能量)
                 const tdActions = document.createElement('td');
@@ -1801,6 +1959,31 @@
                 actionDiv.appendChild(downBtn);
                 actionDiv.appendChild(excludeBtn);
                 actionDiv.appendChild(mergeBtn);
+                
+                // 备注按钮
+                const remarkBtn = document.createElement('button');
+                remarkBtn.innerText = '💬';
+                remarkBtn.className = 'remark-btn' + (acc.remark && acc.remark.trim() ? ' has-remark' : '');
+                remarkBtn.title = acc.remark ? '编辑备注: ' + acc.remark : '添加备注';
+                remarkBtn.onclick = ((accountRef, zk, i) => (e) => {
+                    e.stopPropagation();
+                    openRemarkEditor(accountRef, zk, i);
+                })(acc, zone.key, idx);
+                actionDiv.appendChild(remarkBtn);
+                
+                // 清除备注按钮（有备注时显示）
+                if (acc.remark && acc.remark.trim()) {
+                    const clearRemarkBtn = document.createElement('button');
+                    clearRemarkBtn.innerText = '✕';
+                    clearRemarkBtn.className = 'remark-clear-btn';
+                    clearRemarkBtn.title = '清除备注';
+                    clearRemarkBtn.onclick = ((accountRef, zk, i) => (e) => {
+                        e.stopPropagation();
+                        clearAccountRemark(accountRef, zk, i);
+                    })(acc, zone.key, idx);
+                    actionDiv.appendChild(clearRemarkBtn);
+                }
+                
                 actionDiv.appendChild(delBtn);
                 tdActions.appendChild(actionDiv);
                 
@@ -1813,7 +1996,7 @@
                 tr.appendChild(tdNeed);
                 tr.appendChild(tdFull);
                 tr.appendChild(tdCountdown);
-                tr.appendChild(tdActions);
+                tr.appendChild(tdActions)
                 tbody.appendChild(tr);
             });
         });
@@ -1843,6 +2026,8 @@
                 const acc = zoneAccounts[i];
                 const row = tbody.children[i];
                 if(!row) continue;
+                
+
                 // 计算精确的当前能量
                 const cur = calculateCurrentEnergy(acc, maxEnergy, recoverPerHour);
                 const need = Math.max(0, maxEnergy - cur);
@@ -1852,11 +2037,13 @@
                 const rank = rankMap.get(uniqueKey);
                 
                 const needCell = row.children[6];
-                if(needCell) needCell.innerText = Math.ceil(need);
-                const fullCell = row.children[7];
-                if(fullCell) fullCell.innerText = fullObj.toLocaleString().slice(5, -3);
-                const cdCell = row.children[8];
-                if(cdCell && cdCell.innerText !== remainStr) cdCell.innerText = remainStr;
+                if(!remarkMode) {
+                    if(needCell) needCell.innerText = Math.ceil(need);
+                    const fullCell = row.children[7];
+                    if(fullCell) fullCell.innerText = fullObj.toLocaleString().slice(5, -3);
+                    const cdCell = row.children[8];
+                    if(cdCell && cdCell.innerText !== remainStr) cdCell.innerText = remainStr;
+                }
                 
                 // 更新排名列
                 const rankCell = row.children[5];
@@ -1924,6 +2111,31 @@
                         excludeBtn.title = accounts[accIdx].excludeFromRank ? '已排除排名（点击恢复）' : '排除排名（不参与高亮）';
                     }
                 }
+                
+                // 更新备注按钮状态
+                const remarkBtn = row.children[9]?.querySelector('.remark-btn');
+                const clearRemarkBtn = row.children[9]?.querySelector('.remark-clear-btn');
+                const accRef = accounts.find(a => a === zoneAccounts[i]);
+                if (accRef) {
+                    const hasRemark = accRef.remark && accRef.remark.trim();
+                    if (remarkBtn) {
+                        remarkBtn.innerText = '💬';
+                        if (hasRemark) {
+                            remarkBtn.classList.add('has-remark');
+                            remarkBtn.title = '编辑备注: ' + accRef.remark;
+                        } else {
+                            remarkBtn.classList.remove('has-remark');
+                            remarkBtn.title = '添加备注';
+                        }
+                    }
+                    // 清除备注按钮
+                    if (hasRemark && !clearRemarkBtn) {
+                        // 仅在缺失时重建（但操作列需要重新渲染，这里简单触发 renderAll）
+                        // 跳过，让 renderAll 处理
+                    } else if (!hasRemark && clearRemarkBtn) {
+                        clearRemarkBtn.remove();
+                    }
+                }
             }
         }
     }
@@ -1943,6 +2155,26 @@
                 btn.classList.add('toggle-active');
             } else {
                 btn.innerText = '🔢 显示小数';
+                btn.classList.remove('toggle-active');
+            }
+        }
+    }
+
+    function toggleRemarkMode() {
+        remarkMode = !remarkMode;
+        updateRemarkButtonUI();
+        saveData();
+        renderAll();
+    }
+
+    function updateRemarkButtonUI() {
+        const btn = document.getElementById('toggleRemarkBtn');
+        if(btn) {
+            if(remarkMode) {
+                btn.innerText = '💬 显示列';
+                btn.classList.add('toggle-active');
+            } else {
+                btn.innerText = '💬 显示备注';
                 btn.classList.remove('toggle-active');
             }
         }
@@ -2093,7 +2325,7 @@
         let selectedZone = zonesConfig.find(z => z.key === zk.trim() || z.name === zk.trim());
         if(!selectedZone){showToast("分区不存在！", "error");return;}
         // 使用分区的实际名称，而不是key
-        accounts.push({name:`新成员[${selectedZone.name}]`,current:0,supplement:0,supplementMax:20000,power:0,excludeFromRank:false,zone:selectedZone.key,recordTime:Date.now(),supplementRecordTime:Date.now(),lastEnergySync:Date.now()}); 
+        accounts.push({name:`新成员[${selectedZone.name}]`,current:0,supplement:0,supplementMax:20000,power:0,excludeFromRank:false,remark:"",zone:selectedZone.key,recordTime:Date.now(),supplementRecordTime:Date.now(),lastEnergySync:Date.now()}); 
         renderAll(); saveData(); showToast("账号添加成功！", "success"); addLog('account', `添加新账号 [新成员[${selectedZone.name}]] 到分区 [${selectedZone.name}]`); 
     }
     function updateNameInZone(zoneKey, idx, newName) { let arr = accounts.filter(a=>a.zone===zoneKey); if(arr[idx]) { const oldName = arr[idx].name; arr[idx].name = newName; renderAll(); saveData(); addLog('account', `重命名账号: ${oldName} → ${newName}`); } }
@@ -2125,6 +2357,88 @@
         addLog('energy', `合并能量 [${accountRef.name}] 当前能量${oldCurrentEnergy}+补充能量${oldSupplement}=新补充能量${newSupplement}`);
         showToast(`已将 ${oldCurrentEnergy} 点当前能量合并到补充能量`, 'success');
         renderAll();
+    }
+    
+    // ========== 备注功能 ==========
+    function openRemarkEditor(accountRef, zoneKey, idx) {
+        // 移除已有的编辑器
+        const existing = document.querySelector('.remark-editor-overlay');
+        if (existing) existing.remove();
+        
+        const overlay = document.createElement('div');
+        overlay.className = 'remark-editor-overlay';
+        overlay.onclick = function(e) {
+            if (e.target === overlay) overlay.remove();
+        };
+        
+        const box = document.createElement('div');
+        box.className = 'remark-editor-box';
+        box.onclick = function(e) { e.stopPropagation(); };
+        
+        const title = document.createElement('div');
+        title.className = 'remark-editor-title';
+        title.textContent = '编辑备注 - ' + accountRef.name;
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'remark-editor-input';
+        input.value = accountRef.remark || '';
+        input.placeholder = '输入备注内容...';
+        input.maxLength = 50;
+        
+        const btnDiv = document.createElement('div');
+        btnDiv.className = 'remark-editor-btns';
+        
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'remark-editor-save';
+        saveBtn.textContent = '保存';
+        saveBtn.onclick = function() {
+            const newRemark = input.value.trim();
+            accountRef.remark = newRemark;
+            overlay.remove();
+            saveData();
+            renderAll();
+            addLog('account', `修改备注 [${accountRef.name}]: "${newRemark || '(清空)'}"`);
+            showToast(newRemark ? '备注已保存' : '备注已清空', 'success', 1500);
+        };
+        
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'remark-editor-cancel';
+        cancelBtn.textContent = '取消';
+        cancelBtn.onclick = function() { overlay.remove(); };
+        
+        btnDiv.appendChild(cancelBtn);
+        btnDiv.appendChild(saveBtn);
+        box.appendChild(title);
+        box.appendChild(input);
+        box.appendChild(btnDiv);
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+        
+        // 自动聚焦并全选
+        setTimeout(() => {
+            input.focus();
+            input.select();
+        }, 100);
+        
+        // 回车保存
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveBtn.click();
+            }
+            if (e.key === 'Escape') {
+                overlay.remove();
+            }
+        });
+    }
+    
+    function clearAccountRemark(accountRef, zoneKey, idx) {
+        accountRef.remark = '';
+        saveData();
+        renderAll();
+        addLog('account', `清除备注 [${accountRef.name}]`);
+        showToast('备注已清除', 'info', 1500);
     }
     
     function clearAllData() { if(!confirm("彻底清空所有数据？将删除所有账号并保留空分区")) return; localStorage.clear(); loadData(); accounts = []; saveData(); renderAll(); showToast("所有数据已清空！", "success"); addLog('system', '清空所有数据'); }
@@ -2271,8 +2585,10 @@
                         // 强制更新补充能量上限为20000
                         a.supplementMax = 20000;
                         if(!a.supplementRecordTime) a.supplementRecordTime = now;
+                        if(typeof a.remark === 'undefined' || a.remark === null) a.remark = "";
                         // 删除消耗能量字段（消耗能量是临时输入值，不应从旧数据继承）
                         delete a.consume;
+                        
                     }
                     
                     // 确保每个分区都有副本次数字段
