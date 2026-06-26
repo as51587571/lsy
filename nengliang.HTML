@@ -555,6 +555,53 @@
             background: #c0392b;
         }
 
+        /* 备注模式下的直接编辑输入框 */
+        .remark-edit-input {
+            width: 100%;
+            min-width: 80px;
+            padding: 2px 4px;
+            border: 1px solid #f59e0b;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            text-align: left;
+            background: #fff;
+            color: #92400e;
+            font-weight: 500;
+            box-sizing: border-box;
+            transition: 0.15s;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(245,158,11,0.15);
+        }
+        /* 备注文本显示（borderless，点击变为input） */
+        .remark-text {
+            display: inline-block;
+            width: 100%;
+            min-width: 80px;
+            padding: 2px 4px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            text-align: left;
+            background: transparent;
+            color: #92400e;
+            font-weight: 500;
+            box-sizing: border-box;
+            cursor: text;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: 0.15s;
+            line-height: 1.6;
+        }
+        .remark-text:hover {
+            background: #fffbeb;
+            border-color: #fcd34d;
+        }
+        .remark-text.empty {
+            color: #9ca3af;
+            font-style: italic;
+        }
+
         /* 备注标签样式 */
         .remark-tag {
             display: inline-block;
@@ -1905,8 +1952,57 @@
                 const tdCountdown = document.createElement('td');
                 
                 if (remarkMode) {
-                    tdNeed.innerText = acc.remark || '';
-                    tdNeed.style.cssText = 'font-size:0.75rem;color:#b45309;word-break:break-all;';
+                    // 备注模式：Excel风格的点击编辑（平时显示文本，点击变为input）
+                    const remarkSpan = document.createElement('span');
+                    remarkSpan.className = 'remark-text' + (acc.remark ? '' : ' empty');
+                    remarkSpan.textContent = acc.remark || '点击添加备注...';
+                    remarkSpan.title = acc.remark || '点击添加备注';
+                    
+                    remarkSpan.addEventListener('click', ((accountRef, spanEl) => (e) => {
+                        e.stopPropagation();
+                        // 如果已经是input就不重复创建
+                        if (spanEl.parentNode.querySelector('.remark-edit-input')) return;
+                        
+                        const oldText = accountRef.remark || '';
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.className = 'remark-edit-input';
+                        input.value = oldText;
+                        input.placeholder = '备注';
+                        input.maxLength = 50;
+                        
+                        const saveAndRestore = () => {
+                            const newVal = input.value.trim();
+                            if (newVal !== (accountRef.remark || '')) {
+                                accountRef.remark = newVal;
+                                saveData();
+                                addLog('account', `修改备注 [${accountRef.name}]: "${newVal || '(清空)'}"`);
+                            }
+                            // 恢复为文本显示
+                            spanEl.textContent = accountRef.remark || '点击添加备注...';
+                            spanEl.className = 'remark-text' + (accountRef.remark ? '' : ' empty');
+                            spanEl.title = accountRef.remark || '点击添加备注';
+                            spanEl.style.display = '';
+                            input.remove();
+                        };
+                        
+                        input.addEventListener('blur', saveAndRestore);
+                        input.addEventListener('keydown', function(e) {
+                            if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
+                            if (e.key === 'Escape') {
+                                e.preventDefault();
+                                input.value = accountRef.remark || '';
+                                this.blur();
+                            }
+                        });
+                        
+                        spanEl.style.display = 'none';
+                        spanEl.parentNode.appendChild(input);
+                        input.focus();
+                        input.select();
+                    })(acc, remarkSpan));
+                    
+                    tdNeed.appendChild(remarkSpan);
                     tdFull.style.display = 'none';
                     tdCountdown.style.display = 'none';
                 } else {
@@ -2052,6 +2148,25 @@
                     if(fullCell) fullCell.innerText = fullObj.toLocaleString().slice(5, -3);
                     const cdCell = row.children[8];
                     if(cdCell && cdCell.innerText !== remainStr) cdCell.innerText = remainStr;
+                } else {
+                    // 备注模式：仅在未编辑时同步文本显示
+                    if (needCell) {
+                        const rInput = needCell.querySelector('.remark-edit-input');
+                        const rSpan = needCell.querySelector('.remark-text');
+                        if (rInput) {
+                            // 正在编辑中，不干扰
+                        } else if (rSpan) {
+                            const accIdx = accounts.findIndex(a => a === zoneAccounts[i]);
+                            if (accIdx !== -1) {
+                                const remark = accounts[accIdx].remark || '';
+                                if (rSpan.textContent !== (remark || '点击添加备注...')) {
+                                    rSpan.textContent = remark || '点击添加备注...';
+                                    rSpan.className = 'remark-text' + (remark ? '' : ' empty');
+                                    rSpan.title = remark || '点击添加备注';
+                                }
+                            }
+                        }
+                    }
                 }
                 
                 // 更新排名列
