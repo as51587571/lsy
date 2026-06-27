@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>能量倒计时·全局TOP5高亮 | 可移动账号顺序</title>
     <style>
+        button:disabled {
+            opacity: 0.45;
+            cursor: not-allowed !important;
+        }
         * {
             box-sizing: border-box;
         }
@@ -764,6 +768,7 @@
     <div style="width:12px;height:1px;flex-shrink:0;" aria-hidden="true"></div>
     <button class="btn btn-info" onclick="openExportSettings()">⚙️ 导出设置</button>
     <button class="btn btn-warning" onclick="resetExportCounterDirect()" title="一键重置导出序列号为1" style="padding:4px 8px;font-size:0.7rem;">🔄 重置序号</button>
+    <button id="undoConsumeBtn" class="btn" onclick="undoConsume()" disabled style="background:#f59e0b;color:white;border:none;" title="撤销最近一次消耗">↩ 撤销消耗</button>
     <button class="btn btn-warning" onclick="exportData()">📤 导出备份</button>
     <button class="btn btn-info" onclick="document.getElementById('importFile').click()">📥 导入恢复</button>
     <input type="file" id="importFile" accept=".json" onchange="importData(this)">
@@ -847,6 +852,9 @@
     let deleteSelectMode = {};
     let lastRecalcTimestamp = Date.now();
     const RECALC_INTERVAL_MS = 15 * 60 * 1000;  // 15分钟
+    
+    // 消耗历史栈（撤销用，最多保存2条）
+    let consumeHistory = [];
     
     // 导出设置
     let exportSettings = {
@@ -999,6 +1007,17 @@
                 globalDungeonType = savedGlobalDungeonType;
             }
             
+            // 加载消耗历史（撤销用）
+            const savedConsumeHistory = localStorage.getItem('energyConsumeHistory');
+            if (savedConsumeHistory) {
+                try {
+                    consumeHistory = JSON.parse(savedConsumeHistory);
+                } catch(e) {
+                    console.warn('消耗历史解析失败');
+                    consumeHistory = [];
+                }
+            }
+            
             // 加载操作记录
             const savedLogs = localStorage.getItem('energyOperationLogs');
             if (savedLogs) {
@@ -1024,6 +1043,70 @@
         }
     }
 
+    // ========== 撤销消耗 ==========
+    function updateUndoButtonState() {
+        const btn = document.getElementById('undoConsumeBtn');
+        if (btn) {
+            btn.disabled = consumeHistory.length === 0;
+            btn.style.opacity = consumeHistory.length === 0 ? '0.45' : '1';
+            btn.style.cursor = consumeHistory.length === 0 ? 'not-allowed' : 'pointer';
+            btn.title = consumeHistory.length === 0 ? '没有可撤销的消耗' : `撤销最近一次消耗（剩余${consumeHistory.length}条可撤销）`;
+        }
+    }
+    
+    function undoConsume() {
+        if (consumeHistory.length === 0) {
+            showToast('没有可撤销的消耗记录', 'warning', 2000);
+            return;
+        }
+        
+        const record = consumeHistory.pop();
+        
+        // 找到对应账号
+        const zoneAccounts = accounts.filter(a => a.zone === record.zoneKey);
+        const acc = zoneAccounts[record.accountIdx];
+        
+        if (!acc) {
+            showToast('无法找到对应账号，撤销失败', 'error', 3000);
+            consumeHistory.push(record); // 恢复记录
+            return;
+        }
+        
+        // 恢复消耗前的基础能量
+        setAccountEnergyAndResetTimer(acc, record.oldBaseEnergy, parseFloat(document.getElementById('maxEnergy').value) || 840);
+        // 恢复消耗前的补充能量
+        acc.supplement = record.oldSupplement;
+        acc.supplementRecordTime = Date.now();
+        
+        // 恢复地城次数到消耗前的值
+        if (record.oldDungeonCounts) {
+            const zone = zonesConfig.find(z => z.key === record.zoneKey);
+            if (zone) {
+                if (record.dungeonType === 'conquer' && zone.dungeonConquer) {
+                    zone.dungeonConquer.count = record.oldDungeonCounts.conquer;
+                }
+                if (record.dungeonType === 'transcend' && zone.dungeonTranscend) {
+                    zone.dungeonTranscend.count = record.oldDungeonCounts.transcend;
+                }
+                // 同时恢复另一个未变的类型（确保精确还原）
+                if (zone.dungeonConquer && typeof record.oldDungeonCounts.conquer === 'number') {
+                    zone.dungeonConquer.count = record.oldDungeonCounts.conquer;
+                }
+                if (zone.dungeonTranscend && typeof record.oldDungeonCounts.transcend === 'number') {
+                    zone.dungeonTranscend.count = record.oldDungeonCounts.transcend;
+                }
+            }
+        }
+        
+        saveData();
+        updateUndoButtonState();
+        renderAll();
+        
+        const typeLabel = record.dungeonType === 'conquer' ? '征服' : '超越';
+        showToast(`已撤销 [${record.accountName}] ${record.times}次×${record.consumePerTime}=${record.totalConsume}(${typeLabel})，能量和副本次数已恢复`, 'success', 3000);
+        addLog('energy', `撤销消耗 [${record.accountName}] ${record.times}次×${record.consumePerTime}=${record.totalConsume}(恢复基础能量${record.oldBaseEnergy} 补充能量${record.oldSupplement})`);
+    }
+    
     function saveData() {
         try {
             // 清理所有账号的consume字段（消耗能量是临时值，不应保存）
@@ -1042,6 +1125,7 @@
             localStorage.setItem('energyExportSettings', JSON.stringify(exportSettings));
             localStorage.setItem('energyOperationLogs', JSON.stringify(operationLogs.slice(-MAX_LOGS)));
             localStorage.setItem('energyGlobalDungeonType', globalDungeonType);
+            localStorage.setItem('energyConsumeHistory', JSON.stringify(consumeHistory));
         } catch(e) { console.warn(e); }
     }
 
@@ -1758,6 +1842,13 @@
                     // 获取该分区选择的副本类型（不是每个角色单独选择）
                     const dungeonType = zone ? (zone.selectedDungeonType || 'conquer') : 'conquer';
                     
+                    // 捕获旧的地城次数（撤销时恢复用）
+                    const oldDungeonCounts = {};
+                    if (zone) {
+                        oldDungeonCounts.conquer = zone.dungeonConquer ? zone.dungeonConquer.count : 0;
+                        oldDungeonCounts.transcend = zone.dungeonTranscend ? zone.dungeonTranscend.count : 0;
+                    }
+                    
                     // 自动增加对应分区的对应副本次数
                     increaseZoneDungeonCount(z, dungeonType, times);
                     
@@ -1826,6 +1917,27 @@
                         msg += `（实际扣除：${totalConsume - remainingConsume}，不足：${remainingConsume}）`;
                     }
                     showToast(msg, 'success', 2000);
+                    // 记录消耗历史（撤销用）
+                    consumeHistory.push({
+                        zoneKey: z,
+                        accountIdx: idx2,
+                        accountName: accountRef.name,
+                        dungeonType: dungeonType,
+                        oldBaseEnergy: oldCurrentEnergy,
+                        oldSupplement: oldSupplement,
+                        newBaseEnergy: newBaseEnergy,
+                        newSupplement: newSupplement,
+                        times: times,
+                        consumePerTime: consumePerTime,
+                        totalConsume: totalConsume,
+                        oldDungeonCounts: oldDungeonCounts,
+                        time: Date.now()
+                    });
+                    // 只保留最近2条
+                    if (consumeHistory.length > 2) {
+                        consumeHistory.shift();
+                    }
+                    
                     // 记录操作 - 只记录一条综合性的消耗能量日志
                     addLog('energy', `消耗能量 [${accountRef.name}] ${times}次×${consumePerTime}=${totalConsume}(当前能量${oldCurrentEnergy}减${currentEnergyReduced} 补充能量${oldSupplement}减${supplementReduced})`);
                     
@@ -2106,6 +2218,7 @@
             updateDeleteControlUI(zone.key);
         });
         saveData();
+        updateUndoButtonState();
     }
     
     // 轻量刷新 (每秒)
