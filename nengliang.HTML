@@ -1043,68 +1043,109 @@
         }
     }
 
-    // ========== 撤销消耗 ==========
+    // ========== 撤销操作 ==========
     function updateUndoButtonState() {
         const btn = document.getElementById('undoConsumeBtn');
         if (btn) {
             btn.disabled = consumeHistory.length === 0;
             btn.style.opacity = consumeHistory.length === 0 ? '0.45' : '1';
             btn.style.cursor = consumeHistory.length === 0 ? 'not-allowed' : 'pointer';
-            btn.title = consumeHistory.length === 0 ? '没有可撤销的消耗' : `撤销最近一次消耗（剩余${consumeHistory.length}条可撤销）`;
+            if (consumeHistory.length === 0) {
+                btn.title = '没有可撤销的操作';
+            } else {
+                const record = consumeHistory[consumeHistory.length - 1];
+                let preview;
+                if (record.type === 'energyEdit') {
+                    preview = `撤销：${record.accountName} 修改能量 ${record.newBaseEnergy}→${record.oldBaseEnergy}（剩余${consumeHistory.length}条）`;
+                } else if (record.type === 'supplementEdit') {
+                    preview = `撤销：${record.accountName} 修改补充能量 ${record.newSupplement}→${record.oldSupplement}（剩余${consumeHistory.length}条）`;
+                } else {
+                    const typeLabel = record.dungeonType === 'conquer' ? '征服' : '超越';
+                    preview = `撤销：${record.accountName} ${record.times}次×${record.consumePerTime}=${record.totalConsume}(${typeLabel})（剩余${consumeHistory.length}条）`;
+                }
+                btn.title = preview;
+            }
         }
     }
     
     function undoConsume() {
+        console.log('[undoConsume] 调用, consumeHistory.length=', consumeHistory.length);
         if (consumeHistory.length === 0) {
-            showToast('没有可撤销的消耗记录', 'warning', 2000);
+            showToast('没有可撤销的操作记录', 'warning', 2000);
             return;
         }
         
         const record = consumeHistory.pop();
+        console.log('[undoConsume] 弹出记录:', JSON.stringify(record));
         
-        // 找到对应账号
-        const zoneAccounts = accounts.filter(a => a.zone === record.zoneKey);
-        const acc = zoneAccounts[record.accountIdx];
+        // 按名称 + 分区匹配账号（避免索引漂移）
+        const acc = accounts.find(a => a.zone === record.zoneKey && a.name === record.accountName);
+        console.log('[undoConsume] 查找账号 zoneKey=', record.zoneKey, 'accountName=', record.accountName, '找到=', !!acc);
         
         if (!acc) {
-            showToast('无法找到对应账号，撤销失败', 'error', 3000);
-            consumeHistory.push(record); // 恢复记录
+            // 恢复记录，避免记录永久丢失（用户可能只是临时重命名或移动了账号）
+            consumeHistory.push(record);
+            showToast(`无法找到账号 [${record.accountName}]（分区:${record.zoneKey}），可能已被删除`, 'error', 3000);
             return;
         }
         
-        // 恢复消耗前的基础能量
-        setAccountEnergyAndResetTimer(acc, record.oldBaseEnergy, parseFloat(document.getElementById('maxEnergy').value) || 840);
-        // 恢复消耗前的补充能量
-        acc.supplement = record.oldSupplement;
-        acc.supplementRecordTime = Date.now();
+        const maxE = parseFloat(document.getElementById('maxEnergy').value) || 840;
         
-        // 恢复地城次数到消耗前的值
-        if (record.oldDungeonCounts) {
-            const zone = zonesConfig.find(z => z.key === record.zoneKey);
-            if (zone) {
-                if (record.dungeonType === 'conquer' && zone.dungeonConquer) {
-                    zone.dungeonConquer.count = record.oldDungeonCounts.conquer;
-                }
-                if (record.dungeonType === 'transcend' && zone.dungeonTranscend) {
-                    zone.dungeonTranscend.count = record.oldDungeonCounts.transcend;
-                }
-                // 同时恢复另一个未变的类型（确保精确还原）
-                if (zone.dungeonConquer && typeof record.oldDungeonCounts.conquer === 'number') {
-                    zone.dungeonConquer.count = record.oldDungeonCounts.conquer;
-                }
-                if (zone.dungeonTranscend && typeof record.oldDungeonCounts.transcend === 'number') {
-                    zone.dungeonTranscend.count = record.oldDungeonCounts.transcend;
+        if (record.type === 'energyEdit') {
+            // 撤销直接编辑能量值
+            setAccountEnergyAndResetTimer(acc, record.oldBaseEnergy, maxE);
+            // 补充能量保持原值（编辑能量时不变）
+            acc.supplement = record.oldSupplement;
+            acc.supplementRecordTime = Date.now();
+            
+            saveData();
+            updateUndoButtonState();
+            renderAll();
+            
+            showToast(`已撤销 [${record.accountName}] 能量修改: ${record.newBaseEnergy} → ${record.oldBaseEnergy}`, 'success', 3000);
+            addLog('energy', `撤销能量修改 [${record.accountName}] 基础能量从 ${record.newBaseEnergy} 恢复到 ${record.oldBaseEnergy}`);
+        } else if (record.type === 'supplementEdit') {
+            // 撤销直接编辑补充能量值
+            // 基础能量保持原值
+            setAccountEnergyAndResetTimer(acc, record.oldBaseEnergy, maxE);
+            acc.supplement = record.oldSupplement;
+            acc.supplementRecordTime = Date.now();
+            
+            saveData();
+            updateUndoButtonState();
+            renderAll();
+            
+            showToast(`已撤销 [${record.accountName}] 补充能量修改: ${record.newSupplement} → ${record.oldSupplement}`, 'success', 3000);
+            addLog('energy', `撤销补充能量修改 [${record.accountName}] 补充能量从 ${record.newSupplement} 恢复到 ${record.oldSupplement}`);
+        } else {
+            // type === undefined（旧格式兼容）或 type === 'consume'：撤销消耗操作
+            // 恢复消耗前的基础能量
+            setAccountEnergyAndResetTimer(acc, record.oldBaseEnergy, maxE);
+            // 恢复消耗前的补充能量
+            acc.supplement = record.oldSupplement;
+            acc.supplementRecordTime = Date.now();
+            
+            // 恢复地城次数到消耗前的值
+            if (record.oldDungeonCounts) {
+                const zone = zonesConfig.find(z => z.key === record.zoneKey);
+                if (zone) {
+                    if (zone.dungeonConquer && typeof record.oldDungeonCounts.conquer === 'number') {
+                        zone.dungeonConquer.count = record.oldDungeonCounts.conquer;
+                    }
+                    if (zone.dungeonTranscend && typeof record.oldDungeonCounts.transcend === 'number') {
+                        zone.dungeonTranscend.count = record.oldDungeonCounts.transcend;
+                    }
                 }
             }
+            
+            saveData();
+            updateUndoButtonState();
+            renderAll();
+            
+            const typeLabel = record.dungeonType === 'conquer' ? '征服' : '超越';
+            showToast(`已撤销 [${record.accountName}] ${record.times}次×${record.consumePerTime}=${record.totalConsume}(${typeLabel})，能量和副本次数已恢复`, 'success', 3000);
+            addLog('energy', `撤销消耗 [${record.accountName}] ${record.times}次×${record.consumePerTime}=${record.totalConsume}(恢复基础能量${record.oldBaseEnergy} 补充能量${record.oldSupplement})`);
         }
-        
-        saveData();
-        updateUndoButtonState();
-        renderAll();
-        
-        const typeLabel = record.dungeonType === 'conquer' ? '征服' : '超越';
-        showToast(`已撤销 [${record.accountName}] ${record.times}次×${record.consumePerTime}=${record.totalConsume}(${typeLabel})，能量和副本次数已恢复`, 'success', 3000);
-        addLog('energy', `撤销消耗 [${record.accountName}] ${record.times}次×${record.consumePerTime}=${record.totalConsume}(恢复基础能量${record.oldBaseEnergy} 补充能量${record.oldSupplement})`);
     }
     
     function saveData() {
@@ -1800,6 +1841,22 @@
                     const maxE = parseFloat(document.getElementById('maxEnergy').value) || 840;
                     let newVal = Math.min(maxE, Math.max(0, raw));
                     if (Math.abs(accountRef.current - newVal) > 0.01) {
+                        // 记录旧值（撤销时恢复用）
+                        const oldBaseEnergy = accountRef.current;
+                        const oldSupplement = accountRef.supplement || 0;
+                        // 先 push 再修改（撤销记录必须在数据变更前入栈）
+                        consumeHistory.push({
+                            type: 'energyEdit',
+                            zoneKey: z,
+                            accountName: accountRef.name,
+                            oldBaseEnergy: oldBaseEnergy,
+                            newBaseEnergy: newVal,
+                            oldSupplement: oldSupplement,
+                            newSupplement: oldSupplement,
+                            time: Date.now()
+                        });
+                        if (consumeHistory.length > 10) { consumeHistory.shift(); }
+                        console.log('[energyEdit] push 撤销记录, length=', consumeHistory.length, 'account=', accountRef.name);
                         setAccountEnergyAndResetTimer(accountRef, newVal, maxE);
                         renderAll();
                     } else {
@@ -1832,6 +1889,7 @@
                     }
                 });
                 consumeInput.addEventListener('blur', ((z, idx2, accountRef) => (e) => {
+                    try {
                     let times = parseInt(e.target.value);
                     if (isNaN(times) || times <= 0) {
                         // 如果输入无效或为空，直接清空输入框
@@ -1895,6 +1953,27 @@
                         }
                     }
                     
+                    // 记录消耗历史（撤销用）——必须在 saveData 之前 push
+                    consumeHistory.push({
+                        zoneKey: z,
+                        accountName: accountRef.name,
+                        dungeonType: dungeonType,
+                        oldBaseEnergy: oldCurrentEnergy,
+                        oldSupplement: oldSupplement,
+                        newBaseEnergy: newBaseEnergy,
+                        newSupplement: newSupplement,
+                        times: times,
+                        consumePerTime: consumePerTime,
+                        totalConsume: totalConsume,
+                        oldDungeonCounts: oldDungeonCounts,
+                        time: Date.now()
+                    });
+                    // 只保留最近10条
+                    if (consumeHistory.length > 10) {
+                        consumeHistory.shift();
+                    }
+                    console.log('[blur] consumeHistory push 完成, length=', consumeHistory.length, 'record accountName=', accountRef.name);
+                    
                     // 更新账号数据
                     setAccountEnergyAndResetTimer(accountRef, newBaseEnergy, maxE);
                     accountRef.supplement = newSupplement;
@@ -1917,26 +1996,6 @@
                         msg += `（实际扣除：${totalConsume - remainingConsume}，不足：${remainingConsume}）`;
                     }
                     showToast(msg, 'success', 2000);
-                    // 记录消耗历史（撤销用）
-                    consumeHistory.push({
-                        zoneKey: z,
-                        accountIdx: idx2,
-                        accountName: accountRef.name,
-                        dungeonType: dungeonType,
-                        oldBaseEnergy: oldCurrentEnergy,
-                        oldSupplement: oldSupplement,
-                        newBaseEnergy: newBaseEnergy,
-                        newSupplement: newSupplement,
-                        times: times,
-                        consumePerTime: consumePerTime,
-                        totalConsume: totalConsume,
-                        oldDungeonCounts: oldDungeonCounts,
-                        time: Date.now()
-                    });
-                    // 只保留最近2条
-                    if (consumeHistory.length > 2) {
-                        consumeHistory.shift();
-                    }
                     
                     // 记录操作 - 只记录一条综合性的消耗能量日志
                     addLog('energy', `消耗能量 [${accountRef.name}] ${times}次×${consumePerTime}=${totalConsume}(当前能量${oldCurrentEnergy}减${currentEnergyReduced} 补充能量${oldSupplement}减${supplementReduced})`);
@@ -1955,6 +2014,10 @@
                     // 清空输入框并刷新
                     e.target.value = '';
                     renderAll();
+                    } catch(err) {
+                        console.error('[能量.HTML] blur handler error:', err);
+                        showToast(`消耗操作出错: ${err.message}`, 'error', 4000);
+                    }
                 })(zone.key, idx, acc));
                 
                 tdConsume.appendChild(consumeInput);
@@ -1983,7 +2046,26 @@
                     if (isNaN(val)) val = 0;
                     const oldSupp = accountRef.supplement || 0;
                     const maxSupp = accountRef.supplementMax || 20000;
-                    accountRef.supplement = Math.min(maxSupp, Math.max(0, val));
+                    const newSupp = Math.min(maxSupp, Math.max(0, val));
+                    if (oldSupp !== newSupp) {
+                        // 捕获当前基础能量（用于撤销恢复）
+                        const maxE = parseFloat(document.getElementById('maxEnergy').value) || 840;
+                        const currentBaseEnergy = calculateCurrentEnergy(accountRef, maxE, getRecoverPerHour());
+                        // 先 push 再修改
+                        consumeHistory.push({
+                            type: 'supplementEdit',
+                            zoneKey: accountRef.zone,
+                            accountName: accountRef.name,
+                            oldBaseEnergy: currentBaseEnergy,
+                            newBaseEnergy: currentBaseEnergy,
+                            oldSupplement: oldSupp,
+                            newSupplement: newSupp,
+                            time: Date.now()
+                        });
+                        if (consumeHistory.length > 10) { consumeHistory.shift(); }
+                        console.log('[suppEdit] push 撤销记录, length=', consumeHistory.length, 'account=', accountRef.name);
+                    }
+                    accountRef.supplement = newSupp;
                     accountRef.supplementRecordTime = Date.now();
                     saveData();
                     // 记录操作
@@ -2491,6 +2573,15 @@
             }
         }
     }
+    
+    // 点击面板外部自动关闭
+    document.addEventListener('click', function(e) {
+        const panel = document.getElementById('logPanel');
+        if (!panel || !panel.classList.contains('active')) return;
+        if (!panel.contains(e.target) && !e.target.closest('.log-toggle-btn')) {
+            panel.classList.remove('active');
+        }
+    });
     
     // 过滤操作记录
     function filterLogs(type) {
