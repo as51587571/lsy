@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>继承制作计算器</title>
+<style>
+:root {
+  --bg: #0f0f1a;
+  --panel: #1a1a2e;
+  --border: #2a2a4a;
+  --text: #e0e0e0;
+  --text-secondary: #9999bb;
+  --accent: #7b68ee;
+  --gold: #f0c060;
+  --green: #4ecdc4;
+  --red: #ff6b6b;
+  --input-bg: #0a0a18;
+  --input-border: #3a3a5a;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  display: flex; justify-content: center; align-items: flex-start;
+  min-height: 100vh; padding: 20px;
+}
+.container { max-width: 500px; width: 100%; display: flex; flex-direction: column; gap: 16px; }
+h2 { text-align: center; font-size: 20px; color: var(--accent); margin-bottom: 4px; }
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px; padding: 18px;
+}
+.panel-title { font-size: 15px; font-weight: 700; color: var(--accent); margin-bottom: 14px; }
+.form-group { margin-bottom: 12px; }
+.form-group label, .combo-section h4 { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+.combo-section h4 { color: var(--gold); font-size: 14px; margin-top: 4px; }
+input[type="text"], input[type="number"] {
+  width: 100%; padding: 8px 12px;
+  background: var(--input-bg); border: 1px solid var(--input-border);
+  border-radius: 6px; color: var(--text); font-size: 14px; outline: none;
+  transition: border-color 0.2s;
+}
+input:focus { border-color: var(--accent); }
+.input-row { display: flex; align-items: center; gap: 8px; }
+.input-row input { flex: 1; }
+.unit { color: var(--text-secondary); font-size: 13px; flex-shrink: 0; }
+input[type="range"] { flex: 1; accent-color: var(--accent); }
+.fee-selector { display: flex; gap: 8px; }
+.fee-selector button {
+  flex: 1; padding: 8px; border-radius: 6px; border: 1px solid var(--input-border);
+  background: var(--input-bg); color: var(--text-secondary); font-size: 14px; cursor: pointer;
+  transition: all 0.2s;
+}
+.fee-selector button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+.result-card {
+  background: rgba(123,104,238,0.08); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 14px; margin-bottom: 10px;
+}
+.result-card.highlight { background: rgba(240,192,96,0.08); border-color: rgba(240,192,96,0.25); }
+.rc-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+.rc-value { font-size: 22px; font-weight: 700; }
+.rc-detail { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+.accent-gold { color: var(--gold); }
+.accent-green { color: var(--green); }
+.accent-cyan { color: #5dade2; }
+.breakdown { font-size: 12px; color: var(--text-secondary); line-height: 1.8; padding: 10px 12px; background: rgba(0,0,0,0.2); border-radius: 6px; margin-bottom: 10px; }
+.breakdown span { color: var(--text); font-weight: 600; }
+.breakdown strong { font-size: 14px; }
+.profit-indicator { font-size: 12px; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+.profit-indicator.positive { background: rgba(78,205,196,0.2); color: var(--green); }
+.profit-indicator.negative { background: rgba(255,107,107,0.2); color: var(--red); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h2>继承制作计算器</h2>
+
+  <div class="panel">
+    <div class="panel-title">已知条件</div>
+
+    <div class="form-group">
+      <label>下级材料名称</label>
+      <input type="text" id="lowerName" value="下级魔石">
+    </div>
+
+    <div class="form-group">
+      <label>中级产物名称（基础产出，无价值）</label>
+      <input type="text" id="midName" value="中级魔石">
+    </div>
+
+    <div class="form-group">
+      <label>上级产物名称（暴击产出，有价值）</label>
+      <input type="text" id="upperName" value="上级魔石">
+    </div>
+
+    <div class="form-group">
+      <label id="lblUpperPrice">上级魔石市价</label>
+      <div class="input-row">
+        <input type="number" id="upperPrice" value="35000" min="0" step="100">
+        <span class="unit">金币</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label id="lblLowerRequired">每颗中级魔石所需下级魔石数量</label>
+      <div class="input-row">
+        <input type="number" id="lowerRequired" value="5" min="1" max="99">
+        <span class="unit">颗</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>其他成本（材料费/手续费等）</label>
+      <div class="input-row">
+        <input type="number" id="otherCost" value="0" min="0" step="100">
+        <span class="unit">金币</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>交易所手续费</label>
+      <div class="fee-selector" id="feeSelector">
+        <button type="button" data-fee="0.10" class="active">10%</button>
+        <button type="button" data-fee="0.20">20%</button>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="combo-section">
+      <h4>⚡ COMBO 暴击设定</h4>
+      <div class="form-group">
+        <label>暴击率</label>
+        <div class="input-row">
+          <input type="range" id="critRateSlider" value="20" min="0" max="100" step="1" oninput="syncSlider()">
+          <input type="number" id="critRate" value="20" min="0" max="100" step="1" onchange="syncInput()" style="width:60px;text-align:center;flex:none;">
+          <span class="unit">%</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label id="lblCritBonus">暴击时额外获得（上级魔石）</label>
+        <div class="input-row">
+          <input type="number" id="critBonus" value="1" min="0" max="10" step="1">
+          <span class="unit">颗</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">反向推算结果</div>
+
+    <div class="result-card highlight">
+      <div class="rc-label" id="lblResult">下级魔石推算价值（单价）</div>
+      <div class="rc-value accent-gold" id="lowerStoneValue">-</div>
+      <div class="rc-detail">盈亏平衡价 — 低于此价买入即有利可图</div>
+    </div>
+
+    <div class="result-card">
+      <div class="rc-label" id="lblExpectedOutput">期望产出量（有价值的上级产物）</div>
+      <div class="rc-value accent-green" id="expectedOutput">-</div>
+      <div class="rc-detail">暴击率 × 额外数量（基础1颗中级产物无价值）</div>
+    </div>
+
+    <div class="result-card">
+      <div class="rc-label">期望总收益（扣手续费后）</div>
+      <div class="rc-value accent-cyan" id="expectedRevenue">-</div>
+      <div class="rc-detail">期望产出 × 市价 × (1 − 手续费)</div>
+    </div>
+
+    <div class="breakdown" id="breakdownDetail"></div>
+
+    <hr class="divider">
+
+    <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px">情景分析</div>
+
+    <div class="result-card">
+      <div class="rc-label" id="lblProfit10">下级魔石买入价低于推算值 10% → 每组利润</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+        <span style="font-size:18px;font-weight:700" id="profit10">-</span>
+        <span class="profit-indicator" id="profit10Badge">-</span>
+      </div>
+    </div>
+
+    <div class="result-card">
+      <div class="rc-label" id="lblNoCrit">暴击率为 0%（不暴击）→ 下级魔石价值</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+        <span style="font-size:18px;font-weight:700" id="noCritValue">-</span>
+        <span class="profit-indicator" id="noCritBadge">-</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let feeRate = 0.10;
+document.querySelectorAll('#feeSelector button').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('#feeSelector button').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    feeRate = parseFloat(this.dataset.fee);
+    updateAll();
+  });
+});
+
+function syncSlider() {
+  document.getElementById('critRate').value = document.getElementById('critRateSlider').value;
+  calculate();
+}
+
+function syncInput() {
+  document.getElementById('critRateSlider').value = document.getElementById('critRate').value;
+  calculate();
+}
+
+function fmt(n) { return n.toLocaleString('zh-CN', { maximumFractionDigits: 0 }); }
+function fmtDec(n, d) { return n.toLocaleString('zh-CN', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+
+function updateLabels() {
+  const uname = document.getElementById('upperName').value || '上级产物';
+  const mname = document.getElementById('midName').value || '中级产物';
+  const lname = document.getElementById('lowerName').value || '下级材料';
+  document.getElementById('lblUpperPrice').textContent = uname + '市价';
+  document.getElementById('lblLowerRequired').textContent = '每颗' + mname + '所需' + lname + '数量';
+  document.getElementById('lblCritBonus').textContent = '暴击时额外获得（' + uname + '）';
+  document.getElementById('lblResult').textContent = lname + '推算价值（单价）';
+  document.getElementById('lblProfit10').textContent = lname + '买入价低于推算值 10% → 每组利润';
+  document.getElementById('lblNoCrit').textContent = '暴击率为 0%（不暴击）→ ' + lname + '价值';
+  document.getElementById('lblExpectedOutput').textContent = '期望产出量（有价值的' + uname + '）';
+}
+
+function updateAll() {
+  updateLabels();
+  calculate();
+}
+
+function calculate() {
+  const uname = document.getElementById('upperName').value || '上级产物';
+  const mname = document.getElementById('midName').value || '中级产物';
+  const lname = document.getElementById('lowerName').value || '下级材料';
+  const upperPrice = parseInt(document.getElementById('upperPrice').value) || 0;
+  const lowerReq = parseInt(document.getElementById('lowerRequired').value) || 1;
+  const otherCost = parseInt(document.getElementById('otherCost').value) || 0;
+  const critRate = (parseInt(document.getElementById('critRate').value) || 0) / 100;
+  const critBonus = parseInt(document.getElementById('critBonus').value) || 0;
+
+  const netRate = 1 - feeRate;
+
+  // 基础产出 1 颗中级产物无价值，只有暴击额外产出的上级产物才值钱
+  const expectedOutput = critRate * critBonus;
+  const expectedRevenue = expectedOutput * upperPrice * netRate;
+  const budget = expectedRevenue - otherCost;
+  const lowerValue = budget > 0 ? budget / lowerReq : 0;
+
+  const buy10 = lowerValue * 0.9;
+  const profit10 = (lowerValue - buy10) * lowerReq;
+
+  document.getElementById('lowerStoneValue').textContent = (lowerValue > 0 ? fmt(lowerValue) : '0') + ' 金币';
+  document.getElementById('expectedOutput').textContent = fmtDec(expectedOutput, 3) + ' 颗';
+  document.getElementById('expectedRevenue').textContent = fmt(expectedRevenue) + ' 金币';
+
+  document.getElementById('breakdownDetail').innerHTML =
+    '有价值的产出 = <span>' + fmtDec(critRate * 100, 0) + '%</span> × <span>' + critBonus + '</span> = <span>' + fmtDec(expectedOutput, 3) + ' 颗 ' + uname + '</span>（基础1颗' + mname + '无价值）<br>' +
+    '期望收益 = <span>' + fmtDec(expectedOutput, 3) + '</span> × <span>' + fmt(upperPrice) + '</span> × <span>' + fmtDec(netRate * 100, 0) + '%</span> = <span>' + fmt(expectedRevenue) + ' 金币</span><br>' +
+    '可用预算 = <span>' + fmt(expectedRevenue) + '</span> − <span>' + fmt(otherCost) + '</span> = <span>' + fmt(Math.max(0, budget)) + ' 金币</span><br>' +
+    lname + '价值 = <span>' + fmt(Math.max(0, budget)) + '</span> ÷ <span>' + lowerReq + '</span> = <strong style="color:var(--gold)">' + fmt(Math.max(0, lowerValue)) + ' 金币/颗</strong>';
+
+  document.getElementById('profit10').textContent = fmt(profit10) + ' 金币';
+  const b10 = document.getElementById('profit10Badge');
+  if (profit10 > 0) { b10.textContent = '获利'; b10.className = 'profit-indicator positive'; }
+  else { b10.textContent = '亏损'; b10.className = 'profit-indicator negative'; }
+
+  document.getElementById('noCritValue').textContent = '0 金币/颗';
+  const bn = document.getElementById('noCritBadge');
+  bn.textContent = '无价值';
+  bn.className = 'profit-indicator negative';
+}
+
+document.querySelectorAll('input[type="number"], input[type="text"]').forEach(el => {
+  el.addEventListener('click', function() { this.select(); });
+});
+
+document.getElementById('upperName').addEventListener('input', updateAll);
+document.getElementById('midName').addEventListener('input', updateAll);
+document.getElementById('lowerName').addEventListener('input', updateAll);
+document.querySelectorAll('input[type="number"]').forEach(el => el.addEventListener('input', calculate));
+document.querySelectorAll('input[type="range"]').forEach(el => el.addEventListener('input', calculate));
+
+updateAll();
+</script>
+</body>
+</html>
