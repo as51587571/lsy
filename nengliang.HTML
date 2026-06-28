@@ -741,7 +741,7 @@
 <body>
 <div class="btn-group">
     <button class="btn btn-warning" onclick="clearAllData()" style="height:22px;padding:0 10px;line-height:22px;box-sizing:border-box;">🗑️ 清空数据</button>
-    <button class="btn" onclick="forceFullRender()" style="height:22px;padding:0 10px;line-height:22px;box-sizing:border-box;">🔄 强制刷新</button>
+    <button class="btn btn-info" onclick="openExportSettings()" style="height:22px;padding:0 10px;line-height:22px;box-sizing:border-box;">⚙️ 导出设置</button>
     <button class="btn btn-success" onclick="addNewZone()" style="height:22px;padding:0 10px;line-height:22px;box-sizing:border-box;">➕ 添加分区</button>
     <span style="font-size:0.75rem; color:#6b7280;">🎯 能量上限:</span>
     <input type="number" id="maxEnergy" class="param-input" value="840" step="1">
@@ -765,8 +765,8 @@
     </select>
     <button class="btn btn-info" onclick="toggleGlobalDungeonType()" title="一键在 征服 ↔ 超越 之间切换所有分区">🔁 一键切换</button>
     <button class="log-toggle-btn" onclick="toggleLogPanel()" title="查看操作记录">📋 查看操作记录</button>
+    <button class="btn btn-warning" onclick="clearLogs()" style="height:22px;padding:0 10px;line-height:22px;box-sizing:border-box;" title="清空所有操作记录">🗑 清空记录</button>
     <div style="width:12px;height:1px;flex-shrink:0;" aria-hidden="true"></div>
-    <button class="btn btn-info" onclick="openExportSettings()">⚙️ 导出设置</button>
     <button class="btn btn-warning" onclick="resetExportCounterDirect()" title="一键重置导出序列号为1" style="padding:4px 8px;font-size:0.7rem;">🔄 重置序号</button>
     <button id="undoConsumeBtn" class="btn" onclick="undoConsume()" disabled style="background:#f59e0b;color:white;border:none;" title="撤销最近一次消耗">↩ 撤销消耗</button>
     <button class="btn btn-warning" onclick="exportData()">📤 导出备份</button>
@@ -2602,7 +2602,6 @@
         showToast('操作记录已清空', 'success');
     }
     
-    function forceFullRender() { batchUpdateEnergyByCycles(); renderAll(); }
     function addNewZone() { 
         let name = prompt("请输入分区名称（例如：天1、魔2）"); 
         console.log('addNewZone called, name:', name);
