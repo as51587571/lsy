@@ -183,6 +183,12 @@
             font-weight: 800;
             border-radius: 16px;
         }
+        /* 最近修改过能量的角色 - 消耗次数输入框高亮 */
+        .consume-recent-highlight {
+            background-color: #fff3e0 !important;
+            border: 2px solid #ff9800 !important;
+            box-shadow: 0 0 6px rgba(255, 152, 0, 0.3);
+        }
         .delete-row-btn, .move-up-btn, .move-down-btn {
             background: none;
             border: none;
@@ -766,6 +772,7 @@
     <button class="btn btn-info" onclick="toggleGlobalDungeonType()" title="一键在 征服 ↔ 超越 之间切换所有分区">🔁 一键切换</button>
     <button class="log-toggle-btn" onclick="toggleLogPanel()" title="查看操作记录">📋 查看操作记录</button>
     <button class="btn btn-warning" onclick="clearLogs()" style="height:22px;padding:0 10px;line-height:22px;box-sizing:border-box;" title="清空所有操作记录">🗑 清空记录</button>
+    <button class="btn btn-info" onclick="clearRecentHighlights()" style="height:22px;padding:0 10px;line-height:22px;box-sizing:border-box;" title="清除消耗次数输入框的高亮标识">🔆 清除高亮</button>
     <div style="width:12px;height:1px;flex-shrink:0;" aria-hidden="true"></div>
     <button class="btn btn-warning" onclick="resetExportCounterDirect()" title="一键重置导出序列号为1" style="padding:4px 8px;font-size:0.7rem;">🔄 重置序号</button>
     <button id="undoConsumeBtn" class="btn" onclick="undoConsume()" disabled style="background:#f59e0b;color:white;border:none;" title="撤销最近一次消耗">↩ 撤销消耗</button>
@@ -870,8 +877,9 @@
     // 全局默认副本类型（用于新分区）
     let globalDungeonType = 'conquer';
     
-    // 记录最后修改次数的2个角色（用于高亮显示战斗力）
-    let lastModifiedAccounts = []; // 存储最近修改的角色信息 [{zoneKey, idx, name}]
+    // 最近修改过能量/补充能量/消耗次数的角色队列（用于高亮消耗次数输入框）
+    // key 格式: `${zoneKey}|${accountName}`，最多保留2个
+    let recentlyModifiedAccounts = [];
     
     // ======================== 本地存储 ========================
     function loadData() {
@@ -1015,6 +1023,18 @@
                 } catch(e) {
                     console.warn('消耗历史解析失败');
                     consumeHistory = [];
+                }
+            }
+            
+            // 加载最近修改角色高亮队列
+            const savedRecentModified = localStorage.getItem('energyRecentModified');
+            if (savedRecentModified) {
+                try {
+                    const arr = JSON.parse(savedRecentModified);
+                    recentlyModifiedAccounts = Array.isArray(arr) ? arr.slice(-2) : [];
+                } catch(e) {
+                    console.warn('最近修改集合解析失败');
+                    recentlyModifiedAccounts = [];
                 }
             }
             
@@ -1167,6 +1187,7 @@
             localStorage.setItem('energyOperationLogs', JSON.stringify(operationLogs.slice(-MAX_LOGS)));
             localStorage.setItem('energyGlobalDungeonType', globalDungeonType);
             localStorage.setItem('energyConsumeHistory', JSON.stringify(consumeHistory));
+            localStorage.setItem('energyRecentModified', JSON.stringify(recentlyModifiedAccounts));
         } catch(e) { console.warn(e); }
     }
 
@@ -1858,6 +1879,14 @@
                         if (consumeHistory.length > 10) { consumeHistory.shift(); }
                         console.log('[energyEdit] push 撤销记录, length=', consumeHistory.length, 'account=', accountRef.name);
                         setAccountEnergyAndResetTimer(accountRef, newVal, maxE);
+                        // 将角色加入最近修改队列（高亮消耗次数输入框，最多保留2个）
+                        const modKey = `${z}|${accountRef.name}`;
+                        recentlyModifiedAccounts = recentlyModifiedAccounts.filter(k => k !== modKey);
+                        recentlyModifiedAccounts.push(modKey);
+                        if (recentlyModifiedAccounts.length > 2) {
+                            recentlyModifiedAccounts.shift();
+                        }
+                        saveData();
                         renderAll();
                     } else {
                         if (Math.abs(parseFloat(energyInput.value) - accountRef.current) > 0.05)
@@ -2000,16 +2029,14 @@
                     // 记录操作 - 只记录一条综合性的消耗能量日志
                     addLog('energy', `消耗能量 [${accountRef.name}] ${times}次×${consumePerTime}=${totalConsume}(当前能量${oldCurrentEnergy}减${currentEnergyReduced} 补充能量${oldSupplement}减${supplementReduced})`);
                     
-                    // 记录最后修改的角色（用于高亮显示战斗力）
-                    const modifiedAccount = { zoneKey: z, idx: idx2, name: accountRef.name };
-                    // 移除已存在的相同角色
-                    lastModifiedAccounts = lastModifiedAccounts.filter(acc => !(acc.zoneKey === z && acc.idx === idx2));
-                    // 添加到末尾
-                    lastModifiedAccounts.push(modifiedAccount);
-                    // 只保留最后2个
-                    if (lastModifiedAccounts.length > 2) {
-                        lastModifiedAccounts.shift();
+                    // 将角色加入最近修改队列（高亮消耗次数输入框，最多保留2个）
+                    const modKey = `${z}|${accountRef.name}`;
+                    recentlyModifiedAccounts = recentlyModifiedAccounts.filter(k => k !== modKey);
+                    recentlyModifiedAccounts.push(modKey);
+                    if (recentlyModifiedAccounts.length > 2) {
+                        recentlyModifiedAccounts.shift();
                     }
+                    saveData();
                     
                     // 清空输入框并刷新
                     e.target.value = '';
@@ -2019,6 +2046,11 @@
                         showToast(`消耗操作出错: ${err.message}`, 'error', 4000);
                     }
                 })(zone.key, idx, acc));
+                
+                // 如果角色在最近修改队列中，添加高亮CSS类
+                if (recentlyModifiedAccounts.includes(`${zone.key}|${acc.name}`)) {
+                    consumeInput.classList.add('consume-recent-highlight');
+                }
                 
                 tdConsume.appendChild(consumeInput);
                 
@@ -2067,6 +2099,13 @@
                     }
                     accountRef.supplement = newSupp;
                     accountRef.supplementRecordTime = Date.now();
+                    // 将角色加入最近修改队列（高亮消耗次数输入框，最多保留2个）
+                    const modKey = `${accountRef.zone}|${accountRef.name}`;
+                    recentlyModifiedAccounts = recentlyModifiedAccounts.filter(k => k !== modKey);
+                    recentlyModifiedAccounts.push(modKey);
+                    if (recentlyModifiedAccounts.length > 2) {
+                        recentlyModifiedAccounts.shift();
+                    }
                     saveData();
                     // 记录操作
                     if (oldSupp !== accountRef.supplement) {
@@ -2092,15 +2131,6 @@
                 powerInput.style.width = '80px';
                 powerInput.placeholder = '战力';
                 
-                // 检查是否是最后修改的2个角色之一，如果是则高亮显示
-                const isRecentlyModified = lastModifiedAccounts.some(modAcc => modAcc.zoneKey === zone.key && modAcc.idx === idx);
-                if (isRecentlyModified) {
-                    powerInput.style.backgroundColor = '#fff3cd';
-                    powerInput.style.border = '2px solid #ffc107';
-                    powerInput.style.fontWeight = 'bold';
-                }
-                
-                // 点击输入框时自动全选
                 powerInput.addEventListener('focus', function() {
                     this.select();
                 });
@@ -2600,6 +2630,15 @@
         saveData();
         renderLogs();
         showToast('操作记录已清空', 'success');
+    }
+    
+    // 清除最近修改高亮
+    function clearRecentHighlights() {
+        recentlyModifiedAccounts = [];
+        saveData();
+        renderAll();
+        showToast('已清除所有消耗次数高亮', 'success');
+        addLog('system', '清除消耗次数高亮标识');
     }
     
     function addNewZone() { 
