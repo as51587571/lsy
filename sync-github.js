@@ -62,7 +62,7 @@
   var _lastSaveTime = 0;
   function saveRemote(callback, useKeepalive){
     var now = Date.now();
-    if(now - _lastSaveTime < 30000){
+    if(now - _lastSaveTime < 60000){
       // 冷却中静默跳过，不标记为未同步
       if(callback) callback(false, 'cooldown');
       return;
@@ -117,11 +117,11 @@
     });
   }
 
-  // ========== 自动保存（延迟 3 秒） ==========
+  // ========== 自动保存（延迟 5 秒） ==========
   var saveTimer = null;
   function scheduleSave(){
     if(saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(function(){ saveRemote(); }, 3000);
+    saveTimer = setTimeout(function(){ saveRemote(); }, 5000);
   }
   function hook(fn, ctx, name){
     var orig = ctx[name];
@@ -206,6 +206,12 @@
     loadRemote().then(function(changed){
       if(changed) showStatus('数据已更新', '#3498db');
     });
+    // 每10分钟拉取一次
+    setInterval(function(){
+      loadRemote().then(function(changed){
+        if(changed) showStatus('数据已更新', '#27ae60');
+      });
+    }, 600000);
   } else {
     setTimeout(function(){
       if(!getToken()) showTokenUI();
