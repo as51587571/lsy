@@ -58,7 +58,16 @@
   function incPending(){ localStorage.setItem('_sync_pending', String(getPendingCount()+1)); }
   function clearPending(){ localStorage.setItem('_sync_pending', '0'); }
 
+  // ========== 冷却控制：至少间隔 30 秒 ==========
+  var _lastSaveTime = 0;
   function saveRemote(callback, useKeepalive){
+    var now = Date.now();
+    if(now - _lastSaveTime < 30000){
+      incPending();
+      if(callback) callback(false, 'cooldown');
+      return;
+    }
+    _lastSaveTime = now;
     var token = getToken();
     if(!token){
       incPending();
