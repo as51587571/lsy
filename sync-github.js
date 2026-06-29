@@ -63,7 +63,7 @@
   function saveRemote(callback, useKeepalive){
     var now = Date.now();
     if(now - _lastSaveTime < 30000){
-      incPending();
+      // 冷却中静默跳过，不标记为未同步
       if(callback) callback(false, 'cooldown');
       return;
     }
