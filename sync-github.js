@@ -34,6 +34,11 @@
       return r.json();
     }).then(function(remote){
       if(!remote) return;
+      // 有未同步的本地修改时，跳过远程覆盖，防止丢失本地数据
+      if(getPendingCount() > 0){
+        showStatus('有未同步修改，跳过远程覆盖', '#f39c12');
+        return false;
+      }
       var changed = false;
       for(var k in remote){
         if(!remote.hasOwnProperty(k)) continue;
