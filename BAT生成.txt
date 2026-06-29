@@ -19,3 +19,4 @@ pause
     Set-Content -Path "$dir\$batName" -Value $content -Encoding UTF8
     Write-Host "已生成: $batName"
 }
+（内容由AI生成，仅供参考）

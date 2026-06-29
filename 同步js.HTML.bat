@@ -1,8 +1,32 @@
-ï»¿@echo off
+@echo off
 chcp 65001 >nul
-cd /d "\\é˜¿æ—\åä½œ\ä»“åº“\lsy"
+pushd "\\°¢ÁÖ\Ğ­×÷\²Ö¿â\lsy"
+
+echo ÕıÔÚÍ¬²½ js.HTML ...
+
 "C:\Program Files\Git\bin\git.exe" add "js.HTML"
-"C:\Program Files\Git\bin\git.exe" commit -m "æ›´æ–° js.HTML"
+if errorlevel 1 (
+  echo [Ê§°Ü] add Ê§°Ü£¬Çë¼ì²éÎÄ¼şÊÇ·ñ´æÔÚ
+  pause
+  exit
+)
+
+"C:\Program Files\Git\bin\git.exe" commit -m "¸üĞÂ js.HTML"
+if errorlevel 1 (
+  echo [ÌáÊ¾] ÎÄ¼şÎŞ±ä¸ü»ò commit Ê§°Ü
+) else (
+  echo [Ìá½»] commit ³É¹¦
+)
+
 "C:\Program Files\Git\bin\git.exe" push
-echo js.HTML åŒæ­¥å®Œæˆï¼
+if errorlevel 1 (
+  echo [Ê§°Ü] push Ê§°Ü£¬¼ì²éÍøÂç»ò´úÀí
+  pause
+  exit
+)
+
+echo ======================
+echo js.HTML Í¬²½Íê³É£¡
+======================
 pause
+

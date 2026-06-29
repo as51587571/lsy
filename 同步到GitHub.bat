@@ -1,6 +1,6 @@
 ﻿@echo off
 chcp 65001 >nul
-cd /d "\\阿林\协作\仓库\lsy"
+pushd "\\阿林\协作\仓库\lsy"
 
 "C:\Program Files\Git\bin\git.exe" add -A
 
@@ -13,3 +13,4 @@ if "%msg%"=="" set msg=更新
 echo.
 echo 同步完成！
 pause
+

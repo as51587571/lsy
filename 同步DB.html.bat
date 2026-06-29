@@ -1,8 +1,32 @@
-ï»¿@echo off
+@echo off
 chcp 65001 >nul
-cd /d "\\é˜¿æ—\åä½œ\ä»“åº“\lsy"
+pushd "\\°¢ÁÖ\Ğ­×÷\²Ö¿â\lsy"
+
+echo ÕıÔÚÍ¬²½ DB.html ...
+
 "C:\Program Files\Git\bin\git.exe" add "DB.html"
-"C:\Program Files\Git\bin\git.exe" commit -m "æ›´æ–° DB.html"
+if errorlevel 1 (
+  echo [Ê§°Ü] add Ê§°Ü£¬Çë¼ì²éÎÄ¼şÊÇ·ñ´æÔÚ
+  pause
+  exit
+)
+
+"C:\Program Files\Git\bin\git.exe" commit -m "¸üĞÂ DB.html"
+if errorlevel 1 (
+  echo [ÌáÊ¾] ÎÄ¼şÎŞ±ä¸ü»ò commit Ê§°Ü
+) else (
+  echo [Ìá½»] commit ³É¹¦
+)
+
 "C:\Program Files\Git\bin\git.exe" push
-echo DB.html åŒæ­¥å®Œæˆï¼
+if errorlevel 1 (
+  echo [Ê§°Ü] push Ê§°Ü£¬¼ì²éÍøÂç»ò´úÀí
+  pause
+  exit
+)
+
+echo ======================
+echo DB.html Í¬²½Íê³É£¡
+======================
 pause
+

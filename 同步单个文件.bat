@@ -1,6 +1,6 @@
 ﻿@echo off
 chcp 65001 >nul
-cd /d "\\阿林\协作\仓库\lsy"
+pushd "\\阿林\协作\仓库\lsy"
 
 set /p file="输入要同步的文件名（如 笔记.txt）: "
 if "%file%"=="" (
@@ -26,3 +26,4 @@ if "%msg%"=="" set msg=更新 %file%
 echo.
 echo %file% 同步完成！
 pause
+
