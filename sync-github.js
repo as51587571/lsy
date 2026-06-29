@@ -170,7 +170,7 @@
       +'<p style="font-size:11px;color:#666;margin:0 0 12px">创建地址：<a href="https://github.com/settings/tokens?type=beta" target="_blank" style="color:#4ecdc4">GitHub Settings</a>，权限选 <b>Contents: Read and write</b>，仓库选 <b>as51587571/lsy</b></p>'
       +'<input id="_gh_token_input" type="password" placeholder="粘贴 Token...（需开代理）" style="width:100%;padding:10px;border:1px solid #2a2a4a;border-radius:6px;background:#0f0f1a;color:#e0e0e0;font-size:14px;box-sizing:border-box;margin-bottom:12px">'
       +'<div style="display:flex;gap:8px">'
-      +'<button onclick="document.getElementById('_gh_token_ui').remove()" style="flex:1;padding:10px;border:1px solid #2a2a4a;border-radius:6px;background:transparent;color:#999;cursor:pointer">跳过</button>'
+      +'<button onclick="document.getElementById(\'_gh_token_ui\').remove()" style="flex:1;padding:10px;border:1px solid #2a2a4a;border-radius:6px;background:transparent;color:#999;cursor:pointer">跳过</button>'
       +'<button id="_gh_token_save" style="flex:2;padding:10px;border:none;border-radius:6px;background:#4ecdc4;color:#000;font-weight:600;cursor:pointer">保存并同步</button>'
       +'</div></div></div>';
     document.body.appendChild(div);
