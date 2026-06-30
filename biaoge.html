@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>怪物伤害对照表 V1.1</title>
+<script src="https://static.cloudbase.net/cloudbase-js-sdk/2.28.6/cloudbase.full.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Microsoft YaHei', sans-serif; background: #0f1923; color: #e0e0e0; padding: 20px; min-height: 100vh; }
+.container { max-width: 800px; margin: 0 auto; }
+h1 { text-align: center; color: #ffd54f; margin-bottom: 20px; font-size: 24px; }
+.toolbar { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+.toolbar input { flex: 1; min-width: 120px; padding: 8px 12px; border: 1px solid #334; border-radius: 6px; background: #1a2a38; color: #fff; font-size: 14px; }
+.toolbar input::placeholder { color: #667; }
+.toolbar button { padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; transition: opacity 0.2s; }
+.toolbar button:hover { opacity: 0.85; }
+.btn-add { background: #4caf50; color: #fff; }
+.btn-clear { background: #f44336; color: #fff; }
+.sync-status { text-align: right; font-size: 12px; color: #667; margin-bottom: 8px; }
+.sync-status.success { color: #4caf50; }
+.sync-status.error { color: #f44336; }
+table { width: 100%; border-collapse: collapse; background: #1a2a38; border-radius: 8px; overflow: hidden; }
+th { background: #243447; color: #ffd54f; padding: 12px 15px; text-align: left; font-size: 14px; }
+td { padding: 10px 15px; border-bottom: 1px solid #2a3a4a; font-size: 14px; }
+tr:last-child td { border-bottom: none; }
+tr:hover { background: #223040; }
+.col-name { width: 38%; }
+.col-damage { width: 28%; }
+.col-action { width: 34%; text-align: center; white-space: nowrap; }
+.damage-value { color: #ff6b6b; font-weight: bold; }
+.btn-del { background: none; border: 1px solid #f44336; color: #f44336; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+.btn-del:hover { background: #f44336; color: #fff; }
+.btn-move { background: none; border: 1px solid #556; color: #99a; padding: 4px 7px; border-radius: 3px; cursor: pointer; font-size: 11px; transition: all 0.2s; margin: 0 1px; }
+.btn-move:hover { background: #334; color: #ffd54f; border-color: #ffd54f; }
+.empty { text-align: center; padding: 40px; color: #556; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>怪物伤害对照表 <span style="color:#ffd54f;font-size:16px;">V1.1</span></h1>
+  <div class="sync-status" id="syncStatus">同步中...</div>
+  <div class="toolbar">
+    <input type="text" id="monsterName" placeholder="怪物名字" />
+    <input type="text" id="monsterDamage" placeholder="所需伤害" />
+    <button class="btn-add" onclick="addMonster()">添加</button>
+    <button class="btn-clear" onclick="clearAll()">清空</button>
+  </div>
+  <table>
+    <thead>
+      <tr><th class="col-name">怪物名字</th><th class="col-damage">所需伤害</th><th class="col-action">操作</th></tr>
+    </thead>
+    <tbody id="tableBody">
+      <tr><td class="empty" colspan="3">暂无数据</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+const ENV_ID = 'lsy-d5gdx6qyg7805aea7';
+const SYNC_COLLECTION = 'biaoge';
+const SYNC_DOC = 'main_data';
+const SYNC_TIME_KEY = '_cloudSyncTime';
+const STORAGE_KEY = 'monsterList';
+
+let monsterList = [];
+let cloudReady = false;
+let cloudDb = null;
+
+async function initCloudBase() {
+  try {
+    const app = cloudbase.init({ env: ENV_ID });
+    const auth = app.auth({ persistence: 'local' });
+    await auth.anonymousAuthProvider().signIn();
+    cloudDb = app.database();
+    cloudReady = true;
+    console.log('[CloudBase] 匿名登录成功');
+  } catch (e) {
+    console.warn('[CloudBase] 登录失败:', e.message);
+  }
+}
+
+async function syncFromCloud() {
+  if (!cloudReady || !cloudDb) return false;
+  try {
+    const res = await cloudDb.collection(SYNC_COLLECTION).doc(SYNC_DOC).get();
+    if (!res.data || res.data.length === 0) {
+      console.log('[CloudBase] 云端暂无数据，上传本地');
+      await syncToCloud();
+      return false;
+    }
+    const d = res.data[0];
+    const cloudTime = d.updatedAt || 0;
+    const localTime = parseInt(localStorage.getItem(SYNC_TIME_KEY)) || 0;
+    const hasLocalData = localStorage.getItem(STORAGE_KEY);
+    if (!localTime && hasLocalData) {
+      console.log('[CloudBase] 本地有数据且云端时间戳缺失，上传本地');
+      await syncToCloud();
+      return false;
+    }
+    if (cloudTime <= localTime) {
+      console.log('[CloudBase] 云端数据未更新');
+      setSyncStatus(true);
+      return false;
+    }
+    if (d.monsterData) localStorage.setItem(STORAGE_KEY, JSON.stringify(d.monsterData));
+    localStorage.setItem(SYNC_TIME_KEY, cloudTime);
+    loadData();
+    renderTable();
+    console.log('[CloudBase] 从云端拉取成功');
+    setSyncStatus(true);
+    return true;
+  } catch (e) {
+    console.warn('[CloudBase] 拉取失败:', e.message);
+    setSyncStatus(false);
+    return false;
+  }
+}
+
+async function syncToCloud() {
+  if (!cloudReady || !cloudDb) return;
+  const now = Date.now();
+  try {
+    await cloudDb.collection(SYNC_COLLECTION).doc(SYNC_DOC).set({
+      monsterData: monsterList,
+      updatedAt: now
+    });
+    localStorage.setItem(SYNC_TIME_KEY, now);
+    console.log('[CloudBase] 同步到云端成功');
+    setSyncStatus(true);
+  } catch (e) {
+    console.warn('[CloudBase] 同步失败:', e.message);
+    setSyncStatus(false);
+  }
+}
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    monsterList = raw ? JSON.parse(raw) : [];
+  } catch (e) { monsterList = []; }
+}
+
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(monsterList));
+  syncToCloud();
+}
+
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  if (monsterList.length === 0) {
+    tbody.innerHTML = '<tr><td class="empty" colspan="3">暂无数据</td></tr>';
+    return;
+  }
+  tbody.innerHTML = monsterList.map((m, i) => `
+    <tr>
+      <td>${escapeHtml(m.name)}</td>
+      <td><span class="damage-value">${escapeHtml(String(m.damage))}</span></td>
+      <td class="col-action">
+        <button class="btn-move" onclick="moveMonster(${i}, -1)">↑</button>
+        <button class="btn-move" onclick="moveMonster(${i}, 1)">↓</button>
+        <button class="btn-del" onclick="deleteMonster(${i})">删除</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function setSyncStatus(ok) {
+  const el = document.getElementById('syncStatus');
+  el.textContent = ok ? '已同步' : '同步失败';
+  el.className = 'sync-status' + (ok ? ' success' : ' error');
+}
+
+function addMonster() {
+  const nameInput = document.getElementById('monsterName');
+  const damageInput = document.getElementById('monsterDamage');
+  const name = nameInput.value.trim();
+  const damage = damageInput.value.trim();
+  if (!name) { alert('请输入怪物名字'); return; }
+  if (!damage || isNaN(parseFloat(damage))) { alert('请输入有效伤害数值'); return; }
+  monsterList.push({ name, damage: parseFloat(damage) });
+  saveData();
+  renderTable();
+  nameInput.value = '';
+  damageInput.value = '';
+  nameInput.focus();
+}
+
+function deleteMonster(index) {
+  monsterList.splice(index, 1);
+  saveData();
+  renderTable();
+}
+
+function moveMonster(index, dir) {
+  const swap = index + dir;
+  if (swap < 0 || swap >= monsterList.length) return;
+  [monsterList[index], monsterList[swap]] = [monsterList[swap], monsterList[index]];
+  saveData();
+  renderTable();
+}
+
+function clearAll() {
+  if (!confirm('确定要清空所有数据吗？')) return;
+  monsterList = [];
+  saveData();
+  renderTable();
+}
+
+window.onload = async function () {
+  loadData();
+  renderTable();
+  await initCloudBase();
+  await syncFromCloud();
+};
+
+document.getElementById('monsterDamage').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') addMonster();
+});
+</script>
+</body>
+</html>
