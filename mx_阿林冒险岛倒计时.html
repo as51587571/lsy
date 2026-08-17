@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>阿林冒险岛倒计时</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:#f3f5fb;color:#1a1a1a;padding:20px;max-width:760px;margin:0 auto;
+  }
+  header{text-align:center;margin-bottom:18px}
+  h1{font-size:24px;color:#3a45c7;letter-spacing:1px}
+  .bj-time{font-size:14px;color:#666;margin-top:4px}
+  .bj-time b{color:#3a45c7;font-variant-numeric:tabular-nums}
+
+  .mode-tabs{display:flex;gap:8px;margin-bottom:14px}
+  .mode-tab{
+    flex:1;padding:10px;border:none;border-radius:8px;cursor:pointer;
+    background:#e6e9f5;color:#555;font-size:14px;font-weight:600;transition:.2s;
+  }
+  .mode-tab.active{background:#3a45c7;color:#fff}
+
+  .add-panel{background:#fff;border-radius:12px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.05);margin-bottom:18px}
+  .add-panel h2{font-size:15px;margin-bottom:12px;color:#444}
+  .input-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+  .input-group{display:flex;flex-direction:column;gap:4px}
+  .input-group label{font-size:12px;color:#888}
+  .input-group input{
+    padding:8px;border:1.5px solid #d9def0;border-radius:7px;font-size:14px;outline:none;
+  }
+  .input-group input:focus{border-color:#3a45c7}
+  .btn-add{
+    padding:9px 20px;border:none;border-radius:8px;background:#3a45c7;color:#fff;
+    font-size:14px;font-weight:600;cursor:pointer;height:38px;
+  }
+  .btn-add:hover{background:#2f39a8}
+  .quick-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .quick-btn{
+    padding:6px 14px;border:1px solid #d9def0;border-radius:20px;background:#f7f8ff;
+    color:#3a45c7;font-size:13px;cursor:pointer;transition:.15s;
+  }
+  .quick-btn:hover{background:#e6e9f5}
+  .btn-now{
+    padding:8px 14px;border:1px solid #3a45c7;background:#3a45c7;color:#fff;
+    border-radius:7px;font-size:13px;cursor:pointer;white-space:nowrap;height:38px;
+  }
+  .btn-now:hover{background:#2f39a8}
+
+  #taskList{display:flex;flex-direction:column;gap:12px}
+  .empty{text-align:center;color:#aaa;padding:30px;font-size:14px}
+
+  .task-card{
+    background:#fff;border-radius:12px;padding:14px 16px;box-shadow:0 2px 10px rgba(0,0,0,.05);
+    border-left:4px solid #3a45c7;
+  }
+  .task-card.warning{border-left-color:#ff9c0e}
+  .task-card.expired{border-left-color:#ff4d4f}
+  .task-card.waiting{border-left-color:#bbb}
+  .task-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px}
+  .task-name{font-size:17px;font-weight:700;color:#1a1a1a;word-break:break-all;cursor:pointer}
+  .task-actions{display:flex;gap:6px;flex-shrink:0;align-items:center}
+  .mode-tag{font-size:11px;padding:2px 8px;border-radius:10px;background:#eef0fb;color:#3a45c7;font-weight:600}
+  .btn-del{background:none;border:none;color:#ccc;font-size:22px;cursor:pointer;padding:0 4px;line-height:1}
+  .btn-del:hover{color:#ff4d4f}
+
+  .task-times{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:8px}
+  .time-block{display:flex;flex-direction:column;gap:2px}
+  .time-block .lbl{font-size:11px;color:#999}
+  .time-block .val{font-size:14px;color:#333;font-variant-numeric:tabular-nums;cursor:pointer}
+
+  .editable{cursor:pointer;text-decoration:underline dotted #c0c0c0;text-underline-offset:3px}
+  .editable:hover{color:#3a45c7}
+  .editable:hover::after{content:" ✎";font-size:11px;color:#3a45c7}
+
+  .countdown{
+    font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;
+    margin:6px 0 4px;text-align:center;
+  }
+  .countdown.normal{color:#3a45c7}
+  .countdown.warn{color:#ff9c0e}
+  .countdown.over{color:#ff4d4f}
+  .countdown.waiting{color:#aaa}
+
+  .remain-hint{font-size:12px;color:#999;text-align:center;margin-bottom:8px}
+
+  .progress-bg{height:7px;background:#eef0fb;border-radius:4px;overflow:hidden}
+  .progress-fill{height:100%;background:#3a45c7;border-radius:4px;transition:width .3s}
+  .progress-fill.warn{background:#ff9c0e}
+  .progress-fill.over{background:#ff4d4f}
+
+  .done-badge{font-size:11px;background:#ff4d4f;color:#fff;padding:1px 6px;border-radius:8px;margin-left:6px;vertical-align:middle}
+  .task-card.done-flash{animation:flash .4s ease 3}
+  @keyframes flash{0%,100%{background:#fff}50%{background:#ffe2e2}}
+</style>
+</head>
+<body>
+<header>
+  <h1>阿林冒险岛倒计时</h1>
+  <div class="bj-time">北京时间 <b id="bjTime">--:--:--</b></div>
+</header>
+
+<div class="mode-tabs">
+  <button class="mode-tab active" data-mode="plus" onclick="switchMode('plus')">加时模式（现在+N分钟）</button>
+  <button class="mode-tab" data-mode="fixed" onclick="switchMode('fixed')">定时模式（指定开始时间）</button>
+</div>
+
+<div class="add-panel">
+  <h2>添加任务</h2>
+  <!-- 加时模式 -->
+  <div class="mode-panel" id="panelPlus">
+    <div class="input-row">
+      <div class="input-group">
+        <label>任务名称</label>
+        <input type="text" id="taskName" placeholder="如：泡面、开会" maxlength="40">
+      </div>
+      <div class="input-group">
+        <label>分钟</label>
+        <input type="number" id="taskMins" placeholder="0" min="0" max="9999" value="3">
+      </div>
+      <div class="input-group">
+        <label>秒</label>
+        <input type="number" id="taskSecs" placeholder="0" min="0" max="59" value="0">
+      </div>
+      <button class="btn-add" onclick="addTaskPlus()">添加</button>
+    </div>
+    <div class="quick-btns">
+      <button class="quick-btn" onclick="quickSet(1,0)">1分钟</button>
+      <button class="quick-btn" onclick="quickSet(3,0)">3分钟</button>
+      <button class="quick-btn" onclick="quickSet(5,0)">5分钟</button>
+      <button class="quick-btn" onclick="quickSet(10,0)">10分钟</button>
+      <button class="quick-btn" onclick="quickSet(15,0)">15分钟</button>
+      <button class="quick-btn" onclick="quickSet(30,0)">30分钟</button>
+      <button class="quick-btn" onclick="quickSet(0,30)">30秒</button>
+      <button class="quick-btn" onclick="quickSet(0,10)">10秒</button>
+    </div>
+  </div>
+  <!-- 定时模式 -->
+  <div class="mode-panel" id="panelFixed" style="display:none">
+    <div class="input-row">
+      <div class="input-group">
+        <label>任务名称</label>
+        <input type="text" id="taskNameFixed" placeholder="如：开会、出发" maxlength="40">
+      </div>
+      <div class="input-group">
+        <label>开始时间（北京时间）</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" id="taskTime" placeholder="HH:MM:SS" style="width:120px" value="">
+          <button class="btn-now" type="button" onclick="fillNowTime()">现在</button>
+        </div>
+      </div>
+      <div class="input-group">
+        <label>分钟</label>
+        <input type="number" id="taskMinsFixed" placeholder="0" min="0" max="9999" value="10">
+      </div>
+      <div class="input-group">
+        <label>秒</label>
+        <input type="number" id="taskSecsFixed" placeholder="0" min="0" max="59" value="0">
+      </div>
+      <button class="btn-add" onclick="addTaskFixed()">添加</button>
+    </div>
+    <div class="quick-btns">
+      <button class="quick-btn" onclick="fixedQuick(5)">开始+5分</button>
+      <button class="quick-btn" onclick="fixedQuick(10)">开始+10分</button>
+      <button class="quick-btn" onclick="fixedQuick(15)">开始+15分</button>
+      <button class="quick-btn" onclick="fixedQuick(30)">开始+30分</button>
+      <button class="quick-btn" onclick="fixedQuick(60)">开始+60分</button>
+    </div>
+  </div>
+</div>
+
+<div id="taskList"></div>
+
+<script>
+// ---------- 状态变量（必须放在最前面，避免 TDZ） ----------
+let tasks = [];
+try { tasks = JSON.parse(localStorage.getItem('timer_tasks') || '[]'); } catch(e) { tasks = []; }
+let alertedIds = new Set();
+let inlineEditing = false;        // 编辑期间暂停 render，避免把 input 抹掉
+let currentMode = 'plus';
+
+const FORM_DRAFT_KEY = 'timer_form_draft';
+const FORM_INPUT_IDS = ['taskName','taskMins','taskSecs','taskNameFixed','taskTime','taskMinsFixed','taskSecsFixed'];
+
+// ---------- 时间辅助 ----------
+function getBeijingNow(){
+  const d = new Date();
+  const utc = d.getTime() + d.getTimezoneOffset()*60000; // 转为 UTC 毫秒
+  return new Date(utc + 8*3600000);                       // 加 8 小时 = 北京
+}
+function fmtTime(d){
+  return String(d.getHours()).padStart(2,'0') + ':' +
+         String(d.getMinutes()).padStart(2,'0') + ':' +
+         String(d.getSeconds()).padStart(2,'0');
+}
+function fmtFullTime(ts){ return fmtTime(new Date(ts)); }
+// 把 HH:MM:SS 当作「北京时间」解析为毫秒时间戳（不受本机时区影响）
+function beijingTimeToEpoch(hh, mm, ss){
+  const d = new Date();
+  const utc = d.getTime() + d.getTimezoneOffset()*60000;
+  const bj = new Date(utc + 8*3600000);
+  return Date.UTC(bj.getFullYear(), bj.getMonth(), bj.getDate(), hh, mm, ss) - 8*3600000;
+}
+function durText(sec){
+  sec = Math.max(0, Math.round(sec));
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
+  let r = '';
+  if(h>0) r += h + '时';
+  if(m>0 || h>0) r += m + '分';
+  r += s + '秒';
+  return r;
+}
+function esc(s){
+  return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+function nextMinuteString(){
+  const d = getBeijingNow();
+  d.setSeconds(d.getSeconds() + 60);
+  return fmtTime(d);
+}
+
+// ---------- 保存 / 加载 ----------
+function saveTasks(){
+  try { localStorage.setItem('timer_tasks', JSON.stringify(tasks)); } catch(e){}
+}
+
+// ---------- 提交任务 ----------
+function commitTask(obj){
+  tasks.push({
+    id: Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    name: obj.name,
+    targetTs: obj.targetTs,
+    startTs: obj.startTs,
+    countdownStartTs: obj.countdownStartTs,
+    totalSec: obj.totalSec,
+    mode: obj.mode,
+    done: false
+  });
+  saveTasks();
+  render();
+}
+
+function addTaskPlus(){
+  const nameEl = document.getElementById('taskName');
+  const minEl  = document.getElementById('taskMins');
+  const secEl  = document.getElementById('taskSecs');
+  const name = nameEl.value.trim() || '未命名任务';
+  const total = (parseInt(minEl.value)||0)*60 + (parseInt(secEl.value)||0);
+  if(total <= 0){ alert('请输入大于0的时间'); return; }
+  const now = getBeijingNow().getTime();
+  commitTask({ name, targetTs: now + total*1000, startTs: now, totalSec: total, mode: 'plus' });
+  nameEl.value = '';
+}
+
+function addTaskFixed(){
+  const nameEl = document.getElementById('taskNameFixed');
+  const timeEl = document.getElementById('taskTime');
+  const minEl  = document.getElementById('taskMinsFixed');
+  const secEl  = document.getElementById('taskSecsFixed');
+  const name = nameEl.value.trim() || '未命名任务';
+  const timeStr = timeEl.value.trim();
+  if(!timeStr){ alert('请填写开始时间（北京时间）'); return; }
+  const total = (parseInt(minEl.value)||0)*60 + (parseInt(secEl.value)||0);
+  if(total <= 0){ alert('请输入大于0的计时时长'); return; }
+  const parts = timeStr.split(':').map(x => parseInt(x,10)||0);
+  const startTs = beijingTimeToEpoch(parts[0]||0, parts[1]||0, parts[2]||0); // 当作北京时间
+  commitTask({
+    name, targetTs: startTs + total*1000, startTs: getBeijingNow().getTime(),
+    countdownStartTs: startTs, totalSec: total, mode: 'fixed'
+  });
+}
+
+function quickSet(m, s){
+  document.getElementById('taskMins').value = m;
+  document.getElementById('taskSecs').value = s;
+  saveFormDraft();
+}
+function fixedQuick(min){
+  const d = getBeijingNow();
+  d.setMinutes(d.getMinutes() + min);
+  document.getElementById('taskTime').value = fmtTime(d);
+  saveFormDraft();
+}
+function fillNowTime(){
+  document.getElementById('taskTime').value = fmtFullTime(getBeijingNow());
+  saveFormDraft();
+}
+
+// ---------- 模式切换 ----------
+function switchMode(m){
+  currentMode = m;
+  document.getElementById('panelPlus').style.display  = (m==='plus')  ? '' : 'none';
+  document.getElementById('panelFixed').style.display = (m==='fixed') ? '' : 'none';
+  document.querySelectorAll('.mode-tab').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
+  saveFormDraft();
+}
+
+// ---------- 渲染 ----------
+function render(){
+  const now = getBeijingNow().getTime();
+  const list = document.getElementById('taskList');
+  if(tasks.length === 0){
+    list.innerHTML = '<div class="empty">还没有任务，先在上面添加一个吧～</div>';
+    return;
+  }
+  const sorted = [...tasks].sort((a,b) => a.targetTs - b.targetTs);
+  list.innerHTML = sorted.map(t => {
+    const countdownStart = t.countdownStartTs || t.startTs;
+    // 等待状态严格判定：定时模式 AND 开始时间是合理未来的（< 12h）
+    const isWaiting = (t.mode === 'fixed')
+      && countdownStart && countdownStart > now
+      && (countdownStart - now) < 12*3600*1000;
+
+    const remainMs = t.targetTs - now;
+    const remainSec = Math.max(0, Math.ceil(remainMs/1000));
+    const isOver = remainMs <= 0;
+    const isWarn = !isOver && remainSec <= 60;
+    const progress = isOver ? 100 : Math.min(100, ((t.totalSec - remainSec)/t.totalSec)*100);
+
+    let cdText, cdClass, fillClass, cardClass, extraHtml;
+
+    if(isWaiting){
+      const waitSec = Math.ceil((countdownStart - now)/1000);
+      cdText = durText(waitSec);
+      cdClass = 'waiting'; fillClass = ''; cardClass = 'waiting';
+      extraHtml = `<div class="remain-hint">距启动还有 ${durText(waitSec)} · 时长 ${durText(t.totalSec)} · 目标 ${fmtFullTime(t.targetTs)}</div>`;
+    } else {
+      // 大字 = 目标时间（恒定显示），副信息显示剩余 / 已用
+      cdText = fmtFullTime(t.targetTs);
+      cdClass = isOver ? 'over' : (isWarn ? 'warn' : 'normal');
+      fillClass = isOver ? 'over' : (isWarn ? 'warn' : '');
+      cardClass = isOver ? 'expired' : (isWarn ? 'warning' : 'active');
+      const usedBase = (t.mode === 'fixed') ? countdownStart : t.startTs;
+      const usedSec = Math.max(0, Math.round((now - usedBase)/1000));
+      if(isOver){
+        extraHtml = `<div class="remain-hint">已到时 · 目标 ${fmtFullTime(t.targetTs)}</div>`;
+      } else {
+        extraHtml = `<div class="remain-hint">还剩 ${durText(remainSec)} · 已用 ${durText(usedSec)} / 共 ${durText(t.totalSec)}</div>`;
+      }
+    }
+
+    const modeLabel = t.mode === 'fixed' ? '定时' : '加时';
+    const startTimeBlock = (t.mode === 'fixed')
+      ? `<div class="time-block">
+           <span class="lbl">开始时间(北京)</span>
+           <span class="val editable" data-field="starttime">${fmtFullTime(t.countdownStartTs || t.startTs)}</span>
+         </div>`
+      : '';
+
+    return `
+      <div class="task-card ${cardClass}" data-id="${t.id}">
+        <div class="task-top">
+          <div class="task-name editable" data-field="name">${esc(t.name)}${isOver ? '<span class="done-badge">到时</span>' : ''}</div>
+          <div class="task-actions">
+            <span class="mode-tag">${modeLabel}</span>
+            <button class="btn-del" title="删除" onclick="delTask('${t.id}')">&times;</button>
+          </div>
+        </div>
+        <div class="task-times">
+          ${startTimeBlock}
+          <div class="time-block">
+            <span class="lbl">设定时长</span>
+            <span class="val editable" data-field="duration">${durText(t.totalSec)}</span>
+          </div>
+        </div>
+        <div class="countdown ${cdClass} editable" data-field="time" title="点此修改目标时间">${cdText}</div>
+        ${extraHtml}
+        <div class="progress-bg"><div class="progress-fill ${fillClass}" style="width:${progress}%"></div></div>
+      </div>`;
+  }).join('');
+  attachInlineEditors();
+}
+
+// ---------- 内联编辑（直接点字段修改） ----------
+function attachInlineEditors(){
+  document.querySelectorAll('.task-card').forEach(card => {
+    const t = tasks.find(x => x.id === card.dataset.id);
+    if(!t) return;
+    card.querySelectorAll('.editable').forEach(el => {
+      el.addEventListener('click', () => {
+        if(inlineEditing) return;
+        const field = el.dataset.field;
+        if(field === 'name') startNameEdit(t, el);
+        else if(field === 'time') startTimeEdit(t, el);
+        else if(field === 'starttime') startStartTimeEdit(t, el);
+        else if(field === 'duration') startDurationEdit(t, el);
+      });
+    });
+  });
+}
+
+function startNameEdit(t, el){
+  inlineEditing = true;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = t.name;
+  input.style.cssText = 'font-size:16px;padding:3px 6px;border:1.5px solid #3a45c7;border-radius:4px;outline:none;width:70%';
+  el.replaceWith(input);
+  input.focus(); input.select();
+  let finished = false;
+  const finish = (save) => {
+    if(finished) return; finished = true;
+    if(save && input.value.trim()) t.name = input.value.trim();
+    inlineEditing = false; saveTasks(); render();
+  };
+  input.addEventListener('keydown', e => {
+    if(e.key === 'Enter'){ e.preventDefault(); finish(true); }
+    else if(e.key === 'Escape') finish(false);
+  });
+  input.addEventListener('blur', () => setTimeout(() => finish(true), 100));
+}
+
+// 时间编辑框 + 「现在」一键填入当前北京时间
+function buildTimeEditor(el, initialValue, applyFn){
+  inlineEditing = true;
+  const wrap = document.createElement('span');
+  wrap.style.cssText = 'display:inline-flex;gap:4px;align-items:center';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = initialValue;
+  input.placeholder = 'HH:MM:SS';
+  input.style.cssText = 'font-size:14px;padding:3px 6px;border:1.5px solid #3a45c7;border-radius:4px;outline:none;font-variant-numeric:tabular-nums;width:96px';
+  const nowBtn = document.createElement('button');
+  nowBtn.textContent = '现在';
+  nowBtn.title = '一键填入当前北京时间';
+  nowBtn.style.cssText = 'font-size:12px;padding:2px 7px;border:1px solid #3a45c7;background:#3a45c7;color:#fff;border-radius:4px;cursor:pointer;white-space:nowrap';
+  nowBtn.addEventListener('mousedown', e => e.preventDefault()); // 防止抢焦导致失焦保存旧值
+  wrap.appendChild(input);
+  wrap.appendChild(nowBtn);
+  el.replaceWith(wrap);
+  input.focus(); input.select();
+  let finished = false;
+  const finish = (save) => {
+    if(finished) return; finished = true;
+    if(save && input.value.trim()) applyFn(input.value.trim());
+    inlineEditing = false; saveTasks(); render();
+  };
+  input.addEventListener('keydown', e => {
+    if(e.key === 'Enter'){ e.preventDefault(); finish(true); }
+    else if(e.key === 'Escape') finish(false);
+  });
+  input.addEventListener('blur', () => setTimeout(() => finish(true), 120));
+  nowBtn.addEventListener('click', () => {
+    input.value = fmtFullTime(getBeijingNow());
+    finish(true);
+  });
+}
+
+// 改「目标时间」：加时模式改的是总时长；定时模式计时中改的是总时长，等待中改的是开始时间
+function startTimeEdit(t, el){
+  const initialValue = el.textContent.trim();
+  buildTimeEditor(el, initialValue, (val) => {
+    const parts = val.split(':').map(x => parseInt(x,10)||0);
+    const newTime = beijingTimeToEpoch(parts[0]||0, parts[1]||0, parts[2]||0);
+    const countdownStart = t.countdownStartTs || t.startTs;
+    const isWaiting = getBeijingNow().getTime() < countdownStart;
+    if(t.mode === 'plus'){
+      const newTotal = Math.round((newTime - getBeijingNow().getTime())/1000);
+      if(newTotal <= 0){ alert('目标时间必须晚于现在'); return; }
+      t.startTs = getBeijingNow().getTime();
+      t.totalSec = newTotal;
+      t.targetTs = t.startTs + newTotal*1000;
+    } else {
+      if(isWaiting){
+        t.countdownStartTs = newTime;
+        t.targetTs = newTime + t.totalSec*1000;
+      } else {
+        const newTotal = Math.round((newTime - countdownStart)/1000);
+        if(newTotal <= 0){ alert('目标时间必须晚于开始时间'); return; }
+        t.totalSec = newTotal;
+        t.targetTs = countdownStart + newTotal*1000;
+      }
+    }
+    t.done = false; alertedIds.delete(t.id);
+  });
+}
+
+// 改「开始时间」：定时模式专用，目标时间 = 开始时间 + 时长（过去的时间缺失计入已用）
+function startStartTimeEdit(t, el){
+  const initialValue = fmtFullTime(t.countdownStartTs || t.startTs);
+  buildTimeEditor(el, initialValue, (val) => {
+    const parts = val.split(':').map(x => parseInt(x,10)||0);
+    const newStart = beijingTimeToEpoch(parts[0]||0, parts[1]||0, parts[2]||0);
+    t.countdownStartTs = newStart;
+    t.targetTs = newStart + t.totalSec*1000;
+    t.done = false; alertedIds.delete(t.id);
+  });
+}
+
+function startDurationEdit(t, el){
+  inlineEditing = true;
+  const wrap = document.createElement('span');
+  wrap.style.cssText = 'display:inline-flex;gap:4px;align-items:center';
+  const minInput = document.createElement('input');
+  minInput.type = 'number'; minInput.min = '0'; minInput.placeholder = '分';
+  minInput.value = Math.floor(t.totalSec/60);
+  minInput.style.cssText = 'width:48px;font-size:14px;padding:3px 6px;border:1.5px solid #3a45c7;border-radius:4px;outline:none';
+  const secInput = document.createElement('input');
+  secInput.type = 'number'; secInput.min = '0'; secInput.max = '59'; secInput.placeholder = '秒';
+  secInput.value = t.totalSec%60;
+  secInput.style.cssText = 'width:48px;font-size:14px;padding:3px 6px;border:1.5px solid #3a45c7;border-radius:4px;outline:none';
+  wrap.appendChild(minInput); wrap.appendChild(document.createTextNode(' 分 '));
+  wrap.appendChild(secInput); wrap.appendChild(document.createTextNode(' 秒'));
+  el.replaceWith(wrap);
+  minInput.focus();
+  let finished = false;
+  const finish = (save) => {
+    if(finished) return; finished = true;
+    if(save){
+      const total = (parseInt(minInput.value)||0)*60 + (parseInt(secInput.value)||0);
+      if(total <= 0){ alert('时长需大于0'); inlineEditing = false; render(); return; }
+      t.totalSec = total;
+      if(t.mode === 'plus'){
+        t.startTs = getBeijingNow().getTime();
+        t.targetTs = t.startTs + total*1000;
+      } else {
+        const start = t.countdownStartTs || t.startTs;
+        t.targetTs = start + total*1000;
+      }
+      t.done = false; alertedIds.delete(t.id);
+    }
+    inlineEditing = false; saveTasks(); render();
+  };
+  minInput.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); finish(true); } });
+  secInput.addEventListener('keydown', e => {
+    if(e.key === 'Enter'){ e.preventDefault(); finish(true); }
+    else if(e.key === 'Escape') finish(false);
+  });
+  secInput.addEventListener('blur', () => setTimeout(() => finish(true), 120));
+}
+
+function delTask(id){
+  tasks = tasks.filter(t => t.id !== id);
+  alertedIds.delete(id);
+  saveTasks(); render();
+}
+
+// ---------- 到时提示音 ----------
+function playBeep(){
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AC();
+    let count = 0;
+    const beepOne = () => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine'; o.frequency.value = 880;
+      g.gain.setValueAtTime(0.001, ctx.currentTime);
+      g.gain.linearRampToValueAtTime(0.4, ctx.currentTime + 0.02);
+      g.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+      o.start(); o.stop(ctx.currentTime + 0.28);
+      count++;
+      if(count < 3) setTimeout(beepOne, 450);
+      else setTimeout(() => ctx.close(), 400);
+    };
+    beepOne();
+  }catch(e){}
+}
+
+// ---------- 表单草稿持久化（刷新不丢） ----------
+function bindFormDraftPersistence(){
+  FORM_INPUT_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('input', saveFormDraft);
+    el.addEventListener('change', saveFormDraft);
+  });
+}
+function saveFormDraft(){
+  const draft = {};
+  FORM_INPUT_IDS.forEach(id => { const el = document.getElementById(id); if(el) draft[id] = el.value; });
+  draft._activeMode = currentMode;
+  try { localStorage.setItem(FORM_DRAFT_KEY, JSON.stringify(draft)); } catch(e){}
+}
+function loadFormDraft(){
+  try{
+    const raw = localStorage.getItem(FORM_DRAFT_KEY);
+    if(!raw){ document.getElementById('taskTime').value = nextMinuteString(); return; }
+    const draft = JSON.parse(raw);
+    FORM_INPUT_IDS.forEach(id => {
+      if(draft[id] != null){ const el = document.getElementById(id); if(el) el.value = draft[id]; }
+    });
+    if(draft._activeMode === 'fixed') switchMode('fixed');
+    else switchMode('plus');
+  }catch(e){
+    document.getElementById('taskTime').value = nextMinuteString();
+  }
+}
+
+// ---------- 启动 ----------
+// 刷新时，已到时的任务不再响铃（直接标记）
+tasks.forEach(t => { if(getBeijingNow().getTime() >= t.targetTs) alertedIds.add(t.id); });
+function tick(){
+  document.getElementById('bjTime').textContent = fmtTime(getBeijingNow());
+  // 到时检测
+  const now = getBeijingNow().getTime();
+  tasks.forEach(t => {
+    if(now >= t.targetTs && !alertedIds.has(t.id)){
+      alertedIds.add(t.id);
+      t.done = true;
+      saveTasks();
+      playBeep();
+      const card = document.querySelector(`[data-id="${t.id}"]`);
+      if(card){ card.classList.add('done-flash'); setTimeout(() => card.classList.remove('done-flash'), 2000); }
+    }
+  });
+  if(!inlineEditing) render();
+}
+loadFormDraft();
+bindFormDraftPersistence();
+tick();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>
